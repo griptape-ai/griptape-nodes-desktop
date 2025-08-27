@@ -1,4 +1,14 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu, dialog } from 'electron';
+
+// Build info injected at compile time
+declare const __BUILD_INFO__: {
+  version: string;
+  commitHash: string;
+  commitDate: string;
+  branch: string;
+  buildDate: string;
+  buildId: string;
+};
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -26,6 +36,9 @@ const createWindow = () => {
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
+
+  // Set up application menu
+  createMenu();
 };
 
 // This method will be called when Electron has finished
@@ -49,6 +62,47 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+const createMenu = () => {
+  const template = [
+    {
+      label: app.getName(),
+      submenu: [
+        {
+          label: `About ${app.getName()}`,
+          click: showAboutDialog
+        },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template as any);
+  Menu.setApplicationMenu(menu);
+};
+
+const showAboutDialog = () => {
+  const detailText = [
+    `Version: ${__BUILD_INFO__.version}`,
+    `Commit: ${__BUILD_INFO__.commitHash.substring(0, 8)}`,
+    `Branch: ${__BUILD_INFO__.branch}`,
+    `Build Date: ${new Date(__BUILD_INFO__.buildDate).toLocaleString()}`,
+    '',
+    `Platform: ${process.platform} (${process.arch})`,
+    `Electron: ${process.versions.electron}`,
+    `Chrome: ${process.versions.chrome}`,
+    `Node.js: ${process.versions.node}`
+  ].join('\n');
+
+  dialog.showMessageBox({
+    type: 'info',
+    title: `About ${app.getName()}`,
+    message: app.getName(),
+    detail: detailText,
+    buttons: ['OK']
+  });
+};
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
