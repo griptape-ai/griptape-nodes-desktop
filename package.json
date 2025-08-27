@@ -1,7 +1,7 @@
 {
   "name": "griptape-nodes-desktop",
   "productName": "griptape-nodes-desktop",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "scripts": {
