@@ -14,9 +14,13 @@ const config: ForgeConfig = {
   },
   rebuildConfig: {},
   makers: [
-    new MakerSquirrel({}),
+    // Maker for Windows
+    new MakerSquirrel({
+      name: "GriptapeNodes",
+    }),
+    // Maker for Mac
     new MakerDMG({
-      name: "Griptape Nodes Installer",
+      name: "GriptapeNodes",
     }, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),
