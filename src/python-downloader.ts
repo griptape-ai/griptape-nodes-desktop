@@ -43,22 +43,36 @@ async function downloadFile(url: string, filepath: string): Promise<void> {
       if (response.statusCode === 302 || response.statusCode === 301) {
         const redirectUrl = response.headers.location;
         if (redirectUrl) {
+          file.destroy();
           downloadFile(redirectUrl, filepath).then(resolve).catch(reject);
           return;
         }
       }
       
       if (response.statusCode !== 200) {
+        file.destroy();
         reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
         return;
       }
 
       response.pipe(file);
       file.on('finish', () => {
-        file.close();
-        resolve();
+        file.close((err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          // Additional wait to ensure file handle is fully released
+          setTimeout(() => {
+            resolve();
+          }, 500);
+        });
       });
-    }).on('error', reject);
+      file.on('error', reject);
+    }).on('error', (err) => {
+      file.destroy();
+      reject(err);
+    });
   });
 }
 
@@ -198,6 +212,31 @@ async function downloadAndExtractUv(platform: string, arch: string): Promise<str
   await downloadFile(build.url, archivePath);
   console.log(`Downloaded uv to: ${archivePath}`);
   
+  // Verify the downloaded file is complete and accessible before extraction
+  console.log(`Verifying downloaded file integrity...`);
+  let verifyRetries = 0;
+  const maxVerifyRetries = 5;
+  while (verifyRetries < maxVerifyRetries) {
+    try {
+      const stats = fs.statSync(archivePath);
+      if (stats.size > 0) {
+        // Try to read a small portion to ensure file isn't locked
+        const fd = fs.openSync(archivePath, 'r');
+        fs.closeSync(fd);
+        break;
+      }
+    } catch (error) {
+      console.log(`Downloaded file not ready, waiting... (attempt ${verifyRetries + 1}/${maxVerifyRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    verifyRetries++;
+  }
+  
+  if (verifyRetries === maxVerifyRetries) {
+    throw new Error('Downloaded file is not accessible after multiple attempts');
+  }
+  
+  console.log(`File verification complete, proceeding with extraction...`);
   await extractUv(archivePath, uvDir, platform);
   
   // Make executable on Unix systems
