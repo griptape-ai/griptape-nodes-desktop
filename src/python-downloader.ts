@@ -88,7 +88,30 @@ async function extractUv(archivePath: string, extractPath: string, platform: str
         execSync(`powershell -command "$archive = '${archivePath}'; $dest = '${tempExtractPath}'; Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory($archive, $dest)"`, { stdio: 'inherit' });
       }
       
-      console.log(`Extraction completed, looking for uv.exe in ${tempExtractPath}`);
+      // Wait for extraction to fully complete and file handles to be released
+      console.log(`Extraction completed, waiting for file system operations to settle...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Verify extraction directory exists and is accessible
+      let retries = 0;
+      const maxRetries = 5;
+      while (retries < maxRetries) {
+        try {
+          if (fs.existsSync(tempExtractPath) && fs.readdirSync(tempExtractPath).length > 0) {
+            break;
+          }
+        } catch (error) {
+          console.log(`Extraction directory not ready, waiting... (attempt ${retries + 1}/${maxRetries})`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        retries++;
+      }
+      
+      if (retries === maxRetries) {
+        throw new Error('Extraction directory not accessible after multiple attempts');
+      }
+      
+      console.log(`Extraction verified, looking for uv.exe in ${tempExtractPath}`);
       
       // Find the uv.exe file in the extracted contents with better debugging
       let uvExePath: string | null = null;
@@ -114,6 +137,24 @@ async function extractUv(archivePath: string, extractPath: string, platform: str
         console.error('UV executable not found. Archive contents:');
         execSync(`powershell -command "Get-ChildItem -Path '${tempExtractPath}' -Recurse | Format-Table Name,FullName"`, { stdio: 'inherit' });
         throw new Error('uv.exe not found in extracted archive');
+      }
+      
+      // Wait for uv.exe to be fully available before copying
+      console.log(`Found uv.exe at ${uvExePath}, verifying file is ready...`);
+      let copyRetries = 0;
+      const maxCopyRetries = 3;
+      while (copyRetries < maxCopyRetries) {
+        try {
+          // Check if file is readable and not locked
+          const stats = fs.statSync(uvExePath);
+          if (stats.size > 0) {
+            break;
+          }
+        } catch (error) {
+          console.log(`uv.exe not ready for copy, waiting... (attempt ${copyRetries + 1}/${maxCopyRetries})`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        copyRetries++;
       }
       
       const targetPath = path.join(extractPath, 'uv.exe');
