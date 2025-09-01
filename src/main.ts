@@ -38,10 +38,10 @@ const createWindow = () => {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
-  // Open the DevTools in development only
-  if (process.env.NODE_ENV === 'development') {
+  // // Open the DevTools in development only
+  // if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
-  }
+  // }
 
   // Set up application menu
   createMenu();
