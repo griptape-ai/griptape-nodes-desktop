@@ -13,7 +13,9 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     extraResource: [
-      'resources'
+      'resources/uv',
+      'resources/python',
+      'resources/uv-tools'
     ]
   },
   hooks: {
