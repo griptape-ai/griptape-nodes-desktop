@@ -5,3 +5,8 @@ out
 .eslintcache
 .vite
 *.log*
+
+# Resouces downloaded at build time
+resources/python/
+resources/uv/
+resources/uv-tools/

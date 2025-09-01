@@ -7,10 +7,17 @@ import { PublisherGithub } from '@electron-forge/publisher-github';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { generateAssets } from './forge.hooks';
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    extraResource: [
+      'resources'
+    ]
+  },
+  hooks: {
+    generateAssets
   },
   rebuildConfig: {},
   makers: [
