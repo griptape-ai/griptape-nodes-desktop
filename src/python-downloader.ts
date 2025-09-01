@@ -3,8 +3,23 @@ import * as path from 'path';
 import * as https from 'https';
 import { createWriteStream } from 'fs';
 import { execSync } from 'child_process';
+import { app } from 'electron';
 
 const PYTHON_VERSION = '3.12.7';
+
+function getResourcesPath(): string {
+  // During build process: always use project's resources directory
+  // At runtime: check if packaged to determine path
+  if (!app || app.isPackaged === undefined) {
+    // Build time - use project resources directory
+    return path.join(process.cwd(), 'resources');
+  }
+  
+  // Runtime - use appropriate path based on packaging
+  return app.isPackaged 
+    ? process.resourcesPath
+    : path.join(process.cwd(), 'resources');
+}
 
 interface UvBuild {
   url: string;
@@ -326,14 +341,14 @@ export function getPythonVersion(): string {
 }
 
 export function getUvPath(platform: string, arch: string): string {
-  const uvDir = path.join(process.cwd(), 'resources', 'uv', `${platform}-${arch}`);
+  const uvDir = path.join(getResourcesPath(), 'uv', `${platform}-${arch}`);
   return path.join(uvDir, platform === 'win32' ? 'uv.exe' : 'uv');
 }
 
 export function getPythonInstallDir(): string {
-  return path.join(process.cwd(), 'resources', 'python');
+  return path.join(getResourcesPath(), 'python');
 }
 
 export function getUvToolDir(): string {
-  return path.join(process.cwd(), 'resources', 'uv-tools');
+  return path.join(getResourcesPath(), 'uv-tools');
 }

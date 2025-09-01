@@ -38,10 +38,10 @@ const createWindow = () => {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
-  // // Open the DevTools in development only
-  // if (process.env.NODE_ENV === 'development') {
+  // Open the DevTools in development only
+  if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
-  // }
+  }
 
   // Set up application menu
   createMenu();
@@ -58,6 +58,12 @@ const createWindow = () => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
   createWindow();
+  
+  // Debug: Check resource paths
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('process.resourcesPath:', process.resourcesPath);
+  console.log('process.cwd():', process.cwd());
+  console.log('app.getAppPath():', app.getAppPath());
   
   // Check Python service readiness
   if (pythonService.isReady()) {
