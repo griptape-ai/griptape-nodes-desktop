@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { getPythonVersion, getUvPath, getPythonInstallDir, getUvToolDir } from './python-downloader';
 
 export class PythonService {
@@ -52,16 +52,20 @@ export class PythonService {
         };
       }
 
-      const result = execSync(`'${pythonPath}' -c '${command}'`, {
+      const result = spawnSync(pythonPath, ['-c', command], {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
+      if (result.error) {
+        throw result.error;
+      }
+
       console.log(`executePythonCommand ${command} success`);
       return {
-        stdout: result.toString(),
-        stderr: '',
-        success: true
+        stdout: result.stdout?.toString() || '',
+        stderr: result.stderr?.toString() || '',
+        success: result.status === 0
       };
     } catch (error: any) {
       console.log(`executePythonCommand error: ${error}`);
@@ -221,17 +225,20 @@ export class PythonService {
         UV_TOOL_DIR: getUvToolDir()
       };
 
-      const command = [griptapeNodesPath, ...args].map(arg => `'${arg}'`).join(' ');
-      const result = execSync(command, {
+      const result = spawnSync(griptapeNodesPath, args, {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe'],
         env
       });
 
+      if (result.error) {
+        throw result.error;
+      }
+
       return {
-        stdout: result.toString(),
-        stderr: '',
-        success: true
+        stdout: result.stdout?.toString() || '',
+        stderr: result.stderr?.toString() || '',
+        success: result.status === 0
       };
     } catch (error: any) {
       return {
