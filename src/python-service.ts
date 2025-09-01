@@ -144,6 +144,48 @@ export class PythonService {
   }
 
   /**
+   * Install griptape-nodes tool (post-install)
+   */
+  async installGriptapeNodes(): Promise<void> {
+    console.log('Installing griptape-nodes tool...');
+    
+    try {
+      const toolDir = getUvToolDir();
+      const env = { 
+        ...process.env, 
+        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(),
+        UV_TOOL_DIR: toolDir,
+        UV_TOOL_BIN_DIR: path.join(toolDir, 'bin')
+      };
+      
+      // Install griptape-nodes using uv
+      execSync(`"${this.uvPath}" tool install griptape-nodes`, { 
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env 
+      });
+      
+      console.log('Successfully installed griptape-nodes');
+    } catch (error: any) {
+      console.error('Failed to install griptape-nodes:', error.message);
+      if (error.stdout) console.error('stdout:', error.stdout.toString());
+      if (error.stderr) console.error('stderr:', error.stderr.toString());
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure griptape-nodes is installed (install if missing)
+   */
+  async ensureGriptapeNodes(): Promise<void> {
+    if (!this.isGriptapeNodesReady()) {
+      console.log('griptape-nodes not found, installing...');
+      await this.installGriptapeNodes();
+    } else {
+      console.log('griptape-nodes already installed');
+    }
+  }
+
+  /**
    * Get the path to the bundled griptape-nodes executable
    */
   getGriptapeNodesPath(): string | null {

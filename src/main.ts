@@ -56,12 +56,21 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
+app.on('ready', async () => {
   createWindow();
   
   // Check Python service readiness
   if (pythonService.isReady()) {
     console.log('Python service is ready');
+    
+    // Ensure griptape-nodes is installed (post-install)
+    try {
+      await pythonService.ensureGriptapeNodes();
+      console.log('griptape-nodes setup complete');
+    } catch (error) {
+      console.error('Failed to setup griptape-nodes:', error);
+      // Continue running even if griptape-nodes installation fails
+    }
   } else {
     console.warn('Python service is not ready - Python may not be available');
   }

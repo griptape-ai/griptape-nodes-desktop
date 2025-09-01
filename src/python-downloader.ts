@@ -283,8 +283,7 @@ async function installGriptapeNodes(uvExecutable: string): Promise<void> {
       ...process.env, 
       UV_PYTHON_INSTALL_DIR: getPythonInstallDir(),
       UV_TOOL_DIR: toolDir,
-      UV_TOOL_BIN_DIR: path.join(toolDir, 'bin'),
-      UV_LINK_MODE: 'copy'
+      UV_TOOL_BIN_DIR: path.join(toolDir, 'bin')
     };
     
     // Install griptape-nodes using uv
@@ -315,10 +314,7 @@ export async function downloadPython(platform: string, arch: string): Promise<vo
     // Then use uv to download Python
     await downloadPythonWithUv(uvExecutable, platform, arch);
     
-    // Install griptape-nodes tool
-    await installGriptapeNodes(uvExecutable);
-    
-    console.log(`Successfully set up Python ${PYTHON_VERSION}, uv, and griptape-nodes for ${platform}-${arch}`);
+    console.log(`Successfully set up Python ${PYTHON_VERSION} and uv for ${platform}-${arch}`);
   } catch (error) {
     console.error(`Failed to setup Python and uv for ${platform}-${arch}:`, error);
     throw error;
