@@ -283,7 +283,8 @@ async function installGriptapeNodes(uvExecutable: string): Promise<void> {
       ...process.env, 
       UV_PYTHON_INSTALL_DIR: getPythonInstallDir(),
       UV_TOOL_DIR: toolDir,
-      UV_TOOL_BIN_DIR: path.join(toolDir, 'bin')
+      UV_TOOL_BIN_DIR: path.join(toolDir, 'bin'),
+      UV_LINK_MODE: 'copy'
     };
     
     // Install griptape-nodes using uv
