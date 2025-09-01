@@ -15,7 +15,6 @@ const config: ForgeConfig = {
     extraResource: [
       'resources/uv',
       'resources/python',
-      'resources/uv-tools'
     ]
   },
   hooks: {
