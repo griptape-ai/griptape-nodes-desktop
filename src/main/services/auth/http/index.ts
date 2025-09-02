@@ -42,7 +42,7 @@ export class HttpAuthService {
       // Log the code
       console.log('OAuth callback received - code:', code);
       
-      // Try to close the tab, but show minimal message if it can't close
+      // Simple success message
       res.send(`
         <html>
           <head>
@@ -65,18 +65,9 @@ export class HttpAuthService {
           <body>
             <div class="message">
               <h2>✓ Success</h2>
-              <p>You can close this tab and return to the app.</p>
+              <p>Authentication complete!</p>
+              <p style="color: #666;">You can close this tab and return to Griptape Nodes.</p>
             </div>
-            <script>
-              // Try to close the window (only works if we opened it)
-              window.close();
-              // If still open after 100ms, user needs to close manually
-              setTimeout(() => {
-                if (!window.closed) {
-                  document.querySelector('.message').style.display = 'block';
-                }
-              }, 100);
-            </script>
           </body>
         </html>
       `);
