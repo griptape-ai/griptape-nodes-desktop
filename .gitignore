@@ -6,6 +6,9 @@ out
 .vite
 *.log*
 
+# Environment variables
+.env
+
 # Resouces downloaded at build time
 resources/python/
 resources/uv/

@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync, spawnSync } from 'child_process';
-import { getPythonVersion, getUvPath, getPythonInstallDir, getUvToolDir } from './python-downloader';
+import { getPythonVersion, getUvPath, getPythonInstallDir, getUvToolDir } from '../downloader';
 
 export class PythonService {
   private platform: string;

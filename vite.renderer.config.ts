@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { getBuildInfo } from './src/build-info';
+import { getBuildInfo } from './src/shared/build-info';
 
 const buildInfo = getBuildInfo();
 

@@ -1,4 +1,11 @@
-import { app, BrowserWindow, Menu, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron';
+import { Worker } from 'worker_threads';
+import path from 'node:path';
+import started from 'electron-squirrel-startup';
+import { PythonService } from './services/python';
+import { OAuthService } from './services/auth';
+import { HttpAuthService } from './services/auth/http';
+import { CustomAuthService } from './services/auth/custom';
 
 // Build info injected at compile time
 declare const __BUILD_INFO__: {
@@ -9,25 +16,61 @@ declare const __BUILD_INFO__: {
   buildDate: string;
   buildId: string;
 };
-import path from 'node:path';
-import started from 'electron-squirrel-startup';
-import { PythonService } from './python-service';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
 
-// Initialize Python service
+// Register custom URL scheme for OAuth callback
+const OAUTH_SCHEME = 'gtn';
+if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
+  app.setAsDefaultProtocolClient(OAUTH_SCHEME);
+}
+
+// Initialize services
 const pythonService = new PythonService();
+const authService = (process.env.NODE_ENV === 'development')
+  ? new HttpAuthService()
+  : new CustomAuthService();
+
+authService.start();
+
+const startBackgroundSetup = () => {
+  console.log('Starting background setup...');
+  
+  const setupWorker = new Worker(path.join(__dirname, '../workers/setup/index.ts'));
+  
+  setupWorker.on('message', (message) => {
+    if (message.type === 'success') {
+      console.log('Background setup completed:', message.message);
+    } else if (message.type === 'error') {
+      console.error('Background setup failed:', message.message);
+    }
+  });
+  
+  setupWorker.on('error', (error) => {
+    console.error('Setup worker error:', error);
+  });
+  
+  setupWorker.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(`Setup worker stopped with exit code ${code}`);
+    } else {
+      console.log('Setup worker completed successfully');
+    }
+  });
+};
 
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   });
 
@@ -65,21 +108,8 @@ app.on('ready', async () => {
   console.log('process.cwd():', process.cwd());
   console.log('app.getAppPath():', app.getAppPath());
   
-  // Check Python service readiness
-  if (pythonService.isReady()) {
-    console.log('Python service is ready');
-    
-    // Ensure griptape-nodes is installed (post-install)
-    try {
-      await pythonService.ensureGriptapeNodes();
-      console.log('griptape-nodes setup complete');
-    } catch (error) {
-      console.error('Failed to setup griptape-nodes:', error);
-      // Continue running even if griptape-nodes installation fails
-    }
-  } else {
-    console.warn('Python service is not ready - Python may not be available');
-  }
+  // Start post-install setup in background thread
+  startBackgroundSetup();
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -98,6 +128,13 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+
+// Ensure only one instance of the app runs
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
 
 const createMenu = () => {
   const template = [
@@ -224,6 +261,63 @@ const setupIPC = () => {
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
+  });
+
+  // Handle Auth Logout
+  ipcMain.handle('auth:logout', async () => {
+    authService.clearCredentials();
+    
+    // Notify all windows about logout
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('auth:logout-success');
+    });
+    
+    return { success: true };
+  });
+
+  // Check if user is already authenticated
+  ipcMain.handle('auth:check', async () => {
+    const credentials = authService.getStoredCredentials();
+    if (credentials) {
+      return {
+        isAuthenticated: true,
+        ...credentials
+      };
+    }
+    return {
+      isAuthenticated: false
+    };
+  });
+
+  // Handle Auth Login
+  ipcMain.handle('auth:login', async () => {
+    try {
+      const result = await authService.login();
+      
+      // Send success event to all windows
+      BrowserWindow.getAllWindows().forEach(window => {
+        window.webContents.send('auth:login-success', result);
+      });
+      
+      return result;
+    } catch (error) {
+      // Send error event to all windows
+      BrowserWindow.getAllWindows().forEach(window => {
+        window.webContents.send('auth:login-error', error.message);
+      });
+      
+      throw error;
+    }
+  });
+
+  // Handle environment variable requests
+  ipcMain.handle('get-env-var', (event, key: string) => {
+    return process.env[key] || null;
+  });
+
+  // Handle development environment check
+  ipcMain.handle('is-development', () => {
+    return process.env.NODE_ENV === 'development' || !app.isPackaged;
   });
 };
 
