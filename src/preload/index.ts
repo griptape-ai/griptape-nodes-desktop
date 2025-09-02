@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getEnvVar: (key: string) => ipcRenderer.invoke('get-env-var', key),
   isDevelopment: () => ipcRenderer.invoke('is-development'),
   checkAuthCompletion: () => ipcRenderer.invoke('check-auth-completion'),
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   onAuthCallback: (callback: (event: any, data: any) => void) => {
     ipcRenderer.on('auth:callback', callback);
   },

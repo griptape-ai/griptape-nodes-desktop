@@ -1,12 +1,12 @@
 import React from 'react';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 import LoginPage from './LoginPage';
 import MainApp from './MainApp';
 import LoadingSpinner from './LoadingSpinner';
 
 const AppContent: React.FC = () => {
   const isElectron = typeof window.electronAPI !== 'undefined';
-  
 
   const { isLoading, isAuthenticated } = useAuth();
 
@@ -27,9 +27,11 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

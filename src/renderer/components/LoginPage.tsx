@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { ExternalLink, Loader2 } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -37,139 +39,135 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const openExternalLink = (url: string) => {
+    if (window.electronAPI?.openExternal) {
+      window.electronAPI.openExternal(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
   return (
-    <div style={styles.container}>
-      <div style={styles.loginCard}>
-        <h1 style={styles.title}>Griptape Nodes Desktop</h1>
-        <p style={styles.subtitle}>
-          Welcome to Griptape Nodes Desktop. Please log in to continue.
-        </p>
-        
-        <button 
-          onClick={handleLogin} 
-          style={styles.loginButton}
-        >
-          Log In
-        </button>
-        
-        {browserOpened && (
-          <>
-            <p style={styles.helpText}>
-              Complete the login in your browser, then click the button below.
-            </p>
-            <button 
-              onClick={checkAuthCompletion}
-              disabled={checking}
-              style={styles.checkButton}
-            >
-              {checking ? 'Checking...' : 'I\'ve Completed Login'}
-            </button>
-          </>
-        )}
-        
-        {error && (
-          <div style={styles.error}>
-            <p>Login failed: {error}</p>
-            <p>Please try again.</p>
+    <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center bg-black/50 draggable">
+      <div className="w-[90%] h-[90%] max-w-6xl flex flex-col bg-gray-900 rounded-lg border border-blue-500/30 non-draggable">
+        {/* Header with logo */}
+        <div className="flex items-center justify-center p-6 pb-4 border-b border-gray-700/50">
+          <img src="/griptape_nodes_header_logo.svg" alt="Griptape" className="h-10" />
+        </div>
+
+        {/* Content area */}
+        <div className="flex-1 overflow-y-auto px-8 py-12 flex flex-col items-center">
+          <div className="w-full max-w-3xl flex flex-col items-center flex-1 justify-center">
+            {/* Animation */}
+            <div className="mb-12">
+              <img src="/animated_nodes.svg" alt="Animated Griptape Nodes" className="w-full max-w-lg" />
+            </div>
+            
+            {/* Login content */}
+            <div className="w-full max-w-md space-y-8">
+              {!browserOpened ? (
+                <>
+                  <div className="bg-sky-900/20 rounded-md px-8 py-6 border border-sky-700/30">
+                    <p className="text-lg text-white/80 text-center">
+                      Please log in with your Griptape account to continue
+                    </p>
+                  </div>
+                  
+                  <button 
+                    onClick={handleLogin}
+                    className={cn(
+                      "w-full flex items-center justify-center gap-3",
+                      "bg-sky-700 hover:bg-sky-500 active:bg-sky-300",
+                      "text-white font-medium text-base",
+                      "px-6 py-4 rounded-md",
+                      "transition-colors"
+                    )}
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                    Log In with Browser
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-6">
+                  <div className="p-6 bg-green-900/20 border border-green-700 rounded-md">
+                    <h3 className="text-white font-medium mb-2 text-lg">Browser Opened</h3>
+                    <p className="text-gray-400 text-sm">
+                      Complete the login process in your browser, then click the button below.
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={checkAuthCompletion}
+                    disabled={checking}
+                    className={cn(
+                      "w-full flex items-center justify-center gap-3",
+                      "bg-sky-700 hover:bg-sky-500 active:bg-sky-300",
+                      "disabled:bg-gray-700 disabled:cursor-not-allowed",
+                      "text-white font-medium text-base",
+                      "px-6 py-4 rounded-md",
+                      "transition-colors"
+                    )}
+                  >
+                    {checking ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      "I've Completed Login"
+                    )}
+                  </button>
+                  
+                  <div className="text-center pt-2">
+                    <button
+                      onClick={() => {
+                        setBrowserOpened(false);
+                        setError(null);
+                      }}
+                      className="text-blue-400 hover:text-blue-300 text-sm underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {error && (
+                <div className="mt-6">
+                  <div className="p-4 bg-red-900/20 border border-red-700 rounded-md">
+                    <p className="text-red-400 text-sm">{error}</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-        
-        <div style={styles.footer}>
-          <p style={styles.footerText}>
-            Powered by Griptape
-          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-center gap-4 p-6 pt-4 border-t border-gray-700/50 text-sm">
+          <span className="text-gray-500">Need Help?</span>
+          <button 
+            onClick={() => openExternalLink('https://docs.griptapenodes.com/en/stable/')}
+            className="text-blue-400 hover:underline"
+          >
+            Documentation
+          </button>
+          <button 
+            onClick={() => openExternalLink('https://docs.griptapenodes.com/en/stable/faq')}
+            className="text-blue-400 hover:underline"
+          >
+            FAQ
+          </button>
+          <button 
+            onClick={() => openExternalLink('https://discord.gg/griptape')}
+            className="text-blue-400 hover:underline"
+          >
+            Discord
+          </button>
         </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  },
-  loginCard: {
-    backgroundColor: 'white',
-    padding: '3rem',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    textAlign: 'center' as const,
-    maxWidth: '400px',
-    width: '100%',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: 'bold',
-    marginBottom: '0.5rem',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: '1.1rem',
-    color: '#666',
-    marginBottom: '2rem',
-    lineHeight: '1.5',
-  },
-  loginButton: {
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    padding: '1rem 2rem',
-    fontSize: '1.1rem',
-    fontWeight: '600',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    width: '100%',
-    transition: 'background-color 0.2s',
-    marginBottom: '2rem',
-  },
-  footer: {
-    borderTop: '1px solid #eee',
-    paddingTop: '1rem',
-  },
-  footerText: {
-    fontSize: '0.9rem',
-    color: '#999',
-    margin: 0,
-  },
-  loginButtonDisabled: {
-    backgroundColor: '#6c757d',
-    cursor: 'not-allowed',
-  },
-  helpText: {
-    fontSize: '0.95rem',
-    color: '#28a745',
-    marginTop: '1rem',
-    marginBottom: '1rem',
-    padding: '0.75rem',
-    backgroundColor: '#d4edda',
-    borderRadius: '4px',
-    border: '1px solid #c3e6cb',
-  },
-  checkButton: {
-    backgroundColor: '#28a745',
-    color: 'white',
-    border: 'none',
-    padding: '0.75rem 1.5rem',
-    fontSize: '1rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    marginBottom: '1rem',
-    transition: 'background-color 0.2s',
-  },
-  error: {
-    backgroundColor: '#f8d7da',
-    color: '#721c24',
-    padding: '1rem',
-    borderRadius: '4px',
-    marginBottom: '1rem',
-    border: '1px solid #f5c6cb',
-  },
 };
 
 export default LoginPage;

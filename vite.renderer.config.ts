@@ -7,5 +7,6 @@ const buildInfo = getBuildInfo();
 export default defineConfig({
   define: {
     __BUILD_INFO__: JSON.stringify(buildInfo)
-  }
+  },
+  publicDir: 'public'
 });
