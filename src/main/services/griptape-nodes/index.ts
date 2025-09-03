@@ -1,8 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { app } from 'electron';
 import { PythonService } from '../python';
-import { getResourcesPath } from '../downloader';
 
 export interface GtnConfig {
   api_key?: string;
@@ -18,23 +16,11 @@ export class GriptapeNodesService {
   private configFile: string;
   private workspaceDir: string;
 
-  constructor(pythonService: PythonService) {
+  constructor(pythonService: PythonService, configDir: string, workspaceDir: string) {
     this.pythonService = pythonService;
-    
-    // Use resources directory for config to keep app self-contained
-    this.configDir = path.join(getResourcesPath(), 'griptape-config');
+    this.configDir = configDir;
     this.configFile = path.join(this.configDir, 'griptape_nodes_config.json');
-    
-    // Default workspace in user's documents folder
-    // Check if app is available (not in worker thread)
-    if (typeof app !== 'undefined' && app.getPath) {
-      const documentsPath = app.getPath('documents');
-      this.workspaceDir = path.join(documentsPath, 'GriptapeNodes');
-    } else {
-      // Fallback for worker threads
-      this.workspaceDir = path.join(process.env.HOME || process.env.USERPROFILE || '.', 'GriptapeNodes');
-    }
-    
+    this.workspaceDir = workspaceDir;
     this.ensureConfigDirectory();
   }
 
@@ -155,16 +141,22 @@ export class GriptapeNodesService {
    */
   isInitialized(): boolean {
     try {
+      console.log('[GTN] Checking initialization, config file:', this.configFile);
       // Check if our config file exists and has an API key
       if (fs.existsSync(this.configFile)) {
+        console.log('[GTN] Config file exists');
         const config = this.loadConfig();
+        console.log('[GTN] Config loaded:', config ? 'Yes' : 'No', 'Has API key:', config?.api_key ? 'Yes' : 'No');
         // If we have a saved config with an API key, assume we're initialized
         // We can't reliably check with gtn commands without potentially triggering errors
-        return config !== null && !!config.api_key;
+        const result = config !== null && !!config.api_key;
+        console.log('[GTN] isInitialized result:', result);
+        return result;
       }
+      console.log('[GTN] Config file does not exist');
       return false;
     } catch (error) {
-      console.error('Failed to check gtn initialization:', error);
+      console.error('[GTN] Failed to check gtn initialization:', error);
       return false;
     }
   }

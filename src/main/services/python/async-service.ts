@@ -15,9 +15,9 @@ export class AsyncPythonService extends EventEmitter {
   private pythonService: PythonService;
   private worker: Worker | null = null;
 
-  constructor() {
+  constructor(resourcesPath: string) {
     super();
-    this.pythonService = new PythonService();
+    this.pythonService = new PythonService(resourcesPath);
   }
 
   /**

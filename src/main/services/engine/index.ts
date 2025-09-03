@@ -2,7 +2,6 @@ import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import { PythonService } from '../python';
 import { GriptapeNodesService } from '../griptape-nodes';
-import { getPythonInstallDir, getUvToolDir } from '../downloader';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -17,6 +16,7 @@ export interface EngineLog {
 export class EngineService extends EventEmitter {
   private pythonService: PythonService;
   private gtnService: GriptapeNodesService;
+  private resourcesPath: string;
   private engineProcess: ChildProcess | null = null;
   private status: EngineStatus = 'not-ready';
   private logs: EngineLog[] = [];
@@ -27,10 +27,11 @@ export class EngineService extends EventEmitter {
   private stdoutBuffer = ''; // Buffer for incomplete stdout lines
   private stderrBuffer = ''; // Buffer for incomplete stderr lines
 
-  constructor(pythonService: PythonService, gtnService: GriptapeNodesService) {
+  constructor(pythonService: PythonService, gtnService: GriptapeNodesService, resourcesPath: string) {
     super();
     this.pythonService = pythonService;
     this.gtnService = gtnService;
+    this.resourcesPath = resourcesPath;
     this.checkStatus();
   }
 
@@ -68,11 +69,16 @@ export class EngineService extends EventEmitter {
    */
   private checkStatus(): void {
     const oldStatus = this.status;
+    console.log('[ENGINE] Checking status...');
 
-    if (!this.pythonService.isGriptapeNodesReady()) {
+    const gtnReady = this.pythonService.isGriptapeNodesReady();
+    console.log('[ENGINE] Griptape-nodes ready:', gtnReady);
+    if (!gtnReady) {
       this.status = 'not-ready';
       this.addLog('stderr', 'Griptape Nodes is not installed');
     } else if (!this.isInitialized()) {
+      const isInit = this.isInitialized();
+      console.log('[ENGINE] Griptape-nodes initialized:', isInit);
       this.status = 'not-ready';
       this.addLog('stderr', 'Griptape Nodes not initialized. Run "gtn init" first.');
     } else if (this.engineProcess && !this.engineProcess.killed) {
@@ -82,7 +88,10 @@ export class EngineService extends EventEmitter {
     }
 
     if (oldStatus !== this.status) {
+      console.log('[ENGINE] Status changed from', oldStatus, 'to', this.status);
       this.emit('status-changed', this.status);
+    } else {
+      console.log('[ENGINE] Status unchanged:', this.status);
     }
   }
 
@@ -157,8 +166,8 @@ export class EngineService extends EventEmitter {
         cwd: this.gtnService.getConfigDirectory(),
         env: {
           ...process.env,
-          UV_PYTHON_INSTALL_DIR: getPythonInstallDir(),
-          UV_TOOL_DIR: getUvToolDir(),
+          UV_PYTHON_INSTALL_DIR: path.join(this.resourcesPath, 'python'),
+          UV_TOOL_DIR: path.join(this.resourcesPath, 'uv-tools'),
           // Force color output for terminals that support it
           FORCE_COLOR: '1',
           PYTHONUNBUFFERED: '1'
@@ -324,15 +333,22 @@ export class EngineService extends EventEmitter {
    * Initialize the service and start engine if possible
    */
   async initialize(): Promise<void> {
+    console.log('[ENGINE] Initialize called');
+    // Re-check status to see if conditions have changed
     this.checkStatus();
     
     // Auto-start the engine if it's ready
     if (this.status === 'ready') {
+      console.log('[ENGINE] Status is ready, attempting to start...');
       try {
         await this.start();
       } catch (error) {
-        console.error('Failed to auto-start engine:', error);
+        console.error('[ENGINE] Failed to auto-start engine:', error);
       }
+    } else {
+      console.log(`[ENGINE] Not ready to start. Status: ${this.status}`);
+      // Emit status change to notify UI of current state
+      this.emit('status-changed', this.status);
     }
   }
 

@@ -1,4 +1,3 @@
-import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PythonService } from '../python';
@@ -34,8 +33,11 @@ export interface EnvironmentInfo {
 export class EnvironmentSetupService {
   private dataPath: string;
   private envInfoFile: string;
+  private resourcesPath: string;
 
-  constructor(private pythonService: PythonService, private dataPath: string) {
+  constructor(private pythonService: PythonService, dataPath: string, resourcesPath: string) {
+    this.dataPath = dataPath;
+    this.resourcesPath = resourcesPath;
     this.envInfoFile = path.join(this.dataPath, 'environment-info.json');
   }
 
@@ -98,8 +100,8 @@ export class EnvironmentSetupService {
       griptapeNodes: griptapeNodesData,
       uv: {
         version: uvVersionStr,
-        toolDir: getUvToolDir(),
-        pythonInstallDir: getPythonInstallDir()
+        toolDir: getUvToolDir(this.resourcesPath),
+        pythonInstallDir: getPythonInstallDir(this.resourcesPath)
       },
       system: {
         platform: process.platform,

@@ -3,22 +3,12 @@ import * as path from 'path';
 import * as https from 'https';
 import { createWriteStream } from 'fs';
 import { execSync } from 'child_process';
-import { app } from 'electron';
 
 const PYTHON_VERSION = '3.12.7';
 
-export function getResourcesPath(): string {
-  // During build process: always use project's resources directory
-  // At runtime: check if packaged to determine path
-  if (typeof app === 'undefined' || !app || app.isPackaged === undefined) {
-    // Build time or worker thread - use project resources directory
-    return path.join(process.cwd(), 'resources');
-  }
-  
-  // Runtime - use appropriate path based on packaging
-  return app.isPackaged 
-    ? process.resourcesPath
-    : path.join(process.cwd(), 'resources');
+// Default resources path for build-time operations
+function getBuildTimeResourcesPath(): string {
+  return path.join(process.cwd(), 'resources');
 }
 
 interface UvBuild {
@@ -207,7 +197,7 @@ async function downloadAndExtractUv(platform: string, arch: string): Promise<str
     throw new Error(`No uv build available for ${platform}-${arch}`);
   }
 
-  const resourcesDir = path.join(process.cwd(), 'resources');
+  const resourcesDir = getBuildTimeResourcesPath();
   const uvDir = path.join(resourcesDir, 'uv', `${platform}-${arch}`);
   const archivePath = path.join(resourcesDir, 'uv', build.filename);
   const uvExecutable = path.join(uvDir, platform === 'win32' ? 'uv.exe' : 'uv');
@@ -270,10 +260,10 @@ async function downloadPythonWithUv(uvExecutable: string, platform: string, arch
   console.log(`Using uv to install Python ${PYTHON_VERSION} for ${platform}-${arch}...`);
   
   try {
-    // Set UV_PYTHON_INSTALL_DIR to our resources directory
+    // Set UV_PYTHON_INSTALL_DIR to our resources directory (build time)
     const env = { 
       ...process.env, 
-      UV_PYTHON_INSTALL_DIR: getPythonInstallDir()
+      UV_PYTHON_INSTALL_DIR: getPythonInstallDir(getBuildTimeResourcesPath())
     };
     
     // Install Python using uv
@@ -293,10 +283,11 @@ async function installGriptapeNodes(uvExecutable: string): Promise<void> {
   console.log('Installing griptape-nodes tool...');
   
   try {
-    const toolDir = getUvToolDir();
+    const resourcesPath = getBuildTimeResourcesPath();
+    const toolDir = getUvToolDir(resourcesPath);
     const env = { 
       ...process.env, 
-      UV_PYTHON_INSTALL_DIR: getPythonInstallDir(),
+      UV_PYTHON_INSTALL_DIR: getPythonInstallDir(resourcesPath),
       UV_TOOL_DIR: toolDir,
       UV_TOOL_BIN_DIR: path.join(toolDir, 'bin')
     };
@@ -340,15 +331,15 @@ export function getPythonVersion(): string {
   return PYTHON_VERSION;
 }
 
-export function getUvPath(platform: string, arch: string): string {
-  const uvDir = path.join(getResourcesPath(), 'uv', `${platform}-${arch}`);
+export function getUvPath(resourcesPath: string, platform: string, arch: string): string {
+  const uvDir = path.join(resourcesPath, 'uv', `${platform}-${arch}`);
   return path.join(uvDir, platform === 'win32' ? 'uv.exe' : 'uv');
 }
 
-export function getPythonInstallDir(): string {
-  return path.join(getResourcesPath(), 'python');
+export function getPythonInstallDir(resourcesPath: string): string {
+  return path.join(resourcesPath, 'python');
 }
 
-export function getUvToolDir(): string {
-  return path.join(getResourcesPath(), 'uv-tools');
+export function getUvToolDir(resourcesPath: string): string {
+  return path.join(resourcesPath, 'uv-tools');
 }

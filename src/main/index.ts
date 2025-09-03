@@ -39,12 +39,24 @@ if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
   app.setAsDefaultProtocolClient(OAUTH_SCHEME);
 }
 
-// Initialize services
-const pythonService = new PythonService();
-const asyncPythonService = new AsyncPythonService();
-const environmentSetupService = new EnvironmentSetupService(pythonService, app.getPath('userData'));
-const griptapeNodesService = new GriptapeNodesService(pythonService);
-const engineService = new EngineService(pythonService, griptapeNodesService);
+// Get resource path based on whether app is packaged
+// process.resourcesPath is available immediately in packaged apps
+const resourcesPath = process.resourcesPath || path.join(process.cwd(), 'resources');
+console.log('Initializing with resourcesPath:', resourcesPath);
+console.log('app.isPackaged:', app.isPackaged);
+console.log('process.resourcesPath:', process.resourcesPath);
+
+// Initialize services with proper paths
+const pythonService = new PythonService(resourcesPath);
+const asyncPythonService = new AsyncPythonService(resourcesPath);
+const environmentSetupService = new EnvironmentSetupService(pythonService, app.getPath('userData'), resourcesPath);
+
+// Get paths for GriptapeNodesService
+const configDir = path.join(resourcesPath, 'griptape-config');
+const workspaceDir = path.join(app.getPath('documents'), 'GriptapeNodes');
+
+const griptapeNodesService = new GriptapeNodesService(pythonService, configDir, workspaceDir);
+const engineService = new EngineService(pythonService, griptapeNodesService, resourcesPath);
 // Check for invalid configuration
 if (process.env.NODE_ENV === 'development' && process.env.AUTH_SCHEME === 'custom') {
   throw new Error('Custom URL scheme authentication requires packaging. Custom URL schemes do not work in development mode on macOS and Windows. Please use AUTH_SCHEME=http for development or package the application.');
@@ -57,18 +69,55 @@ const authService = (process.env.AUTH_SCHEME === 'custom')
 authService.start();
 
 const startBackgroundSetup = () => {
+  console.log('[INIT] Starting background setup worker...');
   console.log('Starting background setup...');
   
   // The worker is compiled to worker.js in the same directory as main.js
   const setupWorker = new Worker(path.join(__dirname, 'worker.js'), {
     workerData: {
-      userDataPath: app.getPath('userData')
+      userDataPath: app.getPath('userData'),
+      resourcesPath: resourcesPath
     }
   });
   
-  setupWorker.on('message', (message) => {
-    if (message.type === 'success') {
-      console.log('Background setup completed:', message.message);
+  setupWorker.on('message', async (message) => {
+    console.log('[WORKER] Received message:', message.type, message.message);
+    if (message.type === 'success' || message.type === 'partial') {
+      console.log('[WORKER] Background setup completed:', message.message);
+      
+      // Now that griptape-nodes is installed, check if we need to initialize it with API key
+      console.log('[WORKER] Checking griptape-nodes config...');
+      const existingConfig = griptapeNodesService.loadConfig();
+      console.log('[WORKER] Existing config:', existingConfig ? 'Found' : 'Not found', existingConfig?.api_key ? 'with API key' : 'without API key');
+      if (!existingConfig || !existingConfig.api_key) {
+        // Try to initialize with stored credentials if available
+        const credentials = authService.getStoredCredentials();
+        console.log('[WORKER] Stored credentials:', credentials ? 'Found' : 'Not found');
+        if (credentials && credentials.apiKey) {
+          console.log('[WORKER] Initializing griptape-nodes with stored API key after installation...');
+          const initResult = await griptapeNodesService.initialize({
+            apiKey: credentials.apiKey
+          });
+          
+          if (!initResult.success) {
+            console.error('[WORKER] Failed to initialize griptape-nodes after installation:', initResult.error);
+            return;
+          }
+        } else {
+          console.log('[WORKER] No API key available to initialize griptape-nodes after installation');
+          return;
+        }
+      }
+      
+      // Now check if we need to initialize the engine
+      const currentStatus = engineService.getStatus();
+      console.log('[WORKER] Current engine status:', currentStatus);
+      if (currentStatus === 'not-ready') {
+        // Re-check the status since griptape-nodes should now be installed and initialized
+        console.log('[WORKER] Calling engineService.initialize()...');
+        await engineService.initialize();
+        console.log('[WORKER] Engine initialized after background setup completion');
+      }
     } else if (message.type === 'error') {
       console.error('Background setup failed:', message.message);
     }
@@ -128,6 +177,7 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
+  console.log('[INIT] App ready event fired');
   createWindow();
   
   // Debug: Check resource paths
@@ -141,16 +191,19 @@ app.on('ready', async () => {
   
   // Check if we have stored credentials and initialize griptape-nodes if needed
   const initializeGriptapeNodes = async () => {
+    console.log('[INIT] Checking for existing griptape-nodes initialization...');
     try {
       // First check if gtn is already initialized with saved config
       const existingConfig = griptapeNodesService.loadConfig();
+      console.log('[INIT] Existing gtn config:', existingConfig ? 'Found' : 'Not found');
       if (existingConfig && existingConfig.api_key) {
-        console.log('Griptape-nodes already initialized with saved config');
+        console.log('[INIT] Griptape-nodes already initialized with saved config');
         return;
       }
       
       // If not initialized, check if we have stored credentials to initialize with
       const credentials = authService.getStoredCredentials();
+      console.log('[INIT] Stored credentials check:', credentials ? 'Found' : 'Not found', credentials?.apiKey ? 'with API' : 'without API');
       if (credentials && credentials.apiKey) {
         console.log('Found stored API key, initializing griptape-nodes...');
         
@@ -172,12 +225,22 @@ app.on('ready', async () => {
   };
   
   // Initialize griptape-nodes if we have credentials
+  console.log('[INIT] Running initializeGriptapeNodes...');
   await initializeGriptapeNodes();
   
-  // Initialize engine service (will auto-start if gtn is ready)
-  engineService.initialize().catch(error => {
-    console.error('Failed to initialize engine service:', error);
-  });
+  // Only try to initialize engine if griptape-nodes is already installed
+  // Otherwise, the background worker will initialize it when installation completes
+  const gtnReady = pythonService.isGriptapeNodesReady();
+  const gtnInitialized = griptapeNodesService.isInitialized();
+  console.log('[INIT] Griptape-nodes ready:', gtnReady, 'Initialized:', gtnInitialized);
+  if (gtnReady && gtnInitialized) {
+    console.log('[INIT] Calling engineService.initialize() from app ready...');
+    engineService.initialize().catch(error => {
+      console.error('[INIT] Failed to initialize engine service:', error);
+    });
+  } else {
+    console.log('[INIT] Deferring engine initialization until griptape-nodes is ready');
+  }
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
