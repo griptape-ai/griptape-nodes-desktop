@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Home, 
   Settings, 
@@ -23,9 +23,33 @@ interface SidebarProps {
 export function Sidebar({ className, selectedPage, onPageChange, hideHeader = false }: SidebarProps) {
   const { user, logout } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profileButtonRef.current &&
+        profileMenuRef.current &&
+        !profileButtonRef.current.contains(event.target as Node) &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    if (isProfileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileOpen]);
 
   const handleLogout = () => {
     logout();
+    setIsProfileOpen(false);
   };
 
   const menuItems = [
@@ -84,9 +108,10 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
 
       {/* Profile Section */}
       <div className="flex-shrink-0 border-t border-border p-2">
-        <div className="space-y-2">
-          {/* Profile Dropdown */}
+        <div className="relative">
+          {/* Profile Button */}
           <button
+            ref={profileButtonRef}
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="w-full flex items-center gap-2 hover:bg-sidebar-accent rounded-md px-2 py-1.5 transition-colors"
           >
@@ -101,19 +126,21 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
             )}
           </button>
 
-          {/* Profile Menu */}
+          {/* Profile Menu Popover */}
           {isProfileOpen && (
-            <div className="bg-sidebar-accent rounded-md p-1">
+            <div 
+              ref={profileMenuRef}
+              className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-md shadow-lg p-1 z-50"
+            >
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-sidebar-accent-foreground/10 rounded transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Logout</span>
               </button>
             </div>
           )}
-
         </div>
       </div>
     </div>
