@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import headerLogoSrc from '/griptape_nodes_header_logo.svg';
+import animatedNodesSrc from '/animated_nodes.svg';
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -52,7 +54,7 @@ const LoginPage: React.FC = () => {
       <div className="w-[90%] h-[90%] max-w-6xl flex flex-col bg-gray-900 rounded-lg border border-blue-500/30 non-draggable">
         {/* Header with logo */}
         <div className="flex items-center justify-center p-6 pb-4 border-b border-gray-700/50">
-          <img src="/griptape_nodes_header_logo.svg" alt="Griptape" className="h-10" />
+          <img src={headerLogoSrc} alt="Griptape" className="h-10" />
         </div>
 
         {/* Content area */}
@@ -60,7 +62,7 @@ const LoginPage: React.FC = () => {
           <div className="w-full max-w-3xl flex flex-col items-center flex-1 justify-center">
             {/* Animation */}
             <div className="mb-12">
-              <img src="/animated_nodes.svg" alt="Animated Griptape Nodes" className="w-full max-w-lg" />
+              <img src={animatedNodesSrc} alt="Animated Griptape Nodes" className="w-full max-w-lg" />
             </div>
             
             {/* Login content */}

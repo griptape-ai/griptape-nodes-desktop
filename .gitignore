@@ -17,5 +17,5 @@ resources/uv-tools/
 # Griptape configuration directory
 resources/griptape-config/
 
-# Temporary data directory (used in worker threads)
-.temp-data
+# Development userData directory
+.dev-user-data

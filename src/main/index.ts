@@ -26,6 +26,13 @@ if (started) {
   app.quit();
 }
 
+// Set userData path for development
+if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+  const devUserDataPath = path.join(app.getAppPath(), '.dev-user-data');
+  app.setPath('userData', devUserDataPath);
+  console.log('Development mode: userData set to', devUserDataPath);
+}
+
 // Register custom URL scheme for OAuth callback
 const OAUTH_SCHEME = 'gtn';
 if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
@@ -35,7 +42,7 @@ if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
 // Initialize services
 const pythonService = new PythonService();
 const asyncPythonService = new AsyncPythonService();
-const environmentSetupService = new EnvironmentSetupService(pythonService);
+const environmentSetupService = new EnvironmentSetupService(pythonService, app.getPath('userData'));
 const griptapeNodesService = new GriptapeNodesService(pythonService);
 const engineService = new EngineService(pythonService, griptapeNodesService);
 // Check for invalid configuration
@@ -53,7 +60,11 @@ const startBackgroundSetup = () => {
   console.log('Starting background setup...');
   
   // The worker is compiled to worker.js in the same directory as main.js
-  const setupWorker = new Worker(path.join(__dirname, 'worker.js'));
+  const setupWorker = new Worker(path.join(__dirname, 'worker.js'), {
+    workerData: {
+      userDataPath: app.getPath('userData')
+    }
+  });
   
   setupWorker.on('message', (message) => {
     if (message.type === 'success') {

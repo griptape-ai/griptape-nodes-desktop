@@ -15,6 +15,8 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useEngine } from '../contexts/EngineContext';
 import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip';
+import markLightSrc from '/griptape_nodes_mark_light.svg';
+import markDarkSrc from '/griptape_nodes_mark_dark.svg';
 
 interface SidebarProps {
   className?: string;
@@ -101,12 +103,12 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
         <div className="flex-shrink-0 px-4 py-4 border-b border-border draggable">
           <div className="flex items-center gap-2">
             <img 
-              src="/griptape_nodes_mark_light.svg" 
+              src={markLightSrc} 
               className="hidden w-8 h-8 dark:block non-draggable"
               alt="Griptape Nodes Logo"
             />
             <img 
-              src="/griptape_nodes_mark_dark.svg" 
+              src={markDarkSrc} 
               className="block w-8 h-8 dark:hidden non-draggable"
               alt="Griptape Nodes Logo"
             />

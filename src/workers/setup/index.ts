@@ -1,4 +1,4 @@
-import { parentPort } from 'worker_threads';
+import { parentPort, workerData } from 'worker_threads';
 import { PythonService } from '../../main/services/python';
 import { EnvironmentSetupService } from '../../main/services/environment-setup';
 
@@ -6,8 +6,13 @@ async function runSetup() {
   try {
     console.log('Setup worker: Starting post-installation setup...');
     
+    if (!workerData?.userDataPath) {
+      throw new Error('userDataPath must be provided in workerData');
+    }
+    
     const pythonService = new PythonService();
-    const environmentSetupService = new EnvironmentSetupService(pythonService);
+    // Use the userData path from main process
+    const environmentSetupService = new EnvironmentSetupService(pythonService, workerData.userDataPath);
     
     if (!pythonService.isReady()) {
       parentPort?.postMessage({ 

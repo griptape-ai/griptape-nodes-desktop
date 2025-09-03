@@ -35,17 +35,7 @@ export class EnvironmentSetupService {
   private dataPath: string;
   private envInfoFile: string;
 
-  constructor(private pythonService: PythonService, dataPath?: string) {
-    // In worker threads, app is not available, so dataPath must be provided
-    // In main process, we can use app.getPath
-    if (dataPath) {
-      this.dataPath = dataPath;
-    } else if (typeof app !== 'undefined' && app.getPath) {
-      this.dataPath = app.getPath('userData');
-    } else {
-      // Fallback for worker threads - use a temp directory
-      this.dataPath = path.join(process.cwd(), '.temp-data');
-    }
+  constructor(private pythonService: PythonService, private dataPath: string) {
     this.envInfoFile = path.join(this.dataPath, 'environment-info.json');
   }
 
