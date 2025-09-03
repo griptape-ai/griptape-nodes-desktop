@@ -40,11 +40,21 @@ if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
 }
 
 // Get resource path based on whether app is packaged
-// process.resourcesPath is available immediately in packaged apps
-const resourcesPath = process.resourcesPath || path.join(process.cwd(), 'resources');
+// In development mode, we need to use the project's resources directory
+const getAppResourcesPath = () => {
+  if (app.isPackaged) {
+    return process.resourcesPath;
+  }
+  // In development, use the project root's resources directory
+  // __dirname is .vite/build, so go up 2 levels to project root
+  return path.join(__dirname, '..', '..', 'resources');
+};
+
+const resourcesPath = getAppResourcesPath();
 console.log('Initializing with resourcesPath:', resourcesPath);
 console.log('app.isPackaged:', app.isPackaged);
 console.log('process.resourcesPath:', process.resourcesPath);
+console.log('__dirname:', __dirname);
 
 // Initialize services with proper paths
 const pythonService = new PythonService(resourcesPath);
@@ -72,6 +82,13 @@ const startBackgroundSetup = () => {
   console.log('[INIT] Starting background setup worker...');
   console.log('Starting background setup...');
   
+  // Set engine to initializing state immediately - even before login
+  // This way the background installation starts right away
+  if (!pythonService.isGriptapeNodesReady()) {
+    console.log('[INIT] Setting engine to initializing state (pre-login)');
+    engineService.setInitializing();
+  }
+  
   // The worker is compiled to worker.js in the same directory as main.js
   const setupWorker = new Worker(path.join(__dirname, 'worker.js'), {
     workerData: {
@@ -85,41 +102,68 @@ const startBackgroundSetup = () => {
     if (message.type === 'success' || message.type === 'partial') {
       console.log('[WORKER] Background setup completed:', message.message);
       
+      // Store the environment info if provided
+      if (message.data) {
+        environmentSetupService.saveEnvironmentInfo(message.data);
+      }
+      
       // Now that griptape-nodes is installed, check if we need to initialize it with API key
-      console.log('[WORKER] Checking griptape-nodes config...');
+      console.log('[WORKER] Checking if user is logged in and griptape-nodes needs initialization...');
       const existingConfig = griptapeNodesService.loadConfig();
       console.log('[WORKER] Existing config:', existingConfig ? 'Found' : 'Not found', existingConfig?.api_key ? 'with API key' : 'without API key');
+      
+      // Only try to initialize with API key if we don't have one already
       if (!existingConfig || !existingConfig.api_key) {
-        // Try to initialize with stored credentials if available
+        // Check if user is logged in (has stored credentials)
         const credentials = authService.getStoredCredentials();
         console.log('[WORKER] Stored credentials:', credentials ? 'Found' : 'Not found');
+        
         if (credentials && credentials.apiKey) {
-          console.log('[WORKER] Initializing griptape-nodes with stored API key after installation...');
+          // User is logged in, initialize griptape-nodes with their API key
+          console.log('[WORKER] User is logged in, initializing griptape-nodes with stored API key...');
           const initResult = await griptapeNodesService.initialize({
             apiKey: credentials.apiKey
           });
           
           if (!initResult.success) {
             console.error('[WORKER] Failed to initialize griptape-nodes after installation:', initResult.error);
-            return;
+            // Don't return here - we still want to update engine status
+          } else {
+            console.log('[WORKER] Successfully initialized griptape-nodes with API key');
           }
         } else {
-          console.log('[WORKER] No API key available to initialize griptape-nodes after installation');
-          return;
+          // User is not logged in yet
+          console.log('[WORKER] User not logged in yet, griptape-nodes installed but not initialized with API key');
+          console.log('[WORKER] Will initialize with API key after user logs in');
         }
+      } else {
+        console.log('[WORKER] Griptape-nodes already configured with API key');
       }
       
-      // Now check if we need to initialize the engine
+      // Update engine status based on what we have
       const currentStatus = engineService.getStatus();
       console.log('[WORKER] Current engine status:', currentStatus);
-      if (currentStatus === 'not-ready') {
-        // Re-check the status since griptape-nodes should now be installed and initialized
-        console.log('[WORKER] Calling engineService.initialize()...');
-        await engineService.initialize();
-        console.log('[WORKER] Engine initialized after background setup completion');
+      
+      // If we're still in initializing state, move to the appropriate next state
+      if (currentStatus === 'initializing' || currentStatus === 'not-ready') {
+        // Check if we can fully initialize the engine
+        if (griptapeNodesService.isInitialized()) {
+          // Both installed and initialized with API key - engine can be fully ready
+          console.log('[WORKER] Griptape-nodes fully initialized, setting engine to ready...');
+          await engineService.initialize();
+        } else if (pythonService.isGriptapeNodesReady()) {
+          // Installed but not initialized with API key - update engine status
+          console.log('[WORKER] Griptape-nodes installed but not initialized, updating engine status...');
+          // The engine will remain in 'initializing' or move to 'not-ready' until API key is provided
+          engineService.checkStatus();
+        }
       }
     } else if (message.type === 'error') {
-      console.error('Background setup failed:', message.message);
+      console.error('[WORKER] Background setup failed:', message.message);
+      // Move engine out of initializing state on error
+      if (engineService.getStatus() === 'initializing') {
+        engineService.checkStatus();
+      }
     }
   });
   
@@ -186,7 +230,9 @@ app.on('ready', async () => {
   console.log('process.cwd():', process.cwd());
   console.log('app.getAppPath():', app.getAppPath());
   
-  // Start post-install setup in background thread
+  // Start post-install setup in background thread IMMEDIATELY
+  // This runs before login, so griptape-nodes will be ready when the user logs in
+  console.log('[INIT] Starting background setup immediately (before login)...');
   startBackgroundSetup();
   
   // Check if we have stored credentials and initialize griptape-nodes if needed
@@ -205,17 +251,31 @@ app.on('ready', async () => {
       const credentials = authService.getStoredCredentials();
       console.log('[INIT] Stored credentials check:', credentials ? 'Found' : 'Not found', credentials?.apiKey ? 'with API' : 'without API');
       if (credentials && credentials.apiKey) {
-        console.log('Found stored API key, initializing griptape-nodes...');
+        console.log('Found stored API key, initializing griptape-nodes (async)...');
         
-        const initResult = await griptapeNodesService.initialize({
+        // Set engine to initializing state
+        engineService.setInitializing();
+        
+        // Initialize asynchronously (don't await - avoid blocking)
+        griptapeNodesService.initialize({
           apiKey: credentials.apiKey
+        }).then(initResult => {
+          if (!initResult.success) {
+            console.error('Failed to initialize griptape-nodes:', initResult.error);
+            // Reset engine status on failure
+            engineService.checkStatus();
+          } else {
+            console.log('Successfully initialized griptape-nodes on startup');
+            // Try to start the engine after initialization
+            engineService.initialize().catch(error => {
+              console.error('Failed to initialize engine after startup gtn init:', error);
+            });
+          }
+        }).catch(error => {
+          console.error('Error during startup gtn init:', error);
+          // Reset engine status on error
+          engineService.checkStatus();
         });
-        
-        if (!initResult.success) {
-          console.error('Failed to initialize griptape-nodes:', initResult.error);
-        } else {
-          console.log('Successfully initialized griptape-nodes on startup');
-        }
       } else {
         console.log('No stored API key found, skipping griptape-nodes initialization');
       }
@@ -224,23 +284,12 @@ app.on('ready', async () => {
     }
   };
   
-  // Initialize griptape-nodes if we have credentials
+  // Initialize griptape-nodes if we have credentials (async, non-blocking)
   console.log('[INIT] Running initializeGriptapeNodes...');
-  await initializeGriptapeNodes();
+  initializeGriptapeNodes();
   
-  // Only try to initialize engine if griptape-nodes is already installed
-  // Otherwise, the background worker will initialize it when installation completes
-  const gtnReady = pythonService.isGriptapeNodesReady();
-  const gtnInitialized = griptapeNodesService.isInitialized();
-  console.log('[INIT] Griptape-nodes ready:', gtnReady, 'Initialized:', gtnInitialized);
-  if (gtnReady && gtnInitialized) {
-    console.log('[INIT] Calling engineService.initialize() from app ready...');
-    engineService.initialize().catch(error => {
-      console.error('[INIT] Failed to initialize engine service:', error);
-    });
-  } else {
-    console.log('[INIT] Deferring engine initialization until griptape-nodes is ready');
-  }
+  // Engine initialization is now handled asynchronously after gtn init completes
+  // Either in the initializeGriptapeNodes function above or the background worker
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -501,30 +550,68 @@ const setupIPC = () => {
     try {
       const result = await authService.login();
       
-      // Initialize griptape-nodes with the API key after successful login
+      // Initialize griptape-nodes with the API key after successful login (async, non-blocking)
       if (result.success && result.apiKey) {
-        // Check if already initialized with this API key
+        // Check current engine status
+        const currentStatus = engineService.getStatus();
+        console.log('[LOGIN] Current engine status:', currentStatus);
+        
+        // Check if griptape-nodes is already installed
+        const isGtnInstalled = pythonService.isGriptapeNodesReady();
+        console.log('[LOGIN] Griptape-nodes installed:', isGtnInstalled);
+        
+        // Check if already initialized with an API key
         const existingConfig = griptapeNodesService.loadConfig();
-        if (existingConfig && existingConfig.api_key === result.apiKey) {
-          console.log('Griptape-nodes already initialized with this API key');
-        } else {
-          console.log('Initializing griptape-nodes with API key...');
-          const initResult = await griptapeNodesService.initialize({
-            apiKey: result.apiKey
-          });
-          
-          if (!initResult.success) {
-            console.error('Failed to initialize griptape-nodes:', initResult.error);
-            // Don't fail the login, just log the error
+        const hasApiKey = existingConfig && existingConfig.api_key;
+        console.log('[LOGIN] Griptape-nodes has API key:', hasApiKey);
+        
+        if (isGtnInstalled) {
+          // Griptape-nodes is already installed (from background setup)
+          if (!hasApiKey || existingConfig.api_key !== result.apiKey) {
+            // Need to initialize with the user's API key
+            console.log('[LOGIN] Initializing griptape-nodes with user API key (async)...');
+            
+            // Set engine to initializing if not already
+            if (currentStatus !== 'initializing') {
+              engineService.setInitializing();
+            }
+            
+            // Initialize griptape-nodes asynchronously
+            griptapeNodesService.initialize({
+              apiKey: result.apiKey
+            }).then(initResult => {
+              if (!initResult.success) {
+                console.error('[LOGIN] Failed to initialize griptape-nodes:', initResult.error);
+                engineService.checkStatus();
+              } else {
+                console.log('[LOGIN] Successfully initialized griptape-nodes with API key');
+                // Now initialize the engine
+                engineService.initialize().catch(error => {
+                  console.error('[LOGIN] Failed to initialize engine after gtn init:', error);
+                });
+              }
+            }).catch(error => {
+              console.error('[LOGIN] Error initializing griptape-nodes:', error);
+              engineService.checkStatus();
+            });
           } else {
-            console.log('Successfully initialized griptape-nodes');
+            // Already initialized with the same API key
+            console.log('[LOGIN] Griptape-nodes already initialized with this API key');
+            // Just initialize the engine if needed
+            if (currentStatus === 'not-ready' || currentStatus === 'initializing') {
+              engineService.initialize().catch(error => {
+                console.error('[LOGIN] Failed to initialize engine:', error);
+              });
+            }
+          }
+        } else {
+          // Griptape-nodes not installed yet (background setup may still be running)
+          console.log('[LOGIN] Griptape-nodes not installed yet, will be initialized after background setup completes');
+          // The worker message handler will take care of initialization when setup completes
+          if (currentStatus !== 'initializing') {
+            engineService.setInitializing();
           }
         }
-        
-        // Try to start the engine after login
-        engineService.initialize().catch(error => {
-          console.error('Failed to initialize engine after login:', error);
-        });
       }
       
       // Send success event to all windows

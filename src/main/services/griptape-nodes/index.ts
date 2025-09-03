@@ -105,8 +105,8 @@ export class GriptapeNodesService {
       }
       console.log('Running gtn init with args:', sanitizedArgs.join(' '));
 
-      // Execute gtn init from the config directory so it finds our config file
-      const result = this.pythonService.executeGriptapeNodesCommand(args, { cwd: this.configDir });
+      // Execute gtn init from the config directory so it finds our config file (async)
+      const result = await this.pythonService.executeGriptapeNodesCommandAsync(args, { cwd: this.configDir });
 
       if (result.success) {
         // Save config for reference

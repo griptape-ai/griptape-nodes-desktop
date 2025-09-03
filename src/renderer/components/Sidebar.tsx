@@ -64,6 +64,8 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
         return 'bg-green-500';
       case 'ready':
         return 'bg-yellow-500';
+      case 'initializing':
+        return 'bg-blue-500';
       case 'error':
         return 'bg-red-500';
       default:
@@ -77,6 +79,8 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
         return 'Engine is running';
       case 'ready':
         return 'Engine is ready to start';
+      case 'initializing':
+        return 'Setting up environment...';
       case 'error':
         return 'Engine encountered an error';
       case 'not-ready':

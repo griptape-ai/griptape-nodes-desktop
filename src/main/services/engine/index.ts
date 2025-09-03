@@ -5,7 +5,7 @@ import { GriptapeNodesService } from '../griptape-nodes';
 import * as path from 'path';
 import * as fs from 'fs';
 
-export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'error';
+export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error';
 
 export interface EngineLog {
   timestamp: Date;
@@ -43,6 +43,15 @@ export class EngineService extends EventEmitter {
   }
 
   /**
+   * Set engine to initializing state (used during background setup)
+   */
+  setInitializing(): void {
+    this.status = 'initializing';
+    this.addLog('stdout', 'Setting up Griptape Nodes environment...');
+    this.emit('status-changed', this.status);
+  }
+
+  /**
    * Get engine logs
    */
   getLogs(): EngineLog[] {
@@ -67,15 +76,18 @@ export class EngineService extends EventEmitter {
   /**
    * Check and update engine status
    */
-  private checkStatus(): void {
+  checkStatus(): void {
     const oldStatus = this.status;
     console.log('[ENGINE] Checking status...');
 
     const gtnReady = this.pythonService.isGriptapeNodesReady();
     console.log('[ENGINE] Griptape-nodes ready:', gtnReady);
     if (!gtnReady) {
-      this.status = 'not-ready';
-      this.addLog('stderr', 'Griptape Nodes is not installed');
+      // Don't override initializing status if we're in the middle of setup
+      if (this.status !== 'initializing') {
+        this.status = 'not-ready';
+        this.addLog('stderr', 'Griptape Nodes is not installed');
+      }
     } else if (!this.isInitialized()) {
       const isInit = this.isInitialized();
       console.log('[ENGINE] Griptape-nodes initialized:', isInit);

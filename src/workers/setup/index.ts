@@ -5,11 +5,13 @@ import { EnvironmentSetupService } from '../../main/services/environment-setup';
 async function runSetup() {
   try {
     console.log('[SETUP WORKER] Starting post-installation setup...');
+    console.log('[SETUP WORKER] Worker data:', workerData);
     
     if (!workerData?.userDataPath || !workerData?.resourcesPath) {
       throw new Error('userDataPath and resourcesPath must be provided in workerData');
     }
     
+    console.log('[SETUP WORKER] Using resourcesPath:', workerData.resourcesPath);
     const pythonService = new PythonService(workerData.resourcesPath);
     // Use the paths from main process
     const environmentSetupService = new EnvironmentSetupService(pythonService, workerData.userDataPath, workerData.resourcesPath);

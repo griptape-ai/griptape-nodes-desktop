@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { execSync, spawnSync } from 'child_process';
+import { execSync, spawnSync, spawn } from 'child_process';
 import { getPythonVersion, getUvPath, getPythonInstallDir, getUvToolDir } from '../downloader';
 
 export class PythonService {
@@ -106,22 +106,26 @@ export class PythonService {
    */
   isReady(): boolean {
     try {
+      console.log('[PYTHON] Checking if ready, uvPath:', this.uvPath);
       // Check if uv exists
       if (!fs.existsSync(this.uvPath)) {
-        console.log('uv executable not found at:', this.uvPath);
+        console.log('[PYTHON] uv executable not found at:', this.uvPath);
         return false;
       }
+      console.log('[PYTHON] uv found at:', this.uvPath);
 
       // Check if Python can be found
       const pythonPath = this.getPythonExecutablePath();
+      console.log('[PYTHON] Python path:', pythonPath);
       if (!pythonPath || !fs.existsSync(pythonPath)) {
-        console.log('Python executable not found');
+        console.log('[PYTHON] Python executable not found at:', pythonPath);
         return false;
       }
+      console.log('[PYTHON] Python found at:', pythonPath);
 
       return true;
     } catch (error) {
-      console.error('Error checking Python service readiness:', error);
+      console.error('[PYTHON] Error checking Python service readiness:', error);
       return false;
     }
   }
@@ -209,7 +213,72 @@ export class PythonService {
   }
 
   /**
-   * Execute a griptape-nodes command
+   * Execute a griptape-nodes command asynchronously
+   */
+  async executeGriptapeNodesCommandAsync(args: string[], options?: { cwd?: string }): Promise<{ stdout: string; stderr: string; success: boolean }> {
+    return new Promise((resolve) => {
+      try {
+        const griptapeNodesPath = this.getGriptapeNodesPath();
+        if (!griptapeNodesPath) {
+          resolve({
+            stdout: '',
+            stderr: 'griptape-nodes executable not found',
+            success: false
+          });
+          return;
+        }
+
+        // Use consistent environment variables
+        const env = { 
+          ...process.env, 
+          UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.resourcesPath),
+          UV_TOOL_DIR: getUvToolDir(this.resourcesPath)
+        };
+
+        const child = spawn(griptapeNodesPath, args, {
+          encoding: 'utf8',
+          env,
+          cwd: options?.cwd
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString();
+        });
+
+        child.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString();
+        });
+
+        child.on('error', (error: Error) => {
+          resolve({
+            stdout,
+            stderr: stderr || error.message,
+            success: false
+          });
+        });
+
+        child.on('close', (code: number) => {
+          resolve({
+            stdout,
+            stderr,
+            success: code === 0
+          });
+        });
+      } catch (error: any) {
+        resolve({
+          stdout: '',
+          stderr: error.message,
+          success: false
+        });
+      }
+    });
+  }
+
+  /**
+   * Execute a griptape-nodes command (synchronous version)
    */
   executeGriptapeNodesCommand(args: string[], options?: { cwd?: string }): { stdout: string; stderr: string; success: boolean } {
     try {

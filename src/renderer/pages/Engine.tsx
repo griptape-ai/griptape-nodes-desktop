@@ -123,6 +123,8 @@ const Engine: React.FC = () => {
         return 'text-green-600 dark:text-green-400';
       case 'ready':
         return 'text-yellow-600 dark:text-yellow-400';
+      case 'initializing':
+        return 'text-blue-600 dark:text-blue-400';
       case 'error':
         return 'text-red-600 dark:text-red-400';
       default:
@@ -136,6 +138,8 @@ const Engine: React.FC = () => {
         return 'bg-green-500';
       case 'ready':
         return 'bg-yellow-500';
+      case 'initializing':
+        return 'bg-blue-500';
       case 'error':
         return 'bg-red-500';
       default:
@@ -271,7 +275,7 @@ const Engine: React.FC = () => {
         <div className="flex gap-3">
           <button
             onClick={startEngine}
-            disabled={isLoading || status === 'running' || status === 'not-ready'}
+            disabled={isLoading || status === 'running' || status === 'not-ready' || status === 'initializing'}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Start Engine
@@ -285,7 +289,7 @@ const Engine: React.FC = () => {
           </button>
           <button
             onClick={restartEngine}
-            disabled={isLoading || status === 'not-ready'}
+            disabled={isLoading || status === 'not-ready' || status === 'initializing'}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Restart Engine
@@ -297,6 +301,22 @@ const Engine: React.FC = () => {
             <p className="text-sm text-yellow-800 dark:text-yellow-200">
               The engine is not ready. Please ensure Griptape Nodes is installed and initialized.
             </p>
+          </div>
+        )}
+        
+        {status === 'initializing' && (
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+              Setting up Griptape Nodes environment...
+            </p>
+            <div className="w-full bg-blue-200 dark:bg-blue-900 rounded-full h-2 overflow-hidden relative">
+              <div className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full absolute" 
+                   style={{
+                     width: '40%',
+                     animation: 'indeterminate 1.5s ease-in-out infinite'
+                   }}
+              />
+            </div>
           </div>
         )}
       </div>
