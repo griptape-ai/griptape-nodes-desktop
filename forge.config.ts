@@ -13,6 +13,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     icon: process.platform === 'darwin' ? 'generated/icons/icon' : 'generated/icons/icon',
+    executableName: 'griptape-nodes-desktop',
     extraResource: [
       'resources/uv',
       'resources/python',
