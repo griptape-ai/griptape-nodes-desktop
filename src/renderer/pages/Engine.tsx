@@ -39,12 +39,21 @@ const Engine: React.FC = () => {
 
   // Handle clicks on external links in logs
   useEffect(() => {
-    const handleLinkClick = (e: MouseEvent) => {
+    const handleLinkClick = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      
       if (target.tagName === 'A' && target.dataset.externalUrl) {
         e.preventDefault();
-        if (window.electronAPI?.openExternal) {
-          window.electronAPI.openExternal(target.dataset.externalUrl);
+        e.stopPropagation();
+        
+        const url = target.dataset.externalUrl;
+        
+        if (window.electronAPI?.openExternal && url) {
+          try {
+            await window.electronAPI.openExternal(url);
+          } catch (error) {
+            console.error('Failed to open external URL:', error);
+          }
         }
       }
     };
@@ -165,21 +174,59 @@ const Engine: React.FC = () => {
           // Replace spinner characters with a simple indicator
           .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•');
         
+        // Handle OSC 8 hyperlinks BEFORE ANSI conversion
+        // Looking at the actual format: ]8;id=ID;URL\TEXT]8;;\
+        const linkPlaceholders: { placeholder: string; html: string }[] = [];
+        let linkIndex = 0;
+        
+        // Replace OSC 8 sequences with placeholders that won't be affected by ANSI conversion
+        // Format: ]8;id=ID;URL\TEXT]8;;\
+        cleanMessage = cleanMessage.replace(
+          /\]8;[^;]*;([^\\]+)\\([^\]]+?)\]8;;\\?/g,
+          (match, url, text) => {
+            const placeholder = `__LINK_PLACEHOLDER_${linkIndex}__`;
+            linkIndex++;
+            
+            // Clean up the text by removing ANSI color codes and control characters
+            let cleanText = text
+              // Remove ANSI color codes like [1;34m and [0m
+              .replace(/\x1b?\[[0-9;]*m/g, '')
+              // Remove control characters (including char code 26 - SUB character)
+              .replace(/[\x00-\x1F\x7F]/g, '')
+              // Remove any whitespace characters including non-breaking spaces
+              .replace(/[\s\u00A0]+$/, '')
+              .replace(/^[\s\u00A0]+/, '')
+              .trim();
+            
+            // Use the URL as the display text if no clean text remains
+            const displayText = cleanText || url;
+            
+            linkPlaceholders.push({
+              placeholder,
+              html: `<a href="javascript:void(0)" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer" title="${url}">${displayText}</a>`
+            });
+            return placeholder;
+          }
+        );
+        
+        // Clean up any orphaned backslashes that might appear after link placeholders
+        cleanMessage = cleanMessage.replace(/__LINK_PLACEHOLDER_\d+__\s*\\/g, (match) => {
+          return match.replace(/\\$/, '');
+        });
+        
         // Replace multiple spaces with non-breaking spaces to preserve formatting
         const messageWithPreservedSpaces = cleanMessage.replace(/ {2,}/g, (match) => '\u00A0'.repeat(match.length));
         
-        // Convert ANSI to HTML first
+        // Convert ANSI to HTML
         let htmlMessage = ansiConverter.toHtml(messageWithPreservedSpaces);
         
-        // Then handle OSC 8 hyperlinks after ANSI conversion
-        // Format: ]8;id=ID;URL\LINK_TEXT]8;;\
-        htmlMessage = htmlMessage.replace(
-          /\]8;[^;]*;([^\\]+)\\([^\]]+)\]8;;\\?/g,
-          (match, url, text) => {
-            // Use data attribute to store URL for event delegation
-            return `<a href="#" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer">${text}</a>`;
-          }
-        );
+        // Replace placeholders with actual links
+        linkPlaceholders.forEach(({ placeholder, html }) => {
+          htmlMessage = htmlMessage.replace(placeholder, html);
+        });
+        
+        // Final cleanup: remove any trailing backslashes that might appear after links
+        htmlMessage = htmlMessage.replace(/<\/a>\s*\\/g, '</a>');
         
         return { __html: htmlMessage };
       } catch {
