@@ -1,6 +1,6 @@
 {
   "name": "griptape-nodes-desktop",
-  "productName": "griptape-nodes-desktop",
+  "productName": "Griptape Nodes",
   "version": "0.0.0",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
@@ -9,7 +9,8 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "generate-icons": "node scripts/generate-icons.js"
   },
   "keywords": [],
   "author": {

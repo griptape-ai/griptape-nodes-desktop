@@ -19,3 +19,6 @@ resources/griptape-config/
 
 # Development userData directory
 .dev-user-data
+
+# Generated icons
+generated/
