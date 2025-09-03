@@ -38,9 +38,14 @@ const asyncPythonService = new AsyncPythonService();
 const environmentSetupService = new EnvironmentSetupService(pythonService);
 const griptapeNodesService = new GriptapeNodesService(pythonService);
 const engineService = new EngineService(pythonService, griptapeNodesService);
-const authService = (process.env.NODE_ENV === 'development')
-  ? new HttpAuthService()
-  : new CustomAuthService();
+// Check for invalid configuration
+if (process.env.NODE_ENV === 'development' && process.env.AUTH_SCHEME === 'custom') {
+  throw new Error('Custom URL scheme authentication requires packaging. Custom URL schemes do not work in development mode on macOS and Windows. Please use AUTH_SCHEME=http for development or package the application.');
+}
+
+const authService = (process.env.AUTH_SCHEME === 'custom')
+  ? new CustomAuthService()
+  : new HttpAuthService();
 
 authService.start();
 
