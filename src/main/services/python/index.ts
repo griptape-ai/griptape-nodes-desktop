@@ -207,7 +207,7 @@ export class PythonService {
   /**
    * Execute a griptape-nodes command
    */
-  executeGriptapeNodesCommand(args: string[]): { stdout: string; stderr: string; success: boolean } {
+  executeGriptapeNodesCommand(args: string[], options?: { cwd?: string }): { stdout: string; stderr: string; success: boolean } {
     try {
       const griptapeNodesPath = this.getGriptapeNodesPath();
       if (!griptapeNodesPath) {
@@ -228,7 +228,8 @@ export class PythonService {
       const result = spawnSync(griptapeNodesPath, args, {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe'],
-        env
+        env,
+        cwd: options?.cwd
       });
 
       if (result.error) {

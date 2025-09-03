@@ -7,11 +7,11 @@ import { app } from 'electron';
 
 const PYTHON_VERSION = '3.12.7';
 
-function getResourcesPath(): string {
+export function getResourcesPath(): string {
   // During build process: always use project's resources directory
   // At runtime: check if packaged to determine path
-  if (!app || app.isPackaged === undefined) {
-    // Build time - use project resources directory
+  if (typeof app === 'undefined' || !app || app.isPackaged === undefined) {
+    // Build time or worker thread - use project resources directory
     return path.join(process.cwd(), 'resources');
   }
   

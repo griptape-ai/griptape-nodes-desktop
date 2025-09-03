@@ -70,6 +70,11 @@ const config: ForgeConfig = {
           config: 'vite.worker.config.ts',
           target: 'main',
         },
+        {
+          entry: 'src/workers/python-worker.ts',
+          config: 'vite.python-worker.config.ts',
+          target: 'main',
+        },
       ],
       renderer: [
         {

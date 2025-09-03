@@ -4,22 +4,54 @@ import { cn } from '../../lib/utils';
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth();
-  const [pythonInfo, setPythonInfo] = useState<any>(null);
+  const [environmentInfo, setEnvironmentInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [workspaceDir, setWorkspaceDir] = useState<string>('');
+  const [updatingWorkspace, setUpdatingWorkspace] = useState(false);
 
   useEffect(() => {
-    loadPythonInfo();
+    loadEnvironmentInfo();
+    loadWorkspaceDirectory();
   }, []);
 
-  const loadPythonInfo = async () => {
+  const loadEnvironmentInfo = async () => {
     try {
-      const result = await window.pythonAPI.getPythonInfo();
-      setPythonInfo(result);
-    } catch (error) {
-      console.error('Failed to load Python info:', error);
+      setError(null);
+      const result = await window.pythonAPI.getEnvironmentInfo();
+      
+      if (result.success && result.data) {
+        setEnvironmentInfo(result.data);
+      } else {
+        setError(result.error || 'Failed to load environment information');
+      }
+    } catch (err) {
+      console.error('Failed to load environment info:', err);
+      setError('Failed to load environment information');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshEnvironmentInfo = async () => {
+    setRefreshing(true);
+    setError(null);
+    
+    try {
+      const result = await window.pythonAPI.refreshEnvironmentInfo();
+      
+      if (result.success && result.data) {
+        setEnvironmentInfo(result.data);
+      } else {
+        setError(result.error || 'Failed to refresh environment information');
+      }
+    } catch (err) {
+      console.error('Failed to refresh environment info:', err);
+      setError('Failed to refresh environment information');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -30,8 +62,89 @@ const Settings: React.FC = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch {
+      return dateString;
+    }
+  };
+
+  const loadWorkspaceDirectory = async () => {
+    try {
+      const directory = await window.griptapeAPI.getWorkspace();
+      setWorkspaceDir(directory);
+    } catch (err) {
+      console.error('Failed to load workspace directory:', err);
+    }
+  };
+
+  const handleSelectWorkspace = async () => {
+    try {
+      const directory = await window.griptapeAPI.selectDirectory();
+      if (directory) {
+        setWorkspaceDir(directory);
+        await updateWorkspace(directory);
+      }
+    } catch (err) {
+      console.error('Failed to select directory:', err);
+    }
+  };
+
+  const updateWorkspace = async (directory: string) => {
+    setUpdatingWorkspace(true);
+    try {
+      const result = await window.griptapeAPI.setWorkspace(directory);
+      if (!result.success) {
+        alert(`Failed to update workspace: ${result.error}`);
+      } else {
+        alert('Workspace directory updated successfully!');
+      }
+    } catch (err) {
+      console.error('Failed to update workspace:', err);
+      alert('Failed to update workspace directory');
+    } finally {
+      setUpdatingWorkspace(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      {/* Workspace Directory Section */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Workspace Directory</h2>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This is where Griptape Nodes will store your workflows and data.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={workspaceDir}
+              readOnly
+              className={cn(
+                "flex-1 px-3 py-2 text-sm rounded-md",
+                "bg-background border border-input",
+                "font-mono"
+              )}
+              placeholder="No workspace directory set"
+            />
+            <button
+              onClick={handleSelectWorkspace}
+              disabled={updatingWorkspace}
+              className={cn(
+                "px-4 py-2 text-sm rounded-md",
+                "bg-primary text-primary-foreground",
+                "hover:bg-primary/90 transition-colors",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
+              {updatingWorkspace ? 'Updating...' : 'Browse'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* API Key Section */}
       {apiKey && (
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
@@ -76,56 +189,151 @@ const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* Python Information */}
+      {/* Environment Information */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h2 className="text-lg font-semibold mb-4">Python Information</h2>
-        {loading ? (
-          <p className="text-muted-foreground">Loading Python information...</p>
-        ) : pythonInfo ? (
-          <>
-            {pythonInfo.success ? (
-              <div className="space-y-4">
-                <div className="bg-muted rounded-md p-4 space-y-2">
-                  <p className="text-sm">
-                    <span className="font-medium">Bundled Version:</span> {pythonInfo.version}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Executable Path:</span> {pythonInfo.executable}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Python Command Output:</p>
-                  <pre className="bg-muted rounded-md p-4 text-xs overflow-x-auto">
-                    {pythonInfo.versionOutput}
-                  </pre>
-                  <pre className="bg-muted rounded-md p-4 text-xs overflow-x-auto">
-                    {pythonInfo.pathOutput}
-                  </pre>
-                </div>
-              </div>
-            ) : (
-              <p className="text-destructive">Error: {pythonInfo.error}</p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Environment Information</h2>
+          <button
+            onClick={refreshEnvironmentInfo}
+            disabled={refreshing || loading}
+            className={cn(
+              "px-4 py-2 text-sm rounded-md",
+              "bg-primary text-primary-foreground",
+              "hover:bg-primary/90 transition-colors",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
             )}
-          </>
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="text-muted-foreground">Loading environment information...</p>
+        ) : error ? (
+          <div className="text-destructive">{error}</div>
+        ) : environmentInfo ? (
+          <div className="space-y-6">
+            {/* Python Information */}
+            <div>
+              <h3 className="text-md font-semibold mb-3">Python</h3>
+              <div className="bg-muted rounded-md p-4 space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">Version:</span> {environmentInfo.python.version}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Executable:</span>{' '}
+                  <code className="text-xs bg-background px-1 py-0.5 rounded">
+                    {environmentInfo.python.executable}
+                  </code>
+                </p>
+                {environmentInfo.python.installedPackages && (
+                  <details className="text-sm">
+                    <summary className="font-medium cursor-pointer">
+                      Installed Packages ({environmentInfo.python.installedPackages.length})
+                    </summary>
+                    <div className="mt-2 max-h-40 overflow-y-auto">
+                      <pre className="text-xs bg-background p-2 rounded">
+                        {environmentInfo.python.installedPackages.join('\n')}
+                      </pre>
+                    </div>
+                  </details>
+                )}
+              </div>
+            </div>
+
+            {/* Griptape Nodes Information */}
+            <div>
+              <h3 className="text-md font-semibold mb-3">Griptape Nodes</h3>
+              <div className="bg-muted rounded-md p-4 space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">Status:</span>{' '}
+                  <span className={cn(
+                    "font-medium",
+                    environmentInfo.griptapeNodes.installed ? "text-green-600" : "text-yellow-600"
+                  )}>
+                    {environmentInfo.griptapeNodes.installed ? 'Installed' : 'Not Installed'}
+                  </span>
+                </p>
+                {environmentInfo.griptapeNodes.installed && (
+                  <>
+                    <p className="text-sm">
+                      <span className="font-medium">Version:</span> {environmentInfo.griptapeNodes.version}
+                    </p>
+                    <p className="text-sm">
+                      <span className="font-medium">Path:</span>{' '}
+                      <code className="text-xs bg-background px-1 py-0.5 rounded">
+                        {environmentInfo.griptapeNodes.path}
+                      </code>
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* UV Information */}
+            <div>
+              <h3 className="text-md font-semibold mb-3">UV Package Manager</h3>
+              <div className="bg-muted rounded-md p-4 space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">Version:</span> {environmentInfo.uv.version}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Tool Directory:</span>{' '}
+                  <code className="text-xs bg-background px-1 py-0.5 rounded">
+                    {environmentInfo.uv.toolDir}
+                  </code>
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Python Install Directory:</span>{' '}
+                  <code className="text-xs bg-background px-1 py-0.5 rounded">
+                    {environmentInfo.uv.pythonInstallDir}
+                  </code>
+                </p>
+              </div>
+            </div>
+
+            {/* System Information */}
+            <div>
+              <h3 className="text-md font-semibold mb-3">System</h3>
+              <div className="bg-muted rounded-md p-4 space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">Platform:</span> {environmentInfo.system.platform}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Architecture:</span> {environmentInfo.system.arch}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Node Version:</span> {environmentInfo.system.nodeVersion}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Electron Version:</span> {environmentInfo.system.electronVersion}
+                </p>
+              </div>
+            </div>
+
+            {/* Collection Info */}
+            <div className="text-xs text-muted-foreground">
+              <p>Last updated: {formatDate(environmentInfo.collectedAt)}</p>
+              {environmentInfo.errors && environmentInfo.errors.length > 0 && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-yellow-600">
+                    Warnings ({environmentInfo.errors.length})
+                  </summary>
+                  <ul className="mt-1 space-y-1">
+                    {environmentInfo.errors.map((error: string, index: number) => (
+                      <li key={index} className="text-yellow-600">• {error}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          </div>
         ) : (
-          <p className="text-destructive">Failed to load Python information</p>
+          <p className="text-muted-foreground">
+            Environment information not yet collected. Click Refresh to collect it now.
+          </p>
         )}
       </div>
-
-      {/* Griptape Nodes Information */}
-      {pythonInfo && (
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h2 className="text-lg font-semibold mb-4">Griptape Nodes Information</h2>
-          <div className="bg-muted rounded-md p-4 space-y-2">
-            <p className="text-sm">
-              <span className="font-medium">Executable Path:</span> {pythonInfo.griptapeNodesPath}
-            </p>
-            <p className="text-sm">
-              <span className="font-medium">Version:</span> {pythonInfo.griptapeNodesVersion}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -5,13 +5,42 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 // Expose APIs to renderer process
 contextBridge.exposeInMainWorld('pythonAPI', {
-  getPythonInfo: () => ipcRenderer.invoke('get-python-info')
+  getPythonInfo: () => ipcRenderer.invoke('get-python-info'),
+  getEnvironmentInfo: () => ipcRenderer.invoke('get-environment-info'),
+  refreshEnvironmentInfo: () => ipcRenderer.invoke('refresh-environment-info')
 });
 
 contextBridge.exposeInMainWorld('oauthAPI', {
   login: () => ipcRenderer.invoke('auth:login'),
   logout: () => ipcRenderer.invoke('auth:logout'),
   checkAuth: () => ipcRenderer.invoke('auth:check')
+});
+
+contextBridge.exposeInMainWorld('engineAPI', {
+  getStatus: () => ipcRenderer.invoke('engine:get-status'),
+  getLogs: () => ipcRenderer.invoke('engine:get-logs'),
+  clearLogs: () => ipcRenderer.invoke('engine:clear-logs'),
+  start: () => ipcRenderer.invoke('engine:start'),
+  stop: () => ipcRenderer.invoke('engine:stop'),
+  restart: () => ipcRenderer.invoke('engine:restart'),
+  onStatusChanged: (callback: (event: any, status: string) => void) => {
+    ipcRenderer.on('engine:status-changed', callback);
+  },
+  removeStatusChanged: (callback: (event: any, status: string) => void) => {
+    ipcRenderer.removeListener('engine:status-changed', callback);
+  },
+  onLog: (callback: (event: any, log: any) => void) => {
+    ipcRenderer.on('engine:log', callback);
+  },
+  removeLog: (callback: (event: any, log: any) => void) => {
+    ipcRenderer.removeListener('engine:log', callback);
+  }
+});
+
+contextBridge.exposeInMainWorld('griptapeAPI', {
+  getWorkspace: () => ipcRenderer.invoke('gtn:get-workspace'),
+  setWorkspace: (directory: string) => ipcRenderer.invoke('gtn:set-workspace', directory),
+  selectDirectory: () => ipcRenderer.invoke('gtn:select-directory')
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {

@@ -3,6 +3,10 @@ import { Worker } from 'worker_threads';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { PythonService } from './services/python';
+import { AsyncPythonService } from './services/python/async-service';
+import { EnvironmentSetupService } from './services/environment-setup';
+import { GriptapeNodesService } from './services/griptape-nodes';
+import { EngineService } from './services/engine';
 import { OAuthService } from './services/auth';
 import { HttpAuthService } from './services/auth/http';
 import { CustomAuthService } from './services/auth/custom';
@@ -30,6 +34,10 @@ if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
 
 // Initialize services
 const pythonService = new PythonService();
+const asyncPythonService = new AsyncPythonService();
+const environmentSetupService = new EnvironmentSetupService(pythonService);
+const griptapeNodesService = new GriptapeNodesService(pythonService);
+const engineService = new EngineService(pythonService, griptapeNodesService);
 const authService = (process.env.NODE_ENV === 'development')
   ? new HttpAuthService()
   : new CustomAuthService();
@@ -39,7 +47,8 @@ authService.start();
 const startBackgroundSetup = () => {
   console.log('Starting background setup...');
   
-  const setupWorker = new Worker(path.join(__dirname, '../workers/setup/index.ts'));
+  // The worker is compiled to worker.js in the same directory as main.js
+  const setupWorker = new Worker(path.join(__dirname, 'worker.js'));
   
   setupWorker.on('message', (message) => {
     if (message.type === 'success') {
@@ -94,7 +103,7 @@ const createWindow = () => {
   // Enable keyboard shortcuts for copy/paste
   setupKeyboardShortcuts(mainWindow);
 
-  // Set up IPC handlers
+  // Set up IPC handlers (function handles its own initialization state)
   setupIPC();
 };
 
@@ -112,6 +121,46 @@ app.on('ready', async () => {
   
   // Start post-install setup in background thread
   startBackgroundSetup();
+  
+  // Check if we have stored credentials and initialize griptape-nodes if needed
+  const initializeGriptapeNodes = async () => {
+    try {
+      // First check if gtn is already initialized with saved config
+      const existingConfig = griptapeNodesService.loadConfig();
+      if (existingConfig && existingConfig.api_key) {
+        console.log('Griptape-nodes already initialized with saved config');
+        return;
+      }
+      
+      // If not initialized, check if we have stored credentials to initialize with
+      const credentials = authService.getStoredCredentials();
+      if (credentials && credentials.apiKey) {
+        console.log('Found stored API key, initializing griptape-nodes...');
+        
+        const initResult = await griptapeNodesService.initialize({
+          apiKey: credentials.apiKey
+        });
+        
+        if (!initResult.success) {
+          console.error('Failed to initialize griptape-nodes:', initResult.error);
+        } else {
+          console.log('Successfully initialized griptape-nodes on startup');
+        }
+      } else {
+        console.log('No stored API key found, skipping griptape-nodes initialization');
+      }
+    } catch (error) {
+      console.error('Error during startup griptape-nodes initialization:', error);
+    }
+  };
+  
+  // Initialize griptape-nodes if we have credentials
+  await initializeGriptapeNodes();
+  
+  // Initialize engine service (will auto-start if gtn is ready)
+  engineService.initialize().catch(error => {
+    console.error('Failed to initialize engine service:', error);
+  });
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -121,6 +170,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', async () => {
+  await engineService.destroy();
 });
 
 app.on('activate', () => {
@@ -158,7 +211,10 @@ const createMenu = () => {
 };
 
 const showAboutDialog = () => {
-  const detailText = [
+  // Load persisted environment info
+  const envInfo = environmentSetupService.loadEnvironmentInfo();
+  
+  let detailText = [
     `Version: ${__BUILD_INFO__.version}`,
     `Commit: ${__BUILD_INFO__.commitHash.substring(0, 8)}`,
     `Branch: ${__BUILD_INFO__.branch}`,
@@ -168,16 +224,30 @@ const showAboutDialog = () => {
     `Electron: ${process.versions.electron}`,
     `Chrome: ${process.versions.chrome}`,
     `Node.js: ${process.versions.node}`,
-    '',
-    `Python: ${pythonService.getBundledPythonVersion()}`,
-    `uv: ${pythonService.getUvVersion()}`
-  ].join('\n');
+    ''
+  ];
+
+  if (envInfo) {
+    // Use persisted environment info
+    detailText.push(
+      `Python: ${envInfo.python.version.split('\n')[0]}`,
+      `UV: ${envInfo.uv.version}`,
+      `Griptape Nodes: ${envInfo.griptapeNodes.installed ? envInfo.griptapeNodes.version : 'Not installed'}`
+    );
+  } else {
+    // Fallback to direct service calls if no persisted info
+    detailText.push(
+      `Python: ${pythonService.getBundledPythonVersion()}`,
+      `UV: ${pythonService.getUvVersion()}`,
+      `Griptape Nodes: ${pythonService.isGriptapeNodesReady() ? pythonService.getGriptapeNodesVersion() : 'Not installed'}`
+    );
+  }
 
   dialog.showMessageBox({
     type: 'info',
     title: `About ${app.getName()}`,
     message: app.getName(),
-    detail: detailText,
+    detail: detailText.join('\n'),
     buttons: ['OK']
   });
 };
@@ -226,8 +296,63 @@ const setupKeyboardShortcuts = (mainWindow: BrowserWindow) => {
   });
 };
 
+let ipcInitialized = false;
+
 const setupIPC = () => {
-  // Handle Python info requests
+  // Only set up IPC handlers once
+  if (ipcInitialized) {
+    return;
+  }
+  ipcInitialized = true;
+  
+  let mainWindow: BrowserWindow | null = null;
+  
+  // Store reference to main window for sending events
+  BrowserWindow.getAllWindows().forEach(window => {
+    if (!mainWindow) mainWindow = window;
+  });
+
+  // Handle environment info requests (from persisted data)
+  ipcMain.handle('get-environment-info', async () => {
+    try {
+      const envInfo = environmentSetupService.loadEnvironmentInfo();
+      
+      if (envInfo) {
+        return {
+          success: true,
+          data: envInfo
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Environment info not yet collected'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  });
+
+  // Handle environment info refresh requests
+  ipcMain.handle('refresh-environment-info', async () => {
+    try {
+      const envInfo = await environmentSetupService.refreshEnvironmentInfo();
+      return {
+        success: true,
+        data: envInfo
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  });
+
+  // Handle Python info requests (legacy compatibility)
   ipcMain.handle('get-python-info', async () => {
     try {
       if (!pythonService.isReady()) {
@@ -296,6 +421,32 @@ const setupIPC = () => {
     try {
       const result = await authService.login();
       
+      // Initialize griptape-nodes with the API key after successful login
+      if (result.success && result.apiKey) {
+        // Check if already initialized with this API key
+        const existingConfig = griptapeNodesService.loadConfig();
+        if (existingConfig && existingConfig.api_key === result.apiKey) {
+          console.log('Griptape-nodes already initialized with this API key');
+        } else {
+          console.log('Initializing griptape-nodes with API key...');
+          const initResult = await griptapeNodesService.initialize({
+            apiKey: result.apiKey
+          });
+          
+          if (!initResult.success) {
+            console.error('Failed to initialize griptape-nodes:', initResult.error);
+            // Don't fail the login, just log the error
+          } else {
+            console.log('Successfully initialized griptape-nodes');
+          }
+        }
+        
+        // Try to start the engine after login
+        engineService.initialize().catch(error => {
+          console.error('Failed to initialize engine after login:', error);
+        });
+      }
+      
       // Send success event to all windows
       BrowserWindow.getAllWindows().forEach(window => {
         window.webContents.send('auth:login-success', result);
@@ -325,6 +476,110 @@ const setupIPC = () => {
   // Handle opening external links
   ipcMain.handle('open-external', async (event, url: string) => {
     await shell.openExternal(url);
+  });
+
+  // Engine Service handlers
+  ipcMain.handle('engine:get-status', () => {
+    return engineService.getStatus();
+  });
+
+  ipcMain.handle('engine:get-logs', () => {
+    return engineService.getLogs();
+  });
+
+  ipcMain.handle('engine:clear-logs', () => {
+    engineService.clearLogs();
+    return { success: true };
+  });
+
+  ipcMain.handle('engine:start', async () => {
+    try {
+      await engineService.start();
+      return { success: true };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  });
+
+  ipcMain.handle('engine:stop', async () => {
+    try {
+      await engineService.stop();
+      return { success: true };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  });
+
+  ipcMain.handle('engine:restart', async () => {
+    try {
+      await engineService.restart();
+      return { success: true };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  });
+
+  // Set up engine event listeners to notify renderer
+  // First remove any existing listeners to prevent duplicates
+  engineService.removeAllListeners('status-changed');
+  engineService.removeAllListeners('log');
+  
+  engineService.on('status-changed', (status) => {
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('engine:status-changed', status);
+    });
+  });
+
+  engineService.on('log', (log) => {
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('engine:log', log);
+    });
+  });
+
+  // Griptape Nodes configuration handlers
+  ipcMain.handle('gtn:get-workspace', () => {
+    return griptapeNodesService.getWorkspaceDirectory();
+  });
+
+  ipcMain.handle('gtn:set-workspace', async (event, directory: string) => {
+    try {
+      const result = await griptapeNodesService.updateWorkspaceDirectory(directory);
+      
+      if (result.success) {
+        // Restart engine if it was running
+        if (engineService.getStatus() === 'running') {
+          await engineService.restart();
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  });
+
+  ipcMain.handle('gtn:select-directory', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Select Workspace Directory'
+    });
+    
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths[0];
+    }
+    return null;
   });
 };
 
