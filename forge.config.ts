@@ -12,7 +12,7 @@ import { generateAssets } from './forge.hooks';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    icon: process.platform === 'darwin' ? 'generated/icons/icon' : 'generated/icons/icon',
+    ...(process.platform === 'darwin' && { icon: 'generated/icons/icon' }),
     executableName: 'griptape-nodes-desktop',
     extraResource: [
       'resources/uv',
@@ -33,8 +33,6 @@ const config: ForgeConfig = {
     // Maker for Windows
     new MakerSquirrel({
       name: "GriptapeNodes",
-      setupIcon: 'generated/icons/icon.ico',
-      iconUrl: 'https://raw.githubusercontent.com/griptape-ai/griptape-nodes-desktop/main/public/icon.ico',
     }),
     // Maker for Mac
     new MakerDMG({
