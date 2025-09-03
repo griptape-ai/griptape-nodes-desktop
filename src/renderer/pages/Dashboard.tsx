@@ -94,7 +94,7 @@ const Dashboard: React.FC = () => {
           <h3 className="text-lg font-semibold mb-3">Visual Editor</h3>
           <button
             onClick={() => {
-              window.electronAPI?.openExternal('http://localhost:8000');
+              window.electronAPI?.openExternal('https://nodes.griptape.ai');
             }}
             disabled={engineStatus !== 'running'}
             className={cn(
