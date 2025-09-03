@@ -1,44 +1,129 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { ExternalLink, FolderOpen } from 'lucide-react';
+import { useEngine } from '../contexts/EngineContext';
+import { cn } from '../../lib/utils';
 
 const Dashboard: React.FC = () => {
+  const { status: engineStatus } = useEngine();
+  const [workspaceDir, setWorkspaceDir] = useState<string>('');
+
+  useEffect(() => {
+    loadWorkspaceDirectory();
+  }, []);
+
+  const loadWorkspaceDirectory = async () => {
+    try {
+      const directory = await window.griptapeAPI.getWorkspace();
+      setWorkspaceDir(directory);
+    } catch (err) {
+      console.error('Failed to load workspace directory:', err);
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (engineStatus) {
+      case 'running':
+        return 'text-green-600 dark:text-green-400';
+      case 'ready':
+        return 'text-yellow-600 dark:text-yellow-400';
+      case 'initializing':
+        return 'text-blue-600 dark:text-blue-400';
+      case 'error':
+        return 'text-red-600 dark:text-red-400';
+      default:
+        return 'text-gray-600 dark:text-gray-400';
+    }
+  };
+
+  const getStatusDot = () => {
+    switch (engineStatus) {
+      case 'running':
+        return 'bg-green-500';
+      case 'ready':
+        return 'bg-yellow-500';
+      case 'initializing':
+        return 'bg-blue-500';
+      case 'error':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <h2 className="text-xl font-semibold mb-4">Welcome to Griptape Nodes Desktop</h2>
-        <div className="prose prose-gray dark:prose-invert">
-          <p className="text-muted-foreground">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
-            incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
-            exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        <div className="space-y-4 text-muted-foreground">
+          <p>
+            Griptape Nodes Desktop is your local development environment for building AI workflows 
+            with the Griptape framework. This application manages the Griptape Nodes engine and 
+            provides easy access to the visual workflow editor.
           </p>
-          <p className="text-muted-foreground">
-            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
-            fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in 
-            culpa qui officia deserunt mollit anim id est laborum.
-          </p>
-          <p className="text-muted-foreground">
-            Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque 
-            laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi 
-            architecto beatae vitae dicta sunt explicabo.
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Getting Started:</h3>
+            <ol className="list-decimal list-inside space-y-2 text-sm">
+              <li>Ensure the engine is running (check the status below)</li>
+              <li>Click "Open Editor" to launch the visual workflow editor in your browser</li>
+              <li>Create and test your AI workflows using drag-and-drop nodes</li>
+              <li>Your workflows are saved in the workspace directory shown below</li>
+            </ol>
+          </div>
+          <p className="text-sm">
+            The Griptape Nodes engine runs locally and provides the backend services 
+            for executing your workflows. Use the Engine tab to monitor logs and troubleshoot any issues.
           </p>
         </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h3 className="text-lg font-semibold mb-2">Quick Stats</h3>
-          <p className="text-2xl font-bold text-primary">42</p>
-          <p className="text-sm text-muted-foreground">Active Nodes</p>
+          <h3 className="text-lg font-semibold mb-3">Engine Status</h3>
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${getStatusDot()} animate-pulse`}></div>
+            <span className={`font-medium ${getStatusColor()}`}>
+              {engineStatus.charAt(0).toUpperCase() + engineStatus.slice(1).replace('-', ' ')}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Manage from the Engine tab
+          </p>
         </div>
+        
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h3 className="text-lg font-semibold mb-2">Engine Status</h3>
-          <p className="text-2xl font-bold text-green-600">Running</p>
-          <p className="text-sm text-muted-foreground">All systems operational</p>
+          <h3 className="text-lg font-semibold mb-3">Visual Editor</h3>
+          <button
+            onClick={() => {
+              window.electronAPI?.openExternal('http://localhost:8000');
+            }}
+            disabled={engineStatus !== 'running'}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md mb-3",
+              "bg-primary text-primary-foreground hover:bg-primary/90 transition-colors",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          >
+            <ExternalLink className="w-4 h-4" />
+            Open Editor
+          </button>
+          {engineStatus !== 'running' ? (
+            <p className="text-xs text-yellow-600">Start the engine first</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Launch the workflow editor</p>
+          )}
         </div>
+        
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h3 className="text-lg font-semibold mb-2">Resources</h3>
-          <p className="text-2xl font-bold text-primary">8.2 GB</p>
-          <p className="text-sm text-muted-foreground">Memory available</p>
+          <h3 className="text-lg font-semibold mb-3">Workspace</h3>
+          <div className="flex items-start gap-2 mb-3">
+            <FolderOpen className="w-5 h-5 text-muted-foreground mt-0.5" />
+            <p className="text-sm font-mono text-muted-foreground break-all">
+              {workspaceDir || 'Not configured'}
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Manage from the Settings tab
+          </p>
         </div>
       </div>
     </div>
