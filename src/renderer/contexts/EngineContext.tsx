@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import type { EngineStatus, EngineLog } from '../../shared/types/global';
 
 interface EngineContextType {
@@ -88,7 +88,7 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const startEngine = async () => {
+  const startEngine = useCallback(async () => {
     setIsLoading(true);
     try {
       const result = await window.engineAPI.start();
@@ -100,9 +100,9 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const stopEngine = async () => {
+  const stopEngine = useCallback(async () => {
     setIsLoading(true);
     try {
       const result = await window.engineAPI.stop();
@@ -114,9 +114,9 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const restartEngine = async () => {
+  const restartEngine = useCallback(async () => {
     setIsLoading(true);
     try {
       const result = await window.engineAPI.restart();
@@ -128,39 +128,42 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const clearLogs = async () => {
+  const clearLogs = useCallback(async () => {
     try {
       await window.engineAPI.clearLogs();
       setLogs([]);
     } catch (error) {
       console.error('Error clearing logs:', error);
     }
-  };
+  }, []);
 
-  const refreshStatus = async () => {
+  const refreshStatus = useCallback(async () => {
     try {
       const currentStatus = await window.engineAPI.getStatus();
       setStatus(currentStatus);
     } catch (error) {
       console.error('Failed to refresh engine status:', error);
     }
-  };
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      status,
+      logs,
+      isLoading,
+      startEngine,
+      stopEngine,
+      restartEngine,
+      clearLogs,
+      refreshStatus,
+    }),
+    [status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs, refreshStatus]
+  );
 
   return (
-    <EngineContext.Provider
-      value={{
-        status,
-        logs,
-        isLoading,
-        startEngine,
-        stopEngine,
-        restartEngine,
-        clearLogs,
-        refreshStatus,
-      }}
-    >
+    <EngineContext.Provider value={contextValue}>
       {children}
     </EngineContext.Provider>
   );

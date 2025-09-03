@@ -90,10 +90,33 @@ export class EngineService extends EventEmitter {
    * Add a log entry
    */
   private addLog(type: 'stdout' | 'stderr', message: string): void {
+    // Clean up control sequences that shouldn't be displayed
+    let cleanMessage = message
+      // Remove cursor show/hide sequences
+      .replace(/\x1b\[\?25[lh]/g, '')
+      // Remove other cursor control sequences
+      .replace(/\x1b\[\d*[ABCDEFGHJKST]/gi, '')
+      // Remove clear line/screen sequences
+      .replace(/\x1b\[2?[JK]/gi, '')
+      // Remove save/restore cursor position
+      .replace(/\x1b\[[su]/gi, '')
+      // Clean up any remaining escape sequences we don't handle
+      .replace(/\x1b\[\?\d+[lh]/g, '');
+    
+    // Don't process OSC 8 hyperlinks here - let the frontend handle them
+    // This preserves them for conversion to clickable links in the UI
+    
+    cleanMessage = cleanMessage.trim();
+    
+    // Skip empty messages after cleaning
+    if (!cleanMessage) {
+      return;
+    }
+    
     const log: EngineLog = {
       timestamp: new Date(),
       type,
-      message
+      message: cleanMessage
     };
 
     this.logs.push(log);
@@ -135,14 +158,26 @@ export class EngineService extends EventEmitter {
         env: {
           ...process.env,
           UV_PYTHON_INSTALL_DIR: getPythonInstallDir(),
-          UV_TOOL_DIR: getUvToolDir()
+          UV_TOOL_DIR: getUvToolDir(),
+          // Force color output for terminals that support it
+          FORCE_COLOR: '1',
+          PYTHONUNBUFFERED: '1'
         },
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
-      // Handle stdout with line buffering
+      // Handle stdout with line buffering and carriage return handling
       this.engineProcess.stdout?.on('data', (data) => {
         this.stdoutBuffer += data.toString();
+        
+        // Handle carriage returns (\r) which are used for progress indicators
+        // Split by \r to handle overwrites, keeping only the last one
+        const carriageReturnParts = this.stdoutBuffer.split('\r');
+        if (carriageReturnParts.length > 1) {
+          // Keep only the last part after \r (this is what should be displayed)
+          this.stdoutBuffer = carriageReturnParts[carriageReturnParts.length - 1];
+        }
+        
         const lines = this.stdoutBuffer.split('\n');
         
         // Keep the last incomplete line in the buffer
@@ -156,9 +191,18 @@ export class EngineService extends EventEmitter {
         });
       });
 
-      // Handle stderr with line buffering
+      // Handle stderr with line buffering and carriage return handling
       this.engineProcess.stderr?.on('data', (data) => {
         this.stderrBuffer += data.toString();
+        
+        // Handle carriage returns (\r) which are used for progress indicators
+        // Split by \r to handle overwrites, keeping only the last one
+        const carriageReturnParts = this.stderrBuffer.split('\r');
+        if (carriageReturnParts.length > 1) {
+          // Keep only the last part after \r (this is what should be displayed)
+          this.stderrBuffer = carriageReturnParts[carriageReturnParts.length - 1];
+        }
+        
         const lines = this.stderrBuffer.split('\n');
         
         // Keep the last incomplete line in the buffer

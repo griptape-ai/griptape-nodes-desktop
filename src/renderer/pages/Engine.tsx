@@ -1,21 +1,114 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { useEngine } from '../contexts/EngineContext';
+import { List, type RowComponentProps } from 'react-window';
+import Convert from 'ansi-to-html';
+
+const ansiConverter = new Convert({
+  fg: '#e5e7eb',
+  bg: 'transparent',
+  newline: false,
+  escapeXML: true,
+  stream: false,
+  colors: {
+    0: '#000',
+    1: '#dc2626',
+    2: '#16a34a',
+    3: '#ca8a04',
+    4: '#2563eb',
+    5: '#9333ea',
+    6: '#0891b2',
+    7: '#e5e7eb',
+    8: '#6b7280',
+    9: '#ef4444',
+    10: '#22c55e',
+    11: '#facc15',
+    12: '#3b82f6',
+    13: '#a855f7',
+    14: '#06b6d4',
+    15: '#f3f4f6'
+  }
+});
 
 const Engine: React.FC = () => {
   const { status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs } = useEngine();
-  const [autoScroll, setAutoScroll] = useState(true);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const logsContainerRef = useRef<HTMLDivElement>(null);
+  const wasAtBottomRef = useRef(true);
+  const prevLogCountRef = useRef(0);
 
-
-  // Auto-scroll to bottom when new logs arrive
+  // Handle clicks on external links in logs
   useEffect(() => {
-    if (autoScroll && logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    const handleLinkClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A' && target.dataset.externalUrl) {
+        e.preventDefault();
+        if (window.electronAPI?.openExternal) {
+          window.electronAPI.openExternal(target.dataset.externalUrl);
+        }
+      }
+    };
+
+    const container = logsContainerRef.current;
+    if (container) {
+      container.addEventListener('click', handleLinkClick);
+      return () => container.removeEventListener('click', handleLinkClick);
     }
-  }, [logs, autoScroll]);
+  }, [logs]);
 
 
-  const getStatusColor = () => {
+  // Auto-scroll to bottom when new logs arrive if user was at bottom
+  useEffect(() => {
+    // Detect if new logs were added
+    const logsAdded = logs.length > prevLogCountRef.current;
+    prevLogCountRef.current = logs.length;
+    
+    if (listRef.current && logs.length > 0) {
+      // Always scroll to bottom on initial load or when new logs are added and we're at bottom
+      if (logsAdded && wasAtBottomRef.current) {
+        // Double RAF to ensure List has re-rendered with new items
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            listRef.current?.scrollToRow({
+              index: logs.length - 1,
+              align: 'end',
+              behavior: 'instant'
+            });
+          });
+        });
+      }
+    }
+  }, [logs.length]); // Only re-run when count changes
+
+  // Force scroll to bottom on mount after List is ready
+  useEffect(() => {
+    wasAtBottomRef.current = true;
+    const timer = setInterval(() => {
+      if (listRef.current && logs.length > 0) {
+        listRef.current.scrollToRow({
+          index: logs.length - 1,
+          align: 'end',
+          behavior: 'instant'
+        });
+        clearInterval(timer);
+      }
+    }, 100);
+    
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget;
+    if (target) {
+      const { scrollTop, scrollHeight, clientHeight } = target;
+      // More lenient bottom detection - within 50px of bottom
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      wasAtBottomRef.current = isAtBottom;
+    }
+  }, []);
+
+
+  const getStatusColor = useCallback(() => {
     switch (status) {
       case 'running':
         return 'text-green-600 dark:text-green-400';
@@ -26,9 +119,9 @@ const Engine: React.FC = () => {
       default:
         return 'text-gray-600 dark:text-gray-400';
     }
-  };
+  }, [status]);
 
-  const getStatusDot = () => {
+  const getStatusDot = useCallback(() => {
     switch (status) {
       case 'running':
         return 'bg-green-500';
@@ -39,9 +132,9 @@ const Engine: React.FC = () => {
       default:
         return 'bg-gray-500';
     }
-  };
+  }, [status]);
 
-  const formatTimestamp = (timestamp: Date) => {
+  const formatTimestamp = useCallback((timestamp: Date) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('en-US', { 
       hour12: false, 
@@ -49,7 +142,69 @@ const Engine: React.FC = () => {
       minute: '2-digit', 
       second: '2-digit' 
     });
-  };
+  }, []);
+
+  const getItemSize = useCallback((index: number) => {
+    // Reduced height for tighter spacing
+    return 20;
+  }, []);
+
+  const LogRow = memo(({ index, style, logs: logList }: RowComponentProps<{ logs: typeof logs }>) => {
+    const log = logList[index];
+
+    const processedMessage = useMemo(() => {
+      try {
+        // Clean up ANSI cursor control codes and spinner characters
+        let cleanMessage = log.message
+          // Remove cursor show/hide codes
+          .replace(/\x1b\[\?25[lh]/g, '')
+          // Remove cursor position codes
+          .replace(/\x1b\[\d*[A-G]/g, '')
+          // Remove carriage returns that cause overwriting
+          .replace(/\r(?!\n)/g, '')
+          // Replace spinner characters with a simple indicator
+          .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•');
+        
+        // Replace multiple spaces with non-breaking spaces to preserve formatting
+        const messageWithPreservedSpaces = cleanMessage.replace(/ {2,}/g, (match) => '\u00A0'.repeat(match.length));
+        
+        // Convert ANSI to HTML first
+        let htmlMessage = ansiConverter.toHtml(messageWithPreservedSpaces);
+        
+        // Then handle OSC 8 hyperlinks after ANSI conversion
+        // Format: ]8;id=ID;URL\LINK_TEXT]8;;\
+        htmlMessage = htmlMessage.replace(
+          /\]8;[^;]*;([^\\]+)\\([^\]]+)\]8;;\\?/g,
+          (match, url, text) => {
+            // Use data attribute to store URL for event delegation
+            return `<a href="#" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer">${text}</a>`;
+          }
+        );
+        
+        return { __html: htmlMessage };
+      } catch {
+        // Fallback: preserve spaces even without ANSI processing
+        const messageWithPreservedSpaces = log.message.replace(/ {2,}/g, (match) => '\u00A0'.repeat(match.length));
+        return { __html: messageWithPreservedSpaces };
+      }
+    }, [log.message]);
+
+    return (
+      <div style={style} className="flex items-center px-4 hover:bg-gray-100 dark:hover:bg-gray-800 overflow-hidden">
+        <span className="text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0 font-mono text-xs">
+          {formatTimestamp(log.timestamp)}
+        </span>
+        <span
+          className={`flex-1 font-mono text-sm leading-tight whitespace-pre overflow-hidden ${
+            log.type === 'stderr' 
+              ? 'text-red-600 dark:text-red-400' 
+              : ''
+          }`}
+          dangerouslySetInnerHTML={processedMessage}
+        />
+      </div>
+    );
+  });
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -103,51 +258,36 @@ const Engine: React.FC = () => {
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Engine Logs</h2>
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={autoScroll}
-                onChange={(e) => setAutoScroll(e.target.checked)}
-                className="rounded"
-              />
-              Auto-scroll
-            </label>
-            <button
-              onClick={clearLogs}
-              className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Clear Logs
-            </button>
-          </div>
+          <button
+            onClick={clearLogs}
+            className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Clear Logs
+          </button>
         </div>
 
         {/* Logs Container */}
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 h-96 overflow-y-auto font-mono text-sm">
+        <div ref={logsContainerRef} className="bg-gray-900 dark:bg-black rounded-lg h-96 overflow-hidden relative">
           {logs.length === 0 ? (
             <div className="text-gray-500 dark:text-gray-400 text-center py-8">
               No logs available
             </div>
           ) : (
-            <div className="space-y-1">
-              {logs.map((log, index) => (
-                <div key={index} className="flex">
-                  <span className="text-gray-500 dark:text-gray-400 mr-3">
-                    {formatTimestamp(log.timestamp)}
-                  </span>
-                  <span
-                    className={`flex-1 whitespace-pre-wrap break-all ${
-                      log.type === 'stderr' 
-                        ? 'text-red-600 dark:text-red-400' 
-                        : 'text-gray-800 dark:text-gray-200'
-                    }`}
-                  >
-                    {log.message}
-                  </span>
-                </div>
-              ))}
-              <div ref={logsEndRef} />
-            </div>
+            <List
+              listRef={listRef}
+              rowComponent={LogRow}
+              rowCount={logs.length}
+              rowHeight={getItemSize}
+              rowProps={{ logs }}
+              onScroll={handleScroll}
+              className="terminal-scrollbar h-96"
+              style={{
+                backgroundColor: 'rgb(17 24 39)',
+                color: '#e5e7eb',
+                height: '384px'
+              }}
+              initialScrollOffset={logs.length > 0 ? logs.length * 20 : 0}
+            />
           )}
         </div>
       </div>

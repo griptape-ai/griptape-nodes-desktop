@@ -8,7 +8,8 @@ import {
   ChevronUp, 
   LogOut,
   Code,
-  Layers
+  Layers,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,6 +87,7 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'engine', label: 'Engine', icon: Layers, showStatus: true },
+    { id: 'editor', label: 'Editor', icon: Code, isExternal: true, url: 'https://nodes.griptape.ai' },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -121,15 +123,24 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
             return (
               <li key={item.id}>
                 <button
-                  onClick={() => onPageChange(item.id)}
+                  onClick={() => {
+                    if (item.isExternal && item.url) {
+                      window.electronAPI?.openExternal(item.url);
+                    } else {
+                      onPageChange(item.id);
+                    }
+                  }}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors relative",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    selectedPage === item.id && "bg-sidebar-accent text-sidebar-accent-foreground"
+                    !item.isExternal && selectedPage === item.id && "bg-sidebar-accent text-sidebar-accent-foreground"
                   )}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="text-sm flex-1 text-left">{item.label}</span>
+                  {item.isExternal && (
+                    <ExternalLink className="w-3 h-3 opacity-60" />
+                  )}
                   {item.showStatus && (
                     <Tooltip delayDuration={500}>
                       <TooltipTrigger asChild>

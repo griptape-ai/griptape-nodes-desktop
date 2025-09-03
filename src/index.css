@@ -108,3 +108,61 @@
 button, a, input, textarea, select {
   -webkit-app-region: no-drag;
 }
+
+/* Terminal-like scrollbar for logs */
+.terminal-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-track {
+  @apply bg-gray-900;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Dark mode terminal scrollbar */
+.dark .terminal-scrollbar::-webkit-scrollbar-track {
+  @apply bg-black;
+}
+
+.dark .terminal-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-gray-700;
+}
+
+.dark .terminal-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
+}
+
+/* Log container styles to prevent text wrapping */
+.log-container {
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+}
+
+/* Preserve whitespace in log messages */
+.log-message {
+  white-space: pre;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* Terminal-like line height for logs */
+.terminal-logs {
+  line-height: 1.2;
+}
+
+.terminal-logs span {
+  line-height: 1.2;
+}
+
+/* Make links in logs clickable */
+.log-container a {
+  pointer-events: auto;
+  cursor: pointer;
+}
