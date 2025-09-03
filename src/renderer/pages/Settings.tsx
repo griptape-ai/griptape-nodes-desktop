@@ -232,21 +232,7 @@ const Settings: React.FC = () => {
 
       {/* Environment Information */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Environment Information</h2>
-          <button
-            onClick={refreshEnvironmentInfo}
-            disabled={refreshing || loading}
-            className={cn(
-              "px-4 py-2 text-sm rounded-md",
-              "bg-primary text-primary-foreground",
-              "hover:bg-primary/90 transition-colors",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
-            )}
-          >
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
-        </div>
+        <h2 className="text-lg font-semibold mb-4">Environment Information</h2>
 
         {loading ? (
           <p className="text-muted-foreground">Loading environment information...</p>
