@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Moon, Sun, Monitor } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { cn } from '../../lib/utils';
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [environmentInfo, setEnvironmentInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -108,8 +111,46 @@ const Settings: React.FC = () => {
     }
   };
 
+  const themeOptions = [
+    { value: 'light', label: 'Light', icon: Sun },
+    { value: 'dark', label: 'Dark', icon: Moon },
+    { value: 'system', label: 'System', icon: Monitor },
+  ] as const;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      {/* Appearance Section */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Appearance</h2>
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground mb-3">
+              Choose your preferred theme
+            </p>
+            <div className="grid grid-cols-3 gap-3 max-w-md">
+              {themeOptions.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setTheme(option.value)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all",
+                      theme === option.value
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground/50"
+                    )}
+                  >
+                    <Icon className="w-6 h-6" />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Workspace Directory Section */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">Workspace Directory</h2>

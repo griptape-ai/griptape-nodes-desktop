@@ -25,18 +25,12 @@ const MainApp: React.FC = () => {
     <div className="flex flex-col h-screen bg-background">
       {/* Top Bar with logo - draggable */}
       <header className="bg-card border-b border-border px-6 py-3 flex items-center draggable">
-        <div className={`flex items-center gap-3 ${isMac ? 'ml-16' : ''}`}>
+        <div className={`flex items-center ${isMac ? 'ml-20' : ''}`}>
           <img 
-            src="/griptape_nodes_mark_light.svg" 
-            className="hidden w-6 h-6 dark:block non-draggable"
-            alt="Griptape Nodes Logo"
+            src="/griptape_nodes_header_logo.svg" 
+            className="h-8 non-draggable"
+            alt="Griptape"
           />
-          <img 
-            src="/griptape_nodes_mark_dark.svg" 
-            className="block w-6 h-6 dark:hidden non-draggable"
-            alt="Griptape Nodes Logo"
-          />
-          <span className="font-semibold text-lg non-draggable">Griptape Nodes</span>
         </div>
       </header>
 

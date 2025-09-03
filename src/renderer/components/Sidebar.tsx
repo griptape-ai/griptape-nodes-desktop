@@ -11,7 +11,6 @@ import {
   Layers
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -115,10 +114,6 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
             </div>
           )}
 
-          {/* Theme Toggle */}
-          <div className="flex justify-end px-2">
-            <ThemeToggle />
-          </div>
         </div>
       </div>
     </div>
