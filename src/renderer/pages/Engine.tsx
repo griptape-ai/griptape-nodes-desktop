@@ -1,74 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { EngineStatus, EngineLog } from '../../shared/types/global';
+import { useEngine } from '../contexts/EngineContext';
 
 const Engine: React.FC = () => {
-  const [status, setStatus] = useState<EngineStatus>('not-ready');
-  const [logs, setLogs] = useState<EngineLog[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs } = useEngine();
   const [autoScroll, setAutoScroll] = useState(true);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch initial status and logs
-  useEffect(() => {
-    let mounted = true;
-    let isInitialLoad = true;
-    
-    const fetchInitialData = async () => {
-      try {
-        const currentStatus = await window.engineAPI.getStatus();
-        const currentLogs = await window.engineAPI.getLogs();
-        
-        if (mounted) {
-          setStatus(currentStatus);
-          setLogs(currentLogs);
-          // Mark initial load as complete after setting the initial logs
-          setTimeout(() => {
-            isInitialLoad = false;
-          }, 100); // Small delay to ensure initial logs are set before processing new events
-        }
-      } catch (error) {
-        console.error('Failed to fetch engine data:', error);
-      }
-    };
-
-    // Set up event listeners
-    const handleStatusChange = (_event: any, newStatus: EngineStatus) => {
-      if (mounted) {
-        setStatus(newStatus);
-      }
-    };
-
-    const handleNewLog = (_event: any, log: EngineLog) => {
-      // Only add new logs after initial load to avoid duplicates
-      if (mounted && !isInitialLoad) {
-        setLogs(prev => {
-          // Check if this log already exists (by comparing timestamp and message)
-          const exists = prev.some(
-            existingLog => 
-              existingLog.message === log.message && 
-              Math.abs(new Date(existingLog.timestamp).getTime() - new Date(log.timestamp).getTime()) < 100
-          );
-          if (!exists) {
-            return [...prev, log];
-          }
-          return prev;
-        });
-      }
-    };
-
-    window.engineAPI.onStatusChanged(handleStatusChange);
-    window.engineAPI.onLog(handleNewLog);
-
-    // Fetch initial data after setting up listeners
-    fetchInitialData();
-
-    // Cleanup
-    return () => {
-      mounted = false;
-      window.engineAPI.removeStatusChanged(handleStatusChange);
-      window.engineAPI.removeLog(handleNewLog);
-    };
-  }, []);
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -77,56 +14,6 @@ const Engine: React.FC = () => {
     }
   }, [logs, autoScroll]);
 
-  const handleStart = async () => {
-    setIsLoading(true);
-    try {
-      const result = await window.engineAPI.start();
-      if (!result.success) {
-        console.error('Failed to start engine:', result.error);
-      }
-    } catch (error) {
-      console.error('Error starting engine:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleStop = async () => {
-    setIsLoading(true);
-    try {
-      const result = await window.engineAPI.stop();
-      if (!result.success) {
-        console.error('Failed to stop engine:', result.error);
-      }
-    } catch (error) {
-      console.error('Error stopping engine:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRestart = async () => {
-    setIsLoading(true);
-    try {
-      const result = await window.engineAPI.restart();
-      if (!result.success) {
-        console.error('Failed to restart engine:', result.error);
-      }
-    } catch (error) {
-      console.error('Error restarting engine:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleClearLogs = async () => {
-    try {
-      await window.engineAPI.clearLogs();
-      setLogs([]);
-    } catch (error) {
-      console.error('Error clearing logs:', error);
-    }
-  };
 
   const getStatusColor = () => {
     switch (status) {
@@ -181,21 +68,21 @@ const Engine: React.FC = () => {
         {/* Control Buttons */}
         <div className="flex gap-3">
           <button
-            onClick={handleStart}
+            onClick={startEngine}
             disabled={isLoading || status === 'running' || status === 'not-ready'}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Start Engine
           </button>
           <button
-            onClick={handleStop}
+            onClick={stopEngine}
             disabled={isLoading || status !== 'running'}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Stop Engine
           </button>
           <button
-            onClick={handleRestart}
+            onClick={restartEngine}
             disabled={isLoading || status === 'not-ready'}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -227,7 +114,7 @@ const Engine: React.FC = () => {
               Auto-scroll
             </label>
             <button
-              onClick={handleClearLogs}
+              onClick={clearLogs}
               className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
               Clear Logs

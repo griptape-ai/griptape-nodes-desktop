@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import Dashboard from '../pages/Dashboard';
 import Engine from '../pages/Engine';
 import Settings from '../pages/Settings';
+import { EngineProvider } from '../contexts/EngineContext';
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -22,29 +23,31 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Top Bar with logo - draggable */}
-      <header className="bg-card border-b border-border px-6 py-3 flex items-center draggable">
-        <div className={`flex items-center ${isMac ? 'ml-20' : ''}`}>
-          <img 
-            src="/griptape_nodes_header_logo.svg" 
-            className="h-8 non-draggable"
-            alt="Griptape"
-          />
+    <EngineProvider>
+      <div className="flex flex-col h-screen bg-background">
+        {/* Top Bar with logo - draggable */}
+        <header className="bg-card border-b border-border px-6 py-3 flex items-center draggable">
+          <div className={`flex items-center ${isMac ? 'ml-20' : ''}`}>
+            <img 
+              src="/griptape_nodes_header_logo.svg" 
+              className="h-8 non-draggable"
+              alt="Griptape"
+            />
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar */}
+          <Sidebar selectedPage={currentPage} onPageChange={setCurrentPage} hideHeader={true} />
+
+          {/* Content Area */}
+          <main className="flex-1 overflow-y-auto p-6">
+            {renderContent()}
+          </main>
         </div>
-      </header>
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <Sidebar selectedPage={currentPage} onPageChange={setCurrentPage} hideHeader={true} />
-
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {renderContent()}
-        </main>
       </div>
-    </div>
+    </EngineProvider>
   );
 };
 

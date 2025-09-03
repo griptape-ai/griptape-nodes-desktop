@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { useEngine } from '../contexts/EngineContext';
+import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip';
 
 interface SidebarProps {
   className?: string;
@@ -22,6 +24,7 @@ interface SidebarProps {
 
 export function Sidebar({ className, selectedPage, onPageChange, hideHeader = false }: SidebarProps) {
   const { user, logout } = useAuth();
+  const { status } = useEngine();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -52,9 +55,37 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
     setIsProfileOpen(false);
   };
 
+  const getStatusDot = () => {
+    switch (status) {
+      case 'running':
+        return 'bg-green-500';
+      case 'ready':
+        return 'bg-yellow-500';
+      case 'error':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getStatusTooltip = () => {
+    switch (status) {
+      case 'running':
+        return 'Engine is running';
+      case 'ready':
+        return 'Engine is ready to start';
+      case 'error':
+        return 'Engine encountered an error';
+      case 'not-ready':
+        return 'Engine is not initialized';
+      default:
+        return 'Unknown status';
+    }
+  };
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'engine', label: 'Engine', icon: Layers },
+    { id: 'engine', label: 'Engine', icon: Layers, showStatus: true },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -92,13 +123,23 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
                 <button
                   onClick={() => onPageChange(item.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors relative",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     selectedPage === item.id && "bg-sidebar-accent text-sidebar-accent-foreground"
                   )}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-sm">{item.label}</span>
+                  <span className="text-sm flex-1 text-left">{item.label}</span>
+                  {item.showStatus && (
+                    <Tooltip delayDuration={500}>
+                      <TooltipTrigger asChild>
+                        <div className={`w-2 h-2 rounded-full ${getStatusDot()} animate-pulse`}></div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{getStatusTooltip()}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </button>
               </li>
             );
