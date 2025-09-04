@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- These entitlements work with both Mac Development and Developer ID certs -->
+    
+    <!-- Allow JIT for Electron/Chromium -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    
+    <!-- Allow unsigned memory for V8 -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    
+    <!-- Network access -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    
+    <!-- Server access needed for localhost OAuth callback listener when AUTH_SCHEME=http -->
+    <key>com.apple.security.network.server</key>
+    <true/>
+    
+    <!-- File access -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    
+    <!-- Allow spawning subprocess (for python/uv) -->
+    <key>com.apple.security.inherit</key>
+    <true/>
+    
+    <!-- Disable library validation for development -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

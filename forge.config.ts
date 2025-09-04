@@ -14,6 +14,7 @@ const config: ForgeConfig = {
     asar: true,
     ...(process.platform === 'darwin' && { icon: 'generated/icons/icon' }),
     executableName: 'griptape-nodes-desktop',
+    appBundleId: 'com.griptape.nodes.desktop',
     extraResource: [
       'resources/uv',
       'resources/python',
@@ -23,7 +24,14 @@ const config: ForgeConfig = {
         name: 'Griptape Nodes Desktop',
         schemes: ['gtn']
       }
-    ]
+    ],
+    osxSign: {
+      identity: process.env.APPLE_IDENTITY,
+      entitlements: 'entitlements.plist',
+      'hardened-runtime': false, // Disabled for Mac Development cert compatibility
+    },
+    // Note: Notarization only works with Developer ID certs, not Mac Development
+    osxNotarize: undefined,
   },
   hooks: {
     generateAssets
