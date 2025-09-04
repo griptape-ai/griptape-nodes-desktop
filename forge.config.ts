@@ -28,10 +28,14 @@ const config: ForgeConfig = {
     osxSign: {
       identity: process.env.APPLE_IDENTITY,
       entitlements: 'entitlements.plist',
-      'hardened-runtime': false, // Disabled for Mac Development cert compatibility
+      'hardened-runtime': true, // Required for Developer ID Application certificates
     },
-    // Note: Notarization only works with Developer ID certs, not Mac Development
-    osxNotarize: undefined,
+    // Notarization configuration for Developer ID certificates
+    osxNotarize: {
+      appleId: process.env.APPLE_ID,
+      appleIdPassword: process.env.APPLE_PASSWORD,
+      teamId: process.env.APPLE_TEAM_ID,
+    },
   },
   hooks: {
     generateAssets
