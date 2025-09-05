@@ -25,17 +25,17 @@ const config: ForgeConfig = {
         schemes: ['gtn']
       }
     ],
-    osxSign: {
-      identity: process.env.APPLE_IDENTITY,
-      entitlements: 'entitlements.plist',
-      'hardened-runtime': true, // Required for Developer ID Application certificates
-    },
+    // osxSign: {
+    //   identity: process.env.APPLE_IDENTITY,
+    //   entitlements: 'entitlements.plist',
+    //   'hardened-runtime': true, // Required for Developer ID Application certificates
+    // },
     // Notarization configuration for Developer ID certificates
-    osxNotarize: {
-      appleId: process.env.APPLE_ID,
-      appleIdPassword: process.env.APPLE_PASSWORD,
-      teamId: process.env.APPLE_TEAM_ID,
-    },
+    // osxNotarize: {
+    //   appleId: process.env.APPLE_ID,
+    //   appleIdPassword: process.env.APPLE_PASSWORD,
+    //   teamId: process.env.APPLE_TEAM_ID,
+    // },
   },
   hooks: {
     generateAssets
