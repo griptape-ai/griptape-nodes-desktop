@@ -12,7 +12,8 @@ async function runSetup() {
     }
     
     console.log('[SETUP WORKER] Using resourcesPath:', workerData.resourcesPath);
-    const pythonService = new PythonService(workerData.resourcesPath);
+    console.log('[SETUP WORKER] Using userDataPath:', workerData.userDataPath);
+    const pythonService = new PythonService(workerData.resourcesPath, workerData.userDataPath);
     // Use the paths from main process
     const environmentSetupService = new EnvironmentSetupService(pythonService, workerData.userDataPath, workerData.resourcesPath);
     

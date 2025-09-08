@@ -100,7 +100,7 @@ export class EnvironmentSetupService {
       griptapeNodes: griptapeNodesData,
       uv: {
         version: uvVersionStr,
-        toolDir: getUvToolDir(this.resourcesPath),
+        toolDir: getUvToolDir(this.dataPath),
         pythonInstallDir: getPythonInstallDir(this.resourcesPath)
       },
       system: {

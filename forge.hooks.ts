@@ -9,5 +9,5 @@ export const generateAssets: ForgeHookFn<'generateAssets'> = async (config, plat
   
   // Then download Python
   console.log(`Downloading Python for ${platform}-${arch}...`);
-  await downloadPython(platform, arch);
+  await downloadPython(platform, arch, './resources');
 };

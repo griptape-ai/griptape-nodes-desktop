@@ -9,16 +9,12 @@ out
 # Environment variables
 .env
 
-# Resouces downloaded at build time
+# Resources downloaded at build time
 resources/python/
 resources/uv/
-resources/uv-tools/
 
-# Griptape configuration directory
-resources/griptape-config/
-
-# Development userData directory
-.dev-user-data
+# Development and build userData directory  
+_userdata
 
 # Generated icons
 generated/

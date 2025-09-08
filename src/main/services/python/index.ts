@@ -8,13 +8,16 @@ export class PythonService {
   private arch: string;
   private uvPath: string;
   private resourcesPath: string;
+  private appDataPath: string;
 
-  constructor(resourcesPath: string) {
+  constructor(resourcesPath: string, appDataPath: string) {
     this.resourcesPath = resourcesPath;
+    this.appDataPath = appDataPath;
     this.platform = process.platform;
     this.arch = process.arch;
     this.uvPath = getUvPath(this.resourcesPath, this.platform, this.arch);
-    console.log(`uv path: ${this.uvPath}`)
+    console.log(`uv path: ${this.uvPath}`);
+    console.log(`app data path: ${this.appDataPath}`);
   }
 
   /**
@@ -160,7 +163,7 @@ export class PythonService {
     console.log('Installing griptape-nodes tool...');
     
     try {
-      const toolDir = getUvToolDir(this.resourcesPath);
+      const toolDir = getUvToolDir(this.appDataPath);
       const env = { 
         ...process.env, 
         UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.resourcesPath),
@@ -199,7 +202,7 @@ export class PythonService {
    * Get the path to the bundled griptape-nodes executable
    */
   getGriptapeNodesPath(): string | null {
-    const toolDir = getUvToolDir(this.resourcesPath);
+    const toolDir = getUvToolDir(this.appDataPath);
     const executable = path.join(toolDir, 'bin', this.platform === 'win32' ? 'griptape-nodes.exe' : 'griptape-nodes');
     
     console.log('[PYTHON] Looking for griptape-nodes at:', executable);
@@ -232,7 +235,7 @@ export class PythonService {
         const env = { 
           ...process.env, 
           UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.resourcesPath),
-          UV_TOOL_DIR: getUvToolDir(this.resourcesPath)
+          UV_TOOL_DIR: getUvToolDir(this.appDataPath)
         };
 
         const child = spawn(griptapeNodesPath, args, {
@@ -295,7 +298,7 @@ export class PythonService {
       const env = { 
         ...process.env, 
         UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.resourcesPath),
-        UV_TOOL_DIR: getUvToolDir(this.resourcesPath)
+        UV_TOOL_DIR: getUvToolDir(this.appDataPath)
       };
 
       const result = spawnSync(griptapeNodesPath, args, {

@@ -28,7 +28,7 @@ if (started) {
 
 // Set userData path for development
 if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
-  const devUserDataPath = path.join(app.getAppPath(), '.dev-user-data');
+  const devUserDataPath = path.join(app.getAppPath(), '_userdata');
   app.setPath('userData', devUserDataPath);
   console.log('Development mode: userData set to', devUserDataPath);
 }
@@ -57,12 +57,13 @@ console.log('process.resourcesPath:', process.resourcesPath);
 console.log('__dirname:', __dirname);
 
 // Initialize services with proper paths
-const pythonService = new PythonService(resourcesPath);
-const asyncPythonService = new AsyncPythonService(resourcesPath);
-const environmentSetupService = new EnvironmentSetupService(pythonService, app.getPath('userData'), resourcesPath);
+const appDataPath = app.getPath('userData');
+const pythonService = new PythonService(resourcesPath, appDataPath);
+const asyncPythonService = new AsyncPythonService(resourcesPath, appDataPath);
+const environmentSetupService = new EnvironmentSetupService(pythonService, appDataPath, resourcesPath);
 
 // Get paths for GriptapeNodesService
-const configDir = path.join(resourcesPath, 'griptape-config');
+const configDir = path.join(appDataPath, 'griptape-config');
 const workspaceDir = path.join(app.getPath('documents'), 'GriptapeNodes');
 
 const griptapeNodesService = new GriptapeNodesService(pythonService, configDir, workspaceDir);
