@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as https from 'https';
 import { createWriteStream } from 'fs';
 import { execSync } from 'child_process';
+import extractZip from 'extract-zip';
 
 const PYTHON_VERSION = '3.12.7';
 
@@ -84,53 +85,14 @@ async function extractUv(archivePath: string, extractPath: string, platform: str
 
   try {
     if (platform === 'win32' && archivePath.endsWith('.zip')) {
-      // Extract to a temporary directory first
-      const tempExtractPath = path.join(path.dirname(extractPath), 'temp_uv_extract');
-      if (fs.existsSync(tempExtractPath)) {
-        fs.rmSync(tempExtractPath, { recursive: true, force: true });
-      }
-      fs.mkdirSync(tempExtractPath, { recursive: true });
+      console.log(`Extracting ${archivePath} to ${extractPath}...`);
       
-      // Add a small delay to ensure file is not locked, then use different PowerShell approach
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use extract-zip Node.js library instead of PowerShell
+      await extractZip(archivePath, { dir: extractPath });
       
-      try {
-        // Use System.IO.Compression instead of Expand-Archive to avoid file lock issues
-        execSync(`powershell -command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('${archivePath}', '${tempExtractPath}')"`, { stdio: 'inherit' });
-      } catch (psError) {
-        console.log('PowerShell extraction failed, trying alternative method...');
-        // Fallback to node.js built-in if available, or try different command
-        execSync(`powershell -command "$archive = '${archivePath}'; $dest = '${tempExtractPath}'; Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory($archive, $dest)"`, { stdio: 'inherit' });
-      }
+      console.log('Extraction completed, looking for uv.exe...');
       
-      // Wait for extraction to fully complete and file handles to be released
-      console.log(`Extraction completed, waiting for file system operations to settle...`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Verify extraction directory exists and is accessible
-      let retries = 0;
-      const maxRetries = 5;
-      while (retries < maxRetries) {
-        try {
-          if (fs.existsSync(tempExtractPath) && fs.readdirSync(tempExtractPath).length > 0) {
-            break;
-          }
-        } catch (error) {
-          console.log(`Extraction directory not ready, waiting... (attempt ${retries + 1}/${maxRetries})`);
-        }
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        retries++;
-      }
-      
-      if (retries === maxRetries) {
-        throw new Error('Extraction directory not accessible after multiple attempts');
-      }
-      
-      console.log(`Extraction verified, looking for uv.exe in ${tempExtractPath}`);
-      
-      // Find the uv.exe file in the extracted contents with better debugging
-      let uvExePath: string | null = null;
-      
+      // Find the uv.exe file in the extracted contents
       function findUvRecursive(dir: string): string | null {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         console.log(`Searching in ${dir}, found entries:`, entries.map(e => `${e.name} (${e.isDirectory() ? 'dir' : 'file'})`));
@@ -146,38 +108,37 @@ async function extractUv(archivePath: string, extractPath: string, platform: str
         return null;
       }
       
-      uvExePath = findUvRecursive(tempExtractPath);
+      const uvExePath = findUvRecursive(extractPath);
       
       if (!uvExePath) {
         console.error('UV executable not found. Archive contents:');
-        execSync(`powershell -command "Get-ChildItem -Path '${tempExtractPath}' -Recurse | Format-Table Name,FullName"`, { stdio: 'inherit' });
+        const listContents = (dir: string, prefix = '') => {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            console.log(`${prefix}${entry.name} (${entry.isDirectory() ? 'dir' : 'file'})`);
+            if (entry.isDirectory()) {
+              listContents(path.join(dir, entry.name), prefix + '  ');
+            }
+          }
+        };
+        listContents(extractPath);
         throw new Error('uv.exe not found in extracted archive');
       }
       
-      // Wait for uv.exe to be fully available before copying
-      console.log(`Found uv.exe at ${uvExePath}, verifying file is ready...`);
-      let copyRetries = 0;
-      const maxCopyRetries = 3;
-      while (copyRetries < maxCopyRetries) {
-        try {
-          // Check if file is readable and not locked
-          const stats = fs.statSync(uvExePath);
-          if (stats.size > 0) {
-            break;
-          }
-        } catch (error) {
-          console.log(`uv.exe not ready for copy, waiting... (attempt ${copyRetries + 1}/${maxCopyRetries})`);
+      // If uv.exe is not directly in extractPath, move it there
+      const expectedPath = path.join(extractPath, 'uv.exe');
+      if (uvExePath !== expectedPath) {
+        console.log(`Moving uv.exe from ${uvExePath} to ${expectedPath}`);
+        fs.copyFileSync(uvExePath, expectedPath);
+        
+        // Clean up the directory structure if uv was in a subdirectory
+        const uvDir = path.dirname(uvExePath);
+        if (uvDir !== extractPath) {
+          fs.rmSync(uvDir, { recursive: true, force: true });
         }
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        copyRetries++;
       }
       
-      const targetPath = path.join(extractPath, 'uv.exe');
-      console.log(`Copying uv.exe from ${uvExePath} to ${targetPath}`);
-      fs.copyFileSync(uvExePath, targetPath);
-      
-      // Clean up temp directory
-      fs.rmSync(tempExtractPath, { recursive: true, force: true });
+      console.log(`uv.exe ready at ${expectedPath}`);
     } else if (archivePath.endsWith('.tar.gz')) {
       execSync(`tar -xzf "${archivePath}" -C "${extractPath}" --strip-components=1`, { stdio: 'inherit' });
     }
