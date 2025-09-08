@@ -7,10 +7,24 @@ export const getBuildInfo = () => {
   const version = packageJson.version;
 
   try {
-    // Get git information
-    const commitHash = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
-    const commitDate = execSync('git log -1 --format=%ci', { encoding: 'utf8' }).trim();
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+    // Get git information with Windows-compatible options
+    const commitHash = execSync('git rev-parse HEAD', { 
+      encoding: 'utf8',
+      shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+    
+    const commitDate = execSync('git log -1 --format=%ci', { 
+      encoding: 'utf8',
+      shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+    
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { 
+      encoding: 'utf8',
+      shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
 
     return {
       version,
