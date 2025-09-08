@@ -33,11 +33,9 @@ export interface EnvironmentInfo {
 export class EnvironmentSetupService {
   private dataPath: string;
   private envInfoFile: string;
-  private resourcesPath: string;
 
-  constructor(private pythonService: PythonService, dataPath: string, resourcesPath: string) {
+  constructor(private pythonService: PythonService, dataPath: string) {
     this.dataPath = dataPath;
-    this.resourcesPath = resourcesPath;
     this.envInfoFile = path.join(this.dataPath, 'environment-info.json');
   }
 
@@ -101,7 +99,7 @@ export class EnvironmentSetupService {
       uv: {
         version: uvVersionStr,
         toolDir: getUvToolDir(this.dataPath),
-        pythonInstallDir: getPythonInstallDir(this.resourcesPath)
+        pythonInstallDir: getPythonInstallDir(this.dataPath)
       },
       system: {
         platform: process.platform,

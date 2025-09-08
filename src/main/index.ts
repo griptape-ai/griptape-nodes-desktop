@@ -3,11 +3,9 @@ import { Worker } from 'worker_threads';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { PythonService } from './services/python';
-import { AsyncPythonService } from './services/python/async-service';
 import { EnvironmentSetupService } from './services/environment-setup';
 import { GriptapeNodesService } from './services/griptape-nodes';
 import { EngineService } from './services/engine';
-import { OAuthService } from './services/auth';
 import { HttpAuthService } from './services/auth/http';
 import { CustomAuthService } from './services/auth/custom';
 
@@ -39,35 +37,20 @@ if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
   app.setAsDefaultProtocolClient(OAUTH_SCHEME);
 }
 
-// Get resource path based on whether app is packaged
-// In development mode, we need to use the project's resources directory
-const getAppResourcesPath = () => {
-  if (app.isPackaged) {
-    return process.resourcesPath;
-  }
-  // In development, use the project root's resources directory
-  // __dirname is .vite/build, so go up 2 levels to project root
-  return path.join(__dirname, '..', '..', 'resources');
-};
-
-const resourcesPath = getAppResourcesPath();
-console.log('Initializing with resourcesPath:', resourcesPath);
 console.log('app.isPackaged:', app.isPackaged);
-console.log('process.resourcesPath:', process.resourcesPath);
 console.log('__dirname:', __dirname);
 
 // Initialize services with proper paths
 const appDataPath = app.getPath('userData');
-const pythonService = new PythonService(resourcesPath, appDataPath);
-const asyncPythonService = new AsyncPythonService(resourcesPath, appDataPath);
-const environmentSetupService = new EnvironmentSetupService(pythonService, appDataPath, resourcesPath);
+const pythonService = new PythonService(appDataPath);
+const environmentSetupService = new EnvironmentSetupService(pythonService, appDataPath);
 
 // Get paths for GriptapeNodesService
 const configDir = path.join(appDataPath, 'griptape-config');
 const workspaceDir = path.join(app.getPath('documents'), 'GriptapeNodes');
 
 const griptapeNodesService = new GriptapeNodesService(pythonService, configDir, workspaceDir);
-const engineService = new EngineService(pythonService, griptapeNodesService, resourcesPath);
+const engineService = new EngineService(pythonService, griptapeNodesService, appDataPath);
 // Check for invalid configuration
 if (process.env.NODE_ENV === 'development' && process.env.AUTH_SCHEME === 'custom') {
   throw new Error('Custom URL scheme authentication requires packaging. Custom URL schemes do not work in development mode on macOS and Windows. Please use AUTH_SCHEME=http for development or package the application.');
@@ -82,50 +65,49 @@ authService.start();
 const startBackgroundSetup = () => {
   console.log('[INIT] Starting background setup worker...');
   console.log('Starting background setup...');
-  
+
   // Set engine to initializing state immediately - even before login
   // This way the background installation starts right away
   if (!pythonService.isGriptapeNodesReady()) {
     console.log('[INIT] Setting engine to initializing state (pre-login)');
     engineService.setInitializing();
   }
-  
+
   // The worker is compiled to worker.js in the same directory as main.js
   const setupWorker = new Worker(path.join(__dirname, 'worker.js'), {
     workerData: {
-      userDataPath: app.getPath('userData'),
-      resourcesPath: resourcesPath
+      userDataPath: app.getPath('userData')
     }
   });
-  
+
   setupWorker.on('message', async (message) => {
     console.log('[WORKER] Received message:', message.type, message.message);
     if (message.type === 'success' || message.type === 'partial') {
       console.log('[WORKER] Background setup completed:', message.message);
-      
+
       // Store the environment info if provided
       if (message.data) {
         environmentSetupService.saveEnvironmentInfo(message.data);
       }
-      
+
       // Now that griptape-nodes is installed, check if we need to initialize it with API key
       console.log('[WORKER] Checking if user is logged in and griptape-nodes needs initialization...');
       const existingConfig = griptapeNodesService.loadConfig();
       console.log('[WORKER] Existing config:', existingConfig ? 'Found' : 'Not found', existingConfig?.api_key ? 'with API key' : 'without API key');
-      
+
       // Only try to initialize with API key if we don't have one already
       if (!existingConfig || !existingConfig.api_key) {
         // Check if user is logged in (has stored credentials)
         const credentials = authService.getStoredCredentials();
         console.log('[WORKER] Stored credentials:', credentials ? 'Found' : 'Not found');
-        
+
         if (credentials && credentials.apiKey) {
           // User is logged in, initialize griptape-nodes with their API key
           console.log('[WORKER] User is logged in, initializing griptape-nodes with stored API key...');
           const initResult = await griptapeNodesService.initialize({
             apiKey: credentials.apiKey
           });
-          
+
           if (!initResult.success) {
             console.error('[WORKER] Failed to initialize griptape-nodes after installation:', initResult.error);
             // Don't return here - we still want to update engine status
@@ -140,11 +122,11 @@ const startBackgroundSetup = () => {
       } else {
         console.log('[WORKER] Griptape-nodes already configured with API key');
       }
-      
+
       // Update engine status based on what we have
       const currentStatus = engineService.getStatus();
       console.log('[WORKER] Current engine status:', currentStatus);
-      
+
       // If we're still in initializing state, move to the appropriate next state
       if (currentStatus === 'initializing' || currentStatus === 'not-ready') {
         // Check if we can fully initialize the engine
@@ -167,11 +149,11 @@ const startBackgroundSetup = () => {
       }
     }
   });
-  
+
   setupWorker.on('error', (error) => {
     console.error('Setup worker error:', error);
   });
-  
+
   setupWorker.on('exit', (code) => {
     if (code !== 0) {
       console.error(`Setup worker stopped with exit code ${code}`);
@@ -224,18 +206,17 @@ const createWindow = () => {
 app.on('ready', async () => {
   console.log('[INIT] App ready event fired');
   createWindow();
-  
+
   // Debug: Check resource paths
   console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('process.resourcesPath:', process.resourcesPath);
   console.log('process.cwd():', process.cwd());
   console.log('app.getAppPath():', app.getAppPath());
-  
+
   // Start post-install setup in background thread IMMEDIATELY
   // This runs before login, so griptape-nodes will be ready when the user logs in
   console.log('[INIT] Starting background setup immediately (before login)...');
   startBackgroundSetup();
-  
+
   // Check if we have stored credentials and initialize griptape-nodes if needed
   const initializeGriptapeNodes = async () => {
     console.log('[INIT] Checking for existing griptape-nodes initialization...');
@@ -247,16 +228,16 @@ app.on('ready', async () => {
         console.log('[INIT] Griptape-nodes already initialized with saved config');
         return;
       }
-      
+
       // If not initialized, check if we have stored credentials to initialize with
       const credentials = authService.getStoredCredentials();
       console.log('[INIT] Stored credentials check:', credentials ? 'Found' : 'Not found', credentials?.apiKey ? 'with API' : 'without API');
       if (credentials && credentials.apiKey) {
         console.log('Found stored API key, initializing griptape-nodes (async)...');
-        
+
         // Set engine to initializing state
         engineService.setInitializing();
-        
+
         // Initialize asynchronously (don't await - avoid blocking)
         griptapeNodesService.initialize({
           apiKey: credentials.apiKey
@@ -284,11 +265,11 @@ app.on('ready', async () => {
       console.error('Error during startup griptape-nodes initialization:', error);
     }
   };
-  
+
   // Initialize griptape-nodes if we have credentials (async, non-blocking)
   console.log('[INIT] Running initializeGriptapeNodes...');
   initializeGriptapeNodes();
-  
+
   // Engine initialization is now handled asynchronously after gtn init completes
   // Either in the initializeGriptapeNodes function above or the background worker
 });
@@ -343,7 +324,7 @@ const createMenu = () => {
 const showAboutDialog = () => {
   // Load persisted environment info
   const envInfo = environmentSetupService.loadEnvironmentInfo();
-  
+
   let detailText = [
     `Version: ${__BUILD_INFO__.version}`,
     `Commit: ${__BUILD_INFO__.commitHash.substring(0, 8)}`,
@@ -434,9 +415,9 @@ const setupIPC = () => {
     return;
   }
   ipcInitialized = true;
-  
+
   let mainWindow: BrowserWindow | null = null;
-  
+
   // Store reference to main window for sending events
   BrowserWindow.getAllWindows().forEach(window => {
     if (!mainWindow) mainWindow = window;
@@ -446,7 +427,7 @@ const setupIPC = () => {
   ipcMain.handle('get-environment-info', async () => {
     try {
       const envInfo = environmentSetupService.loadEnvironmentInfo();
-      
+
       if (envInfo) {
         return {
           success: true,
@@ -495,14 +476,14 @@ const setupIPC = () => {
       const info = pythonService.getPythonInfo();
       const versionCommand = 'import sys; print(f"Python {sys.version}")';
       const pathCommand = 'import sys; print(f"Executable: {sys.executable}")';
-      
+
       const versionResult = pythonService.executePythonCommand(versionCommand);
       const pathResult = pythonService.executePythonCommand(pathCommand);
-      
+
       // Get griptape-nodes info
       const griptapeNodesPath = pythonService.getGriptapeNodesPath();
       const griptapeNodesVersion = pythonService.isGriptapeNodesReady() ? pythonService.getGriptapeNodesVersion() : 'Not available';
-      
+
       return {
         success: true,
         version: info.version,
@@ -523,12 +504,12 @@ const setupIPC = () => {
   // Handle Auth Logout
   ipcMain.handle('auth:logout', async () => {
     authService.clearCredentials();
-    
+
     // Notify all windows about logout
     BrowserWindow.getAllWindows().forEach(window => {
       window.webContents.send('auth:logout-success');
     });
-    
+
     return { success: true };
   });
 
@@ -550,33 +531,33 @@ const setupIPC = () => {
   ipcMain.handle('auth:login', async () => {
     try {
       const result = await authService.login();
-      
+
       // Initialize griptape-nodes with the API key after successful login (async, non-blocking)
       if (result.success && result.apiKey) {
         // Check current engine status
         const currentStatus = engineService.getStatus();
         console.log('[LOGIN] Current engine status:', currentStatus);
-        
+
         // Check if griptape-nodes is already installed
         const isGtnInstalled = pythonService.isGriptapeNodesReady();
         console.log('[LOGIN] Griptape-nodes installed:', isGtnInstalled);
-        
+
         // Check if already initialized with an API key
         const existingConfig = griptapeNodesService.loadConfig();
         const hasApiKey = existingConfig && existingConfig.api_key;
         console.log('[LOGIN] Griptape-nodes has API key:', hasApiKey);
-        
+
         if (isGtnInstalled) {
           // Griptape-nodes is already installed (from background setup)
           if (!hasApiKey || existingConfig.api_key !== result.apiKey) {
             // Need to initialize with the user's API key
             console.log('[LOGIN] Initializing griptape-nodes with user API key (async)...');
-            
+
             // Set engine to initializing if not already
             if (currentStatus !== 'initializing') {
               engineService.setInitializing();
             }
-            
+
             // Initialize griptape-nodes asynchronously
             griptapeNodesService.initialize({
               apiKey: result.apiKey
@@ -614,19 +595,19 @@ const setupIPC = () => {
           }
         }
       }
-      
+
       // Send success event to all windows
       BrowserWindow.getAllWindows().forEach(window => {
         window.webContents.send('auth:login-success', result);
       });
-      
+
       return result;
     } catch (error) {
       // Send error event to all windows
       BrowserWindow.getAllWindows().forEach(window => {
         window.webContents.send('auth:login-error', error.message);
       });
-      
+
       throw error;
     }
   });
@@ -665,9 +646,9 @@ const setupIPC = () => {
       await engineService.start();
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   });
@@ -677,9 +658,9 @@ const setupIPC = () => {
       await engineService.stop();
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   });
@@ -689,9 +670,9 @@ const setupIPC = () => {
       await engineService.restart();
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   });
@@ -700,7 +681,7 @@ const setupIPC = () => {
   // First remove any existing listeners to prevent duplicates
   engineService.removeAllListeners('status-changed');
   engineService.removeAllListeners('log');
-  
+
   engineService.on('status-changed', (status) => {
     BrowserWindow.getAllWindows().forEach(window => {
       window.webContents.send('engine:status-changed', status);
@@ -721,19 +702,19 @@ const setupIPC = () => {
   ipcMain.handle('gtn:set-workspace', async (event, directory: string) => {
     try {
       const result = await griptapeNodesService.updateWorkspaceDirectory(directory);
-      
+
       if (result.success) {
         // Restart engine if it was running
         if (engineService.getStatus() === 'running') {
           await engineService.restart();
         }
       }
-      
+
       return result;
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   });
@@ -743,7 +724,7 @@ const setupIPC = () => {
       properties: ['openDirectory', 'createDirectory'],
       title: 'Select Workspace Directory'
     });
-    
+
     if (!result.canceled && result.filePaths.length > 0) {
       return result.filePaths[0];
     }

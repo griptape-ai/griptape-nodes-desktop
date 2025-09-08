@@ -7,15 +7,13 @@ export class PythonService {
   private platform: string;
   private arch: string;
   private uvPath: string;
-  private resourcesPath: string;
   private appDataPath: string;
 
-  constructor(resourcesPath: string, appDataPath: string) {
-    this.resourcesPath = resourcesPath;
+  constructor(appDataPath: string) {
     this.appDataPath = appDataPath;
     this.platform = process.platform;
     this.arch = process.arch;
-    this.uvPath = getUvPath(this.resourcesPath, this.platform, this.arch);
+    this.uvPath = getUvPath(this.appDataPath, this.platform, this.arch);
     console.log(`uv path: ${this.uvPath}`);
     console.log(`app data path: ${this.appDataPath}`);
   }
@@ -28,7 +26,7 @@ export class PythonService {
       // Use the same UV_PYTHON_INSTALL_DIR as during download to ensure consistency
       const env = { 
         ...process.env, 
-        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.resourcesPath)
+        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath)
       };
       
       const result = execSync(`"${this.uvPath}" python find ${getPythonVersion()}`, { 
@@ -166,7 +164,7 @@ export class PythonService {
       const toolDir = getUvToolDir(this.appDataPath);
       const env = { 
         ...process.env, 
-        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.resourcesPath),
+        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
         UV_TOOL_DIR: toolDir,
         UV_TOOL_BIN_DIR: path.join(toolDir, 'bin')
       };
@@ -234,7 +232,7 @@ export class PythonService {
         // Use consistent environment variables
         const env = { 
           ...process.env, 
-          UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.resourcesPath),
+          UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
           UV_TOOL_DIR: getUvToolDir(this.appDataPath)
         };
 
@@ -297,7 +295,7 @@ export class PythonService {
       // Use consistent environment variables
       const env = { 
         ...process.env, 
-        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.resourcesPath),
+        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
         UV_TOOL_DIR: getUvToolDir(this.appDataPath)
       };
 

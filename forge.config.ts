@@ -15,10 +15,6 @@ const config: ForgeConfig = {
     ...(process.platform === 'darwin' && { icon: 'generated/icons/icon' }),
     executableName: 'griptape-nodes-desktop',
     appBundleId: 'com.griptape.nodes.desktop',
-    extraResource: [
-      'resources/uv',
-      'resources/python',
-    ],
     protocols: [
       {
         name: 'Griptape Nodes Desktop',

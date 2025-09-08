@@ -2,6 +2,7 @@ import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import { PythonService } from '../python';
 import { GriptapeNodesService } from '../griptape-nodes';
+import { getPythonInstallDir, getUvToolDir } from '../downloader';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -16,7 +17,7 @@ export interface EngineLog {
 export class EngineService extends EventEmitter {
   private pythonService: PythonService;
   private gtnService: GriptapeNodesService;
-  private resourcesPath: string;
+  private appDataPath: string;
   private engineProcess: ChildProcess | null = null;
   private status: EngineStatus = 'not-ready';
   private logs: EngineLog[] = [];
@@ -27,11 +28,11 @@ export class EngineService extends EventEmitter {
   private stdoutBuffer = ''; // Buffer for incomplete stdout lines
   private stderrBuffer = ''; // Buffer for incomplete stderr lines
 
-  constructor(pythonService: PythonService, gtnService: GriptapeNodesService, resourcesPath: string) {
+  constructor(pythonService: PythonService, gtnService: GriptapeNodesService, appDataPath: string) {
     super();
     this.pythonService = pythonService;
     this.gtnService = gtnService;
-    this.resourcesPath = resourcesPath;
+    this.appDataPath = appDataPath;
     this.checkStatus();
   }
 
@@ -178,8 +179,8 @@ export class EngineService extends EventEmitter {
         cwd: this.gtnService.getConfigDirectory(),
         env: {
           ...process.env,
-          UV_PYTHON_INSTALL_DIR: path.join(this.resourcesPath, 'python'),
-          UV_TOOL_DIR: path.join(this.resourcesPath, 'uv-tools'),
+          UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
+          UV_TOOL_DIR: getUvToolDir(this.appDataPath),
           // Force color output for terminals that support it
           FORCE_COLOR: '1',
           PYTHONUNBUFFERED: '1'

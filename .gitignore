@@ -9,11 +9,7 @@ out
 # Environment variables
 .env
 
-# Resources downloaded at build time
-resources/python/
-resources/uv/
-
-# Development and build userData directory  
+# Development userData directory
 _userdata
 
 # Generated icons

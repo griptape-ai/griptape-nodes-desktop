@@ -1,28 +1,32 @@
 import { parentPort, workerData } from 'worker_threads';
 import { PythonService } from '../../main/services/python';
 import { EnvironmentSetupService } from '../../main/services/environment-setup';
+import { downloadAndInstallAll } from '../../main/services/downloader';
 
 async function runSetup() {
   try {
     console.log('[SETUP WORKER] Starting post-installation setup...');
     console.log('[SETUP WORKER] Worker data:', workerData);
     
-    if (!workerData?.userDataPath || !workerData?.resourcesPath) {
-      throw new Error('userDataPath and resourcesPath must be provided in workerData');
+    if (!workerData?.userDataPath) {
+      throw new Error('userDataPath must be provided in workerData');
     }
     
-    console.log('[SETUP WORKER] Using resourcesPath:', workerData.resourcesPath);
     console.log('[SETUP WORKER] Using userDataPath:', workerData.userDataPath);
-    const pythonService = new PythonService(workerData.resourcesPath, workerData.userDataPath);
-    // Use the paths from main process
-    const environmentSetupService = new EnvironmentSetupService(pythonService, workerData.userDataPath, workerData.resourcesPath);
+    
+    // First, download and install all components (uv, Python, griptape-nodes)
+    console.log('[SETUP WORKER] Installing uv, Python, and griptape-nodes...');
+    await downloadAndInstallAll(process.platform, process.arch, workerData.userDataPath);
+    
+    const pythonService = new PythonService(workerData.userDataPath);
+    const environmentSetupService = new EnvironmentSetupService(pythonService, workerData.userDataPath);
     
     const pythonReady = pythonService.isReady();
     console.log('[SETUP WORKER] Python service ready:', pythonReady);
     if (!pythonReady) {
       parentPort?.postMessage({ 
         type: 'error', 
-        message: 'Python service is not ready - Python may not be available' 
+        message: 'Python service is not ready after installation' 
       });
       return;
     }
