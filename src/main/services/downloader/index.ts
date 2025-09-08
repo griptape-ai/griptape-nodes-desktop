@@ -256,10 +256,11 @@ async function downloadPythonWithUv(uvExecutable: string, platform: string, arch
   console.log(`Using uv to install Python ${PYTHON_VERSION} for ${platform}-${arch}...`);
   
   try {
-    // Set UV_PYTHON_INSTALL_DIR to our user data directory (post-install)
+    // Set UV_PYTHON_INSTALL_DIR to our user data directory and force uv-managed Python only
     const env = { 
       ...process.env, 
-      UV_PYTHON_INSTALL_DIR: getPythonInstallDir(userDataDir)
+      UV_PYTHON_INSTALL_DIR: getPythonInstallDir(userDataDir),
+      UV_MANAGED_PYTHON: '1'
     };
     
     // Install Python using uv
@@ -284,7 +285,8 @@ async function installGriptapeNodes(uvExecutable: string, userDataDir: string): 
       ...process.env, 
       UV_PYTHON_INSTALL_DIR: getPythonInstallDir(userDataDir),
       UV_TOOL_DIR: toolDir,
-      UV_TOOL_BIN_DIR: path.join(toolDir, 'bin')
+      UV_TOOL_BIN_DIR: path.join(toolDir, 'bin'),
+      UV_MANAGED_PYTHON: '1'
     };
     
     // Install griptape-nodes using uv

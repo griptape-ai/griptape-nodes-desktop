@@ -26,7 +26,8 @@ export class PythonService {
       // Use the same UV_PYTHON_INSTALL_DIR as during download to ensure consistency
       const env = { 
         ...process.env, 
-        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath)
+        UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
+        UV_MANAGED_PYTHON: '1'
       };
       
       const result = execSync(`"${this.uvPath}" python find ${getPythonVersion()}`, { 
@@ -166,7 +167,8 @@ export class PythonService {
         ...process.env, 
         UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
         UV_TOOL_DIR: toolDir,
-        UV_TOOL_BIN_DIR: path.join(toolDir, 'bin')
+        UV_TOOL_BIN_DIR: path.join(toolDir, 'bin'),
+        UV_MANAGED_PYTHON: '1'
       };
       
       // Install griptape-nodes using uv
@@ -233,7 +235,8 @@ export class PythonService {
         const env = { 
           ...process.env, 
           UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
-          UV_TOOL_DIR: getUvToolDir(this.appDataPath)
+          UV_TOOL_DIR: getUvToolDir(this.appDataPath),
+          UV_MANAGED_PYTHON: '1'
         };
 
         const child = spawn(griptapeNodesPath, args, {
@@ -296,7 +299,8 @@ export class PythonService {
       const env = { 
         ...process.env, 
         UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
-        UV_TOOL_DIR: getUvToolDir(this.appDataPath)
+        UV_TOOL_DIR: getUvToolDir(this.appDataPath),
+        UV_MANAGED_PYTHON: '1'
       };
 
       const result = spawnSync(griptapeNodesPath, args, {

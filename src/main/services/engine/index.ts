@@ -181,6 +181,7 @@ export class EngineService extends EventEmitter {
           ...process.env,
           UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
           UV_TOOL_DIR: getUvToolDir(this.appDataPath),
+          UV_MANAGED_PYTHON: '1',
           // Force color output for terminals that support it
           FORCE_COLOR: '1',
           PYTHONUNBUFFERED: '1'
