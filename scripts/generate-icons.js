@@ -8,7 +8,7 @@ const execAsync = promisify(exec);
 async function generateIconsFromSource(sourcePath, outputPrefix) {
   const generatedDir = path.join(__dirname, '..', 'generated', 'icons');
   const iconsetDir = path.join(generatedDir, `${outputPrefix}.iconset`);
-  
+
   // Ensure generated directory exists
   if (!fs.existsSync(generatedDir)) {
     fs.mkdirSync(generatedDir, { recursive: true });
@@ -48,7 +48,7 @@ async function generateIconsFromSource(sourcePath, outputPrefix) {
     if (platform === 'darwin') {
       // macOS - use sips and iconutil
       console.log('📱 Generating macOS icons...');
-      
+
       for (const { size, name } of sizes) {
         const outputPath = path.join(iconsetDir, name);
         if (size === 1024) {
@@ -69,7 +69,7 @@ async function generateIconsFromSource(sourcePath, outputPrefix) {
     } else if (platform === 'linux') {
       // Linux - use ImageMagick if available
       console.log('🐧 Generating Linux icons...');
-      
+
       try {
         await execAsync('which convert');
         // ImageMagick is available
@@ -99,7 +99,7 @@ async function generateIconsFromSource(sourcePath, outputPrefix) {
     const pngPath = path.join(generatedDir, `${outputPrefix}.png`);
     fs.copyFileSync(sourcePath, pngPath);
     console.log(`  ✓ Copied ${outputPrefix}.png`);
-    
+
     // Copy source as .ico for Windows (simple fallback)
     const icoPath = path.join(generatedDir, `${outputPrefix}.ico`);
     fs.copyFileSync(sourcePath, icoPath);
@@ -120,21 +120,25 @@ async function generateIconsFromSource(sourcePath, outputPrefix) {
 }
 
 async function generateIcons() {
-  const publicDir = path.join(__dirname, '..', 'public');
-  
-  // Generate app icons
-  const appIcon = path.join(publicDir, 'icon.png');
-  const appSuccess = await generateIconsFromSource(appIcon, 'icon');
-  
-  // Generate installer icons
-  const installerIcon = path.join(publicDir, 'icon_installer.png');
-  const installerSuccess = await generateIconsFromSource(installerIcon, 'icon_installer');
-  
-  if (!appSuccess || !installerSuccess) {
-    process.exit(1);
+  const platform = process.platform;
+
+  if (platform === 'darwin') {
+    const publicDir = path.join(__dirname, '..', 'public');
+
+    // Generate app icons
+    const appIcon = path.join(publicDir, 'icon.png');
+    const appSuccess = await generateIconsFromSource(appIcon, 'icon');
+
+    // Generate installer icons
+    const installerIcon = path.join(publicDir, 'icon_installer.png');
+    const installerSuccess = await generateIconsFromSource(installerIcon, 'icon_installer');
+
+    if (!appSuccess || !installerSuccess) {
+      process.exit(1);
+    }
+
+    console.log('✅ All icons generated successfully!');
   }
-  
-  console.log('✅ All icons generated successfully!');
 }
 
 // Run if called directly
