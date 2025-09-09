@@ -182,17 +182,14 @@ export class EnvironmentSetupService {
         };
       }
 
-      // Install Griptape Nodes
-      console.log('Installing Griptape Nodes...');
-      await this.pythonService.installGriptapeNodes();
-      
+      // Return current status (assume installation is handled elsewhere)
       return {
         path: this.pythonService.getGriptapeNodesPath() || '',
         version: this.pythonService.getGriptapeNodesVersion(),
-        installed: true
+        installed: this.pythonService.isGriptapeNodesReady()
       };
     } catch (error) {
-      console.error('Failed to install Griptape Nodes:', error);
+      console.error('Failed to check Griptape Nodes status:', error);
       throw error;
     }
   }
