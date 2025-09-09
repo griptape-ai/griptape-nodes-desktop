@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as https from 'https';
 import { createWriteStream } from 'fs';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import extractZip from 'extract-zip';
 
 const PYTHON_VERSION = '3.12.7';
@@ -50,7 +50,7 @@ async function downloadFile(url: string, filepath: string): Promise<void> {
           return;
         }
       }
-      
+
       if (response.statusCode !== 200) {
         file.destroy();
         reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
@@ -86,17 +86,16 @@ async function extractUv(archivePath: string, extractPath: string, platform: str
   try {
     if (platform === 'win32' && archivePath.endsWith('.zip')) {
       console.log(`Extracting ${archivePath} to ${extractPath}...`);
-      
-      // Use extract-zip Node.js library instead of PowerShell
+
       await extractZip(archivePath, { dir: extractPath });
-      
+
       console.log('Extraction completed, looking for uv.exe...');
-      
+
       // Find the uv.exe file in the extracted contents
       function findUvRecursive(dir: string): string | null {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         console.log(`Searching in ${dir}, found entries:`, entries.map(e => `${e.name} (${e.isDirectory() ? 'dir' : 'file'})`));
-        
+
         for (const entry of entries) {
           if (entry.name === 'uv.exe' && entry.isFile()) {
             return path.join(dir, entry.name);
@@ -107,9 +106,9 @@ async function extractUv(archivePath: string, extractPath: string, platform: str
         }
         return null;
       }
-      
+
       const uvExePath = findUvRecursive(extractPath);
-      
+
       if (!uvExePath) {
         console.error('UV executable not found. Archive contents:');
         const listContents = (dir: string, prefix = '') => {
@@ -124,20 +123,20 @@ async function extractUv(archivePath: string, extractPath: string, platform: str
         listContents(extractPath);
         throw new Error('uv.exe not found in extracted archive');
       }
-      
+
       // If uv.exe is not directly in extractPath, move it there
       const expectedPath = path.join(extractPath, 'uv.exe');
       if (uvExePath !== expectedPath) {
         console.log(`Moving uv.exe from ${uvExePath} to ${expectedPath}`);
         fs.copyFileSync(uvExePath, expectedPath);
-        
+
         // Clean up the directory structure if uv was in a subdirectory
         const uvDir = path.dirname(uvExePath);
         if (uvDir !== extractPath) {
           fs.rmSync(uvDir, { recursive: true, force: true });
         }
       }
-      
+
       console.log(`uv.exe ready at ${expectedPath}`);
     } else if (archivePath.endsWith('.tar.gz')) {
       execSync(`tar -xzf "${archivePath}" -C "${extractPath}" --strip-components=1`, { stdio: 'inherit' });
@@ -173,7 +172,7 @@ async function downloadAndExtractUv(platform: string, arch: string, userDataDir:
   console.log(`Downloading uv for ${platform}-${arch}...`);
   await downloadFile(build.url, archivePath);
   console.log(`Downloaded uv to: ${archivePath}`);
-  
+
   // Verify the downloaded file is complete and accessible before extraction
   console.log(`Verifying downloaded file integrity...`);
   let verifyRetries = 0;
@@ -193,43 +192,98 @@ async function downloadAndExtractUv(platform: string, arch: string, userDataDir:
     }
     verifyRetries++;
   }
-  
+
   if (verifyRetries === maxVerifyRetries) {
     throw new Error('Downloaded file is not accessible after multiple attempts');
   }
-  
+
   console.log(`File verification complete, proceeding with extraction...`);
   await extractUv(archivePath, uvDir, platform);
-  
+
   // Make executable on Unix systems
   if (platform !== 'win32') {
     execSync(`chmod +x "${uvExecutable}"`);
   }
-  
+
   // Clean up archive
   fs.unlinkSync(archivePath);
-  
+
   console.log(`uv extracted to: ${uvExecutable}`);
   return uvExecutable;
 }
 
 async function downloadPythonWithUv(uvExecutable: string, platform: string, arch: string, userDataDir: string): Promise<void> {
   console.log(`Using uv to install Python ${PYTHON_VERSION} for ${platform}-${arch}...`);
-  
+
   try {
     // Set UV_PYTHON_INSTALL_DIR to our user data directory and force uv-managed Python only
-    const env = { 
-      ...process.env, 
+    const env = {
+      // ...process.env,
       UV_PYTHON_INSTALL_DIR: getPythonInstallDir(userDataDir),
-      UV_MANAGED_PYTHON: '1'
+      UV_MANAGED_PYTHON: '1',
+      UV_NO_CONFIG: "1",
+      UV_NO_MODIFY_PATH: "1",
+      UV_PYTHON_INSTALL_REGISTRY: "0",
+      UV_NO_PROGRESS: "1",
     };
-    
+
     // Install Python using uv
-    execSync(`"${uvExecutable}" python install ${PYTHON_VERSION}`, { 
-      stdio: 'inherit',
-      env 
+    await new Promise<void>((resolve, reject) => {
+      let uvProcess = spawn(uvExecutable, ['python', 'install', PYTHON_VERSION], {
+        env,
+        shell: true,
+      });
+
+      let stdoutBuffer = '';
+      let stderrBuffer = '';
+
+      uvProcess.stdout?.on('data', (data) => {
+        stdoutBuffer += data.toString();
+        const lines = stdoutBuffer.split('\n');
+        stdoutBuffer = lines.pop() || ''; // Keep incomplete line in buffer
+        lines.forEach(line => {
+          if (line.trim()) console.log(`[INSTALLPYTHON] ${line}`);
+        });
+      });
+
+      uvProcess.stderr?.on('data', (data) => {
+        stderrBuffer += data.toString();
+        const lines = stderrBuffer.split('\n');
+        stderrBuffer = lines.pop() || ''; // Keep incomplete line in buffer
+        lines.forEach(line => {
+          if (line.trim()) console.error(`[INSTALLPYTHON_STDERR] ${line}`);
+        });
+      });
+
+      uvProcess.on('close', (code) => {
+        // Print any remaining buffered content
+
+        // stdout
+        let lines = stderrBuffer.split('\n');
+        stdoutBuffer = '';
+        lines.forEach(line => {
+          if (line.trim()) console.log(`[INSTALLPYTHON] ${line}`);
+        });
+
+        // stderr
+        lines = stderrBuffer.split('\n');
+        stderrBuffer = '';
+        lines.forEach(line => {
+          if (line.trim()) console.error(`[INSTALLPYTHON_STDERR] ${line}`);
+        });
+
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`uv python install failed with exit code ${code}`));
+        }
+      });
+
+      uvProcess.on('error', (error) => {
+        reject(error);
+      });
     });
-    
+
     console.log(`Successfully installed Python ${PYTHON_VERSION} using uv`);
   } catch (error) {
     console.error(`Failed to install Python with uv:`, error);
@@ -239,30 +293,23 @@ async function downloadPythonWithUv(uvExecutable: string, platform: string, arch
 
 async function installGriptapeNodes(uvExecutable: string, userDataDir: string): Promise<void> {
   console.log('Installing griptape-nodes tool...');
-  
+
   try {
     const toolDir = getUvToolDir(userDataDir);
-    const env = { 
-      ...process.env, 
+    const env = {
+      ...process.env,
       UV_PYTHON_INSTALL_DIR: getPythonInstallDir(userDataDir),
       UV_TOOL_DIR: toolDir,
       UV_TOOL_BIN_DIR: path.join(toolDir, 'bin'),
       UV_MANAGED_PYTHON: '1'
     };
-    
+
     // Install griptape-nodes using uv
-    try {
-      execSync(`"${uvExecutable}" tool install griptape-nodes`, { 
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env 
-      });
-    } catch (error: any) {
-      console.error('uv tool install failed with error:', error.message);
-      if (error.stdout) console.error('stdout:', error.stdout.toString());
-      if (error.stderr) console.error('stderr:', error.stderr.toString());
-      throw error;
-    }
-    
+    execSync(`"${uvExecutable}" tool install --quiet griptape-nodes`, {
+      stdio: 'inherit',
+      env
+    });
+
     console.log('Successfully installed griptape-nodes tool');
   } catch (error) {
     console.error('Failed to install griptape-nodes tool:', error);
@@ -274,13 +321,13 @@ export async function downloadAndInstallAll(platform: string, arch: string, user
   try {
     // First download and extract uv
     const uvExecutable = await downloadAndExtractUv(platform, arch, userDataDir);
-    
+
     // Then use uv to download Python
     await downloadPythonWithUv(uvExecutable, platform, arch, userDataDir);
-    
+
     // Finally install griptape-nodes
     await installGriptapeNodes(uvExecutable, userDataDir);
-    
+
     console.log(`Successfully set up Python ${PYTHON_VERSION}, uv, and griptape-nodes for ${platform}-${arch}`);
   } catch (error) {
     console.error(`Failed to setup Python, uv, and griptape-nodes for ${platform}-${arch}:`, error);

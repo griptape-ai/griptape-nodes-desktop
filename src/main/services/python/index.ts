@@ -24,13 +24,13 @@ export class PythonService {
   getPythonExecutablePath(): string | null {
     try {
       // Use the same UV_PYTHON_INSTALL_DIR as during download to ensure consistency
-      const env = { 
-        ...process.env, 
+      const env = {
+        ...process.env,
         UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
         UV_MANAGED_PYTHON: '1'
       };
-      
-      const result = execSync(`"${this.uvPath}" python find ${getPythonVersion()}`, { 
+
+      const result = execSync(`"${this.uvPath}" python find ${getPythonVersion()}`, {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe'],
         env
@@ -95,7 +95,7 @@ export class PythonService {
     }
 
     const versionResult = this.executePythonCommand('import sys; print(sys.version)');
-    
+
     return {
       version: versionResult.success ? versionResult.stdout.trim() : 'Unknown',
       executable,
@@ -160,23 +160,23 @@ export class PythonService {
    */
   async installGriptapeNodes(): Promise<void> {
     console.log('Installing griptape-nodes tool...');
-    
+
     try {
       const toolDir = getUvToolDir(this.appDataPath);
-      const env = { 
-        ...process.env, 
+      const env = {
+        ...process.env,
         UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
         UV_TOOL_DIR: toolDir,
         UV_TOOL_BIN_DIR: path.join(toolDir, 'bin'),
         UV_MANAGED_PYTHON: '1'
       };
-      
+
       // Install griptape-nodes using uv
-      execSync(`"${this.uvPath}" tool install griptape-nodes`, { 
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env 
+      execSync(`"${this.uvPath}" tool install --quiet griptape-nodes`, {
+        stdio: 'inherit',
+        env
       });
-      
+
       console.log('Successfully installed griptape-nodes');
     } catch (error: any) {
       console.error('Failed to install griptape-nodes:', error.message);
@@ -204,13 +204,13 @@ export class PythonService {
   getGriptapeNodesPath(): string | null {
     const toolDir = getUvToolDir(this.appDataPath);
     const executable = path.join(toolDir, 'bin', this.platform === 'win32' ? 'griptape-nodes.exe' : 'griptape-nodes');
-    
+
     console.log('[PYTHON] Looking for griptape-nodes at:', executable);
     if (fs.existsSync(executable)) {
       console.log('[PYTHON] griptape-nodes found!');
       return executable;
     }
-    
+
     console.error('[PYTHON] griptape-nodes executable not found at:', executable);
     return null;
   }
@@ -232,8 +232,8 @@ export class PythonService {
         }
 
         // Use consistent environment variables
-        const env = { 
-          ...process.env, 
+        const env = {
+          ...process.env,
           UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
           UV_TOOL_DIR: getUvToolDir(this.appDataPath),
           UV_MANAGED_PYTHON: '1'
@@ -296,8 +296,8 @@ export class PythonService {
       }
 
       // Use consistent environment variables
-      const env = { 
-        ...process.env, 
+      const env = {
+        ...process.env,
         UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
         UV_TOOL_DIR: getUvToolDir(this.appDataPath),
         UV_MANAGED_PYTHON: '1'

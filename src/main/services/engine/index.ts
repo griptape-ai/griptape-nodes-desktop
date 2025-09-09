@@ -124,17 +124,17 @@ export class EngineService extends EventEmitter {
       .replace(/\x1b\[[su]/gi, '')
       // Clean up any remaining escape sequences we don't handle
       .replace(/\x1b\[\?\d+[lh]/g, '');
-    
+
     // Don't process OSC 8 hyperlinks here - let the frontend handle them
     // This preserves them for conversion to clickable links in the UI
-    
+
     cleanMessage = cleanMessage.trim();
-    
+
     // Skip empty messages after cleaning
     if (!cleanMessage) {
       return;
     }
-    
+
     const log: EngineLog = {
       timestamp: new Date(),
       type,
@@ -173,9 +173,11 @@ export class EngineService extends EventEmitter {
       // Clear logs from previous session when starting fresh
       this.logs = [];
       this.addLog('stdout', 'Starting Griptape Nodes engine...');
+      this.addLog('stdout', `Command: ${gtnPath} engine`);
+      this.addLog('stdout', `Working directory: ${this.gtnService.getConfigDirectory()}`);
 
       // Spawn the engine process from config directory so it finds the config file
-      this.engineProcess = spawn(gtnPath, ['engine'], {
+      this.engineProcess = spawn(gtnPath, ['--no-update', 'engine'], {
         cwd: this.gtnService.getConfigDirectory(),
         env: {
           ...process.env,
@@ -192,7 +194,7 @@ export class EngineService extends EventEmitter {
       // Handle stdout with line buffering and carriage return handling
       this.engineProcess.stdout?.on('data', (data) => {
         this.stdoutBuffer += data.toString();
-        
+
         // Handle carriage returns (\r) which are used for progress indicators
         // Split by \r to handle overwrites, keeping only the last one
         const carriageReturnParts = this.stdoutBuffer.split('\r');
@@ -200,12 +202,12 @@ export class EngineService extends EventEmitter {
           // Keep only the last part after \r (this is what should be displayed)
           this.stdoutBuffer = carriageReturnParts[carriageReturnParts.length - 1];
         }
-        
+
         const lines = this.stdoutBuffer.split('\n');
-        
+
         // Keep the last incomplete line in the buffer
         this.stdoutBuffer = lines.pop() || '';
-        
+
         // Process complete lines
         lines.forEach(line => {
           if (line.trim().length > 0) {
@@ -217,7 +219,7 @@ export class EngineService extends EventEmitter {
       // Handle stderr with line buffering and carriage return handling
       this.engineProcess.stderr?.on('data', (data) => {
         this.stderrBuffer += data.toString();
-        
+
         // Handle carriage returns (\r) which are used for progress indicators
         // Split by \r to handle overwrites, keeping only the last one
         const carriageReturnParts = this.stderrBuffer.split('\r');
@@ -225,12 +227,12 @@ export class EngineService extends EventEmitter {
           // Keep only the last part after \r (this is what should be displayed)
           this.stderrBuffer = carriageReturnParts[carriageReturnParts.length - 1];
         }
-        
+
         const lines = this.stderrBuffer.split('\n');
-        
+
         // Keep the last incomplete line in the buffer
         this.stderrBuffer = lines.pop() || '';
-        
+
         // Process complete lines
         lines.forEach(line => {
           if (line.trim().length > 0) {
@@ -250,9 +252,13 @@ export class EngineService extends EventEmitter {
           this.addLog('stderr', this.stderrBuffer);
           this.stderrBuffer = '';
         }
-        
-        this.addLog('stderr', `Engine process exited with code ${code} and signal ${signal}`);
-        
+
+        if (code !== 0) {
+          this.addLog('stderr', `Engine process failed with exit code ${code} and signal ${signal}`);
+        } else {
+          this.addLog('stdout', `Engine process exited normally with code ${code}`);
+        }
+
         // Clean up the process and its listeners
         const processToClean = this.engineProcess;
         if (processToClean) {
@@ -260,7 +266,7 @@ export class EngineService extends EventEmitter {
           processToClean.stdout?.removeAllListeners();
           processToClean.stderr?.removeAllListeners();
         }
-        
+
         this.engineProcess = null;
         this.checkStatus();
 
@@ -279,6 +285,7 @@ export class EngineService extends EventEmitter {
       // Handle process error
       this.engineProcess.on('error', (error) => {
         this.addLog('stderr', `Engine process error: ${error.message}`);
+        this.addLog('stderr', `Error code: ${(error as any).code}, errno: ${(error as any).errno}`);
         this.status = 'error';
         this.emit('status-changed', this.status);
       });
@@ -306,7 +313,7 @@ export class EngineService extends EventEmitter {
     }
 
     this.addLog('stdout', 'Stopping Griptape Nodes engine...');
-    
+
     // Clear buffers when stopping
     this.stdoutBuffer = '';
     this.stderrBuffer = '';
@@ -350,7 +357,7 @@ export class EngineService extends EventEmitter {
     console.log('[ENGINE] Initialize called');
     // Re-check status to see if conditions have changed
     this.checkStatus();
-    
+
     // Auto-start the engine if it's ready
     if (this.status === 'ready') {
       console.log('[ENGINE] Status is ready, attempting to start...');
