@@ -313,6 +313,10 @@ export function getUvPath(userDataPath: string, platform: string, arch: string):
   return path.join(uvDir, platform === 'win32' ? 'uv.exe' : 'uv');
 }
 
+export function getGtnLibrariesBaseDir(userDataPath: string): string {
+  return path.join(userDataPath, 'gtn-libraries');
+}
+
 export function getPythonInstallDir(userDataPath: string): string {
   return path.join(userDataPath, 'python');
 }

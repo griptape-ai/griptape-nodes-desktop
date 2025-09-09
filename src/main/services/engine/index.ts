@@ -190,6 +190,7 @@ export class EngineService extends EventEmitter {
         cwd: this.gtnService.getConfigDirectory(),
         env: {
           ...process.env,
+          GTN_LIBRARIES_BASE_DIR: getGtnLibrariesBaseDir(this.appDataPath),
           UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
           UV_TOOL_DIR: getUvToolDir(this.appDataPath),
           UV_MANAGED_PYTHON: '1',

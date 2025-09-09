@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync, spawnSync, spawn } from 'child_process';
-import { getPythonVersion, getUvPath, getPythonInstallDir, getUvToolDir } from '../downloader';
+import { getPythonVersion, getUvPath, getPythonInstallDir, getUvToolDir, getGtnLibrariesBaseDir } from '../downloader';
 
 export class PythonService {
   private platform: string;
@@ -203,6 +203,7 @@ export class PythonService {
         // Use consistent environment variables
         const env = {
           ...process.env,
+          GTN_LIBRARIES_BASE_DIR: getGtnLibrariesBaseDir(this.appDataPath),
           UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
           UV_TOOL_DIR: getUvToolDir(this.appDataPath),
           UV_MANAGED_PYTHON: '1'
@@ -267,6 +268,7 @@ export class PythonService {
       // Use consistent environment variables
       const env = {
         ...process.env,
+        GTN_LIBRARIES_BASE_DIR: getGtnLibrariesBaseDir(this.appDataPath),
         UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
         UV_TOOL_DIR: getUvToolDir(this.appDataPath),
         UV_MANAGED_PYTHON: '1'
