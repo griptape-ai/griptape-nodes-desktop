@@ -2,8 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as https from 'https';
 import { createWriteStream } from 'fs';
-import { execSync, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import extractZip from 'extract-zip';
+import { attachOutputForwarder } from '../../utils/child-process/output-forwarder';
 
 const PYTHON_VERSION = '3.12.7';
 
@@ -139,7 +140,13 @@ async function extractUv(archivePath: string, extractPath: string, platform: str
 
       console.log(`uv.exe ready at ${expectedPath}`);
     } else if (archivePath.endsWith('.tar.gz')) {
-      execSync(`tar -xzf "${archivePath}" -C "${extractPath}" --strip-components=1`, { stdio: 'inherit' });
+      console.log(`Extracting ${archivePath} to ${extractPath}...`);
+      const tarProcess = spawn('tar', ['-xzf', archivePath, '-C', extractPath, '--strip-components=1'], {
+        shell: true,
+      });
+      await attachOutputForwarder(tarProcess, {
+        logPrefix: 'EXTRACT_UV'
+      });
     }
   } catch (error) {
     console.error('UV extraction failed:', error);
@@ -202,7 +209,12 @@ async function downloadAndExtractUv(platform: string, arch: string, userDataDir:
 
   // Make executable on Unix systems
   if (platform !== 'win32') {
-    execSync(`chmod +x "${uvExecutable}"`);
+    const chmodProcess = spawn('chmod', ['+x', uvExecutable], {
+      shell: true,
+    });
+    await attachOutputForwarder(chmodProcess, {
+      logPrefix: 'CHMOD_UV'
+    });
   }
 
   // Clean up archive
@@ -228,60 +240,13 @@ async function downloadPythonWithUv(uvExecutable: string, platform: string, arch
     };
 
     // Install Python using uv
-    await new Promise<void>((resolve, reject) => {
-      let uvProcess = spawn(uvExecutable, ['python', 'install', PYTHON_VERSION], {
-        env,
-        shell: true,
-      });
+    const uvProcess = spawn(uvExecutable, ['python', 'install', PYTHON_VERSION], {
+      env,
+      shell: true,
+    });
 
-      let stdoutBuffer = '';
-      let stderrBuffer = '';
-
-      uvProcess.stdout?.on('data', (data) => {
-        stdoutBuffer += data.toString();
-        const lines = stdoutBuffer.split('\n');
-        stdoutBuffer = lines.pop() || ''; // Keep incomplete line in buffer
-        lines.forEach(line => {
-          if (line.trim()) console.log(`[INSTALLPYTHON] ${line}`);
-        });
-      });
-
-      uvProcess.stderr?.on('data', (data) => {
-        stderrBuffer += data.toString();
-        const lines = stderrBuffer.split('\n');
-        stderrBuffer = lines.pop() || ''; // Keep incomplete line in buffer
-        lines.forEach(line => {
-          if (line.trim()) console.error(`[INSTALLPYTHON_STDERR] ${line}`);
-        });
-      });
-
-      uvProcess.on('close', (code) => {
-        // Print any remaining buffered content
-
-        // stdout
-        let lines = stderrBuffer.split('\n');
-        stdoutBuffer = '';
-        lines.forEach(line => {
-          if (line.trim()) console.log(`[INSTALLPYTHON] ${line}`);
-        });
-
-        // stderr
-        lines = stderrBuffer.split('\n');
-        stderrBuffer = '';
-        lines.forEach(line => {
-          if (line.trim()) console.error(`[INSTALLPYTHON_STDERR] ${line}`);
-        });
-
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`uv python install failed with exit code ${code}`));
-        }
-      });
-
-      uvProcess.on('error', (error) => {
-        reject(error);
-      });
+    await attachOutputForwarder(uvProcess, {
+      logPrefix: 'INSTALLPYTHON'
     });
 
     console.log(`Successfully installed Python ${PYTHON_VERSION} using uv`);
@@ -305,9 +270,12 @@ async function installGriptapeNodes(uvExecutable: string, userDataDir: string): 
     };
 
     // Install griptape-nodes using uv
-    execSync(`"${uvExecutable}" tool install --quiet griptape-nodes`, {
-      stdio: 'inherit',
-      env
+    const installProcess = spawn(uvExecutable, ['tool', 'install', '--quiet', 'griptape-nodes'], {
+      env,
+      shell: true,
+    });
+    await attachOutputForwarder(installProcess, {
+      logPrefix: 'INSTALL_GRIPTAPE_NODES'
     });
 
     console.log('Successfully installed griptape-nodes tool');
