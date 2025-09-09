@@ -172,8 +172,9 @@ export class EngineService extends EventEmitter {
       // Clear logs from previous session when starting fresh
       this.logs = [];
       this.addLog('stdout', 'Starting Griptape Nodes engine...');
-      this.addLog('stdout', `Command: ${gtnPath} engine`);
-      this.addLog('stdout', `Working directory: ${this.gtnService.getConfigDirectory()}`);
+      console.log('[ENGINE] Starting Griptape Nodes engine...');
+      console.log(`[ENGINE] Command: ${gtnPath} engine`);
+      console.log(`[ENGINE] Working directory: ${this.gtnService.getConfigDirectory()}`);
 
       // Spawn the engine process from config directory so it finds the config file
       this.engineProcess = spawn(gtnPath, ['--no-update', 'engine'], {
