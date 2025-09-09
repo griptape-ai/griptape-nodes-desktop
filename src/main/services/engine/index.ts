@@ -3,8 +3,7 @@ import { EventEmitter } from 'events';
 import { PythonService } from '../python';
 import { GriptapeNodesService } from '../griptape-nodes';
 import { getPythonInstallDir, getUvToolDir } from '../downloader';
-import * as path from 'path';
-import * as fs from 'fs';
+import { attachOutputForwarder } from '../../utils/child-process/output-forwarder';
 
 export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error';
 
@@ -190,6 +189,8 @@ export class EngineService extends EventEmitter {
         },
         stdio: ['pipe', 'pipe', 'pipe']
       });
+
+      attachOutputForwarder(this.engineProcess, { logPrefix: "GTN-ENGINE" })
 
       // Handle stdout with line buffering and carriage return handling
       this.engineProcess.stdout?.on('data', (data) => {
