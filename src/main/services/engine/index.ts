@@ -186,7 +186,10 @@ export class EngineService extends EventEmitter {
           UV_MANAGED_PYTHON: '1',
           // Force color output for terminals that support it
           FORCE_COLOR: '1',
-          PYTHONUNBUFFERED: '1'
+          PYTHONUNBUFFERED: '1',
+          // Fix Windows Unicode encoding issues
+          PYTHONIOENCODING: 'utf-8',
+          PYTHONUTF8: '1'
         },
         stdio: ['pipe', 'pipe', 'pipe']
       });
