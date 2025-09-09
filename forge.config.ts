@@ -51,16 +51,8 @@ const config: ForgeConfig = {
       icon: 'generated/icons/icon_installer.icns',
       iconSize: 100,
     }, ['darwin']),
-    new MakerRpm({
-      options: {
-        icon: 'generated/icons/icon.png',
-      }
-    }),
-    new MakerDeb({
-      options: {
-        icon: 'generated/icons/icon.png',
-      }
-    }),
+    new MakerRpm(),
+    new MakerDeb(),
   ],
   publishers: [
     new PublisherGithub({
