@@ -1,4 +1,5 @@
 import { ChildProcess } from 'child_process';
+import readline from 'readline';
 
 export interface OutputForwarderOptions {
   logPrefix: string;
@@ -6,50 +7,27 @@ export interface OutputForwarderOptions {
 }
 
 export function attachOutputForwarder(
-  process: ChildProcess,
+  child: ChildProcess,
   options: OutputForwarderOptions
 ): Promise<void> {
   const { logPrefix, errorPrefix = `${logPrefix}_STDERR` } = options;
 
   return new Promise<void>((resolve, reject) => {
-    let stdoutBuffer = '';
-    let stderrBuffer = '';
+    // stdout
+    if (child.stdout) {
+      readline
+        .createInterface({ input: child.stdout })
+        .on('line', (line) => console.log(`[${logPrefix}] ${line}`));
+    }
 
-    process.stdout?.on('data', (data) => {
-      stdoutBuffer += data.toString();
-      const lines = stdoutBuffer.split('\n');
-      stdoutBuffer = lines.pop() || '';
-      lines.forEach(line => {
-        if (line.trim()) console.log(`[${logPrefix}] ${line}`);
-      });
-    });
+    // stderr
+    if (child.stderr) {
+      readline
+        .createInterface({ input: child.stderr })
+        .on('line', (line) => console.error(`[${errorPrefix}] ${line}`));
+    }
 
-    process.stderr?.on('data', (data) => {
-      stderrBuffer += data.toString();
-      const lines = stderrBuffer.split('\n');
-      stderrBuffer = lines.pop() || '';
-      lines.forEach(line => {
-        if (line.trim()) console.error(`[${errorPrefix}] ${line}`);
-      });
-    });
-
-    process.on('close', (code) => {
-      // Print any remaining buffered content
-      
-      // stdout
-      let lines = stdoutBuffer.split('\n');
-      stdoutBuffer = '';
-      lines.forEach(line => {
-        if (line.trim()) console.log(`[${logPrefix}] ${line}`);
-      });
-
-      // stderr  
-      lines = stderrBuffer.split('\n');
-      stderrBuffer = '';
-      lines.forEach(line => {
-        if (line.trim()) console.error(`[${errorPrefix}] ${line}`);
-      });
-
+    child.on('close', (code) => {
       if (code === 0) {
         resolve();
       } else {
@@ -57,7 +35,7 @@ export function attachOutputForwarder(
       }
     });
 
-    process.on('error', (error) => {
+    child.on('error', (error) => {
       reject(error);
     });
   });

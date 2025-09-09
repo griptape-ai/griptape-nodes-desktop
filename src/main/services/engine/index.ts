@@ -121,8 +121,17 @@ export class EngineService extends EventEmitter {
       .replace(/\x1b\[2?[JK]/gi, '')
       // Remove save/restore cursor position
       .replace(/\x1b\[[su]/gi, '')
+      // Remove Windows-specific ANSI sequences
+      .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+      // Remove color reset and other SGR sequences
+      .replace(/\x1b\[\d*;?\d*;?\d*;?\d*m/g, '')
+      // Remove bracketed paste mode
+      .replace(/\x1b\[\?2004[lh]/g, '')
       // Clean up any remaining escape sequences we don't handle
-      .replace(/\x1b\[\?\d+[lh]/g, '');
+      .replace(/\x1b\[\?\d+[lh]/g, '')
+      // Handle Windows line endings properly
+      .replace(/\r\n/g, '\n')
+      .replace(/\r(?!\n)/g, '');
 
     // Don't process OSC 8 hyperlinks here - let the frontend handle them
     // This preserves them for conversion to clickable links in the UI
@@ -186,7 +195,10 @@ export class EngineService extends EventEmitter {
           UV_MANAGED_PYTHON: '1',
           // Force color output for terminals that support it
           FORCE_COLOR: '1',
+          RICH_FORCE_TERMINAL: "1",
           PYTHONUNBUFFERED: '1',
+          // Help with Windows terminal compatibility
+          TERM: 'xterm-256color',
           // Fix Windows Unicode encoding issues
           PYTHONIOENCODING: 'utf-8',
           PYTHONUTF8: '1'
@@ -198,7 +210,11 @@ export class EngineService extends EventEmitter {
 
       // Handle stdout with line buffering and carriage return handling
       this.engineProcess.stdout?.on('data', (data) => {
-        this.stdoutBuffer += data.toString();
+        this.stdoutBuffer += data.toString('utf8');
+
+        // Handle both Windows CRLF and Unix LF line endings
+        // First normalize Windows line endings
+        this.stdoutBuffer = this.stdoutBuffer.replace(/\r\n/g, '\n');
 
         // Handle carriage returns (\r) which are used for progress indicators
         // Split by \r to handle overwrites, keeping only the last one
@@ -223,7 +239,11 @@ export class EngineService extends EventEmitter {
 
       // Handle stderr with line buffering and carriage return handling
       this.engineProcess.stderr?.on('data', (data) => {
-        this.stderrBuffer += data.toString();
+        this.stderrBuffer += data.toString('utf8');
+
+        // Handle both Windows CRLF and Unix LF line endings
+        // First normalize Windows line endings
+        this.stderrBuffer = this.stderrBuffer.replace(/\r\n/g, '\n');
 
         // Handle carriage returns (\r) which are used for progress indicators
         // Split by \r to handle overwrites, keeping only the last one

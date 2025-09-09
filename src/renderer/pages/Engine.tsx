@@ -41,13 +41,13 @@ const Engine: React.FC = () => {
   useEffect(() => {
     const handleLinkClick = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      
+
       if (target.tagName === 'A' && target.dataset.externalUrl) {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const url = target.dataset.externalUrl;
-        
+
         if (window.electronAPI?.openExternal && url) {
           try {
             await window.electronAPI.openExternal(url);
@@ -71,7 +71,7 @@ const Engine: React.FC = () => {
     // Detect if new logs were added
     const logsAdded = logs.length > prevLogCountRef.current;
     prevLogCountRef.current = logs.length;
-    
+
     if (listRef.current && logs.length > 0) {
       // Always scroll to bottom on initial load or when new logs are added and we're at bottom
       if (logsAdded && wasAtBottomRef.current) {
@@ -102,7 +102,7 @@ const Engine: React.FC = () => {
         clearInterval(timer);
       }
     }, 100);
-    
+
     return () => clearInterval(timer);
   }, []);
 
@@ -149,11 +149,11 @@ const Engine: React.FC = () => {
 
   const formatTimestamp = useCallback((timestamp: Date) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
   }, []);
 
@@ -173,16 +173,22 @@ const Engine: React.FC = () => {
           .replace(/\x1b\[\?25[lh]/g, '')
           // Remove cursor position codes
           .replace(/\x1b\[\d*[A-G]/g, '')
+          // Remove Windows-specific cursor positioning
+          .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+          // Remove SGR (color/style) codes that might not be handled properly
+          .replace(/\x1b\[\d*;?\d*;?\d*;?\d*m/g, '')
+          // Handle Windows CRLF line endings
+          .replace(/\r\n/g, '\n')
           // Remove carriage returns that cause overwriting
           .replace(/\r(?!\n)/g, '')
           // Replace spinner characters with a simple indicator
           .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•');
-        
+
         // Handle OSC 8 hyperlinks BEFORE ANSI conversion
         // Looking at the actual format: ]8;id=ID;URL\TEXT]8;;\
         const linkPlaceholders: { placeholder: string; html: string }[] = [];
         let linkIndex = 0;
-        
+
         // Replace OSC 8 sequences with placeholders that won't be affected by ANSI conversion
         // Format: ]8;id=ID;URL\TEXT]8;;\
         cleanMessage = cleanMessage.replace(
@@ -190,7 +196,7 @@ const Engine: React.FC = () => {
           (match, url, text) => {
             const placeholder = `__LINK_PLACEHOLDER_${linkIndex}__`;
             linkIndex++;
-            
+
             // Clean up the text by removing ANSI color codes and control characters
             let cleanText = text
               // Remove ANSI color codes like [1;34m and [0m
@@ -201,10 +207,10 @@ const Engine: React.FC = () => {
               .replace(/[\s\u00A0]+$/, '')
               .replace(/^[\s\u00A0]+/, '')
               .trim();
-            
+
             // Use the URL as the display text if no clean text remains
             const displayText = cleanText || url;
-            
+
             linkPlaceholders.push({
               placeholder,
               html: `<a href="javascript:void(0)" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer" title="${url}">${displayText}</a>`
@@ -212,26 +218,26 @@ const Engine: React.FC = () => {
             return placeholder;
           }
         );
-        
+
         // Clean up any orphaned backslashes that might appear after link placeholders
         cleanMessage = cleanMessage.replace(/__LINK_PLACEHOLDER_\d+__\s*\\/g, (match) => {
           return match.replace(/\\$/, '');
         });
-        
+
         // Replace multiple spaces with non-breaking spaces to preserve formatting
         const messageWithPreservedSpaces = cleanMessage.replace(/ {2,}/g, (match) => '\u00A0'.repeat(match.length));
-        
+
         // Convert ANSI to HTML
         let htmlMessage = ansiConverter.toHtml(messageWithPreservedSpaces);
-        
+
         // Replace placeholders with actual links
         linkPlaceholders.forEach(({ placeholder, html }) => {
           htmlMessage = htmlMessage.replace(placeholder, html);
         });
-        
+
         // Final cleanup: remove any trailing backslashes that might appear after links
         htmlMessage = htmlMessage.replace(/<\/a>\s*\\/g, '</a>');
-        
+
         return { __html: htmlMessage };
       } catch {
         // Fallback: preserve spaces even without ANSI processing
@@ -246,11 +252,10 @@ const Engine: React.FC = () => {
           {formatTimestamp(log.timestamp)}
         </span>
         <span
-          className={`flex-1 font-mono text-sm leading-tight whitespace-pre overflow-hidden ${
-            log.type === 'stderr' 
-              ? 'text-red-600 dark:text-red-400' 
+          className={`flex-1 font-mono text-sm leading-tight whitespace-pre overflow-hidden ${log.type === 'stderr'
+              ? 'text-red-600 dark:text-red-400'
               : ''
-          }`}
+            }`}
           dangerouslySetInnerHTML={processedMessage}
         />
       </div>
@@ -270,7 +275,7 @@ const Engine: React.FC = () => {
             </span>
           </div>
         </div>
-        
+
         {/* Control Buttons */}
         <div className="flex gap-3">
           <button
@@ -303,18 +308,18 @@ const Engine: React.FC = () => {
             </p>
           </div>
         )}
-        
+
         {status === 'initializing' && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
               Setting up Griptape Nodes environment...
             </p>
             <div className="w-full bg-blue-200 dark:bg-blue-900 rounded-full h-2 overflow-hidden relative">
-              <div className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full absolute" 
-                   style={{
-                     width: '40%',
-                     animation: 'indeterminate 1.5s ease-in-out infinite'
-                   }}
+              <div className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full absolute"
+                style={{
+                  width: '40%',
+                  animation: 'indeterminate 1.5s ease-in-out infinite'
+                }}
               />
             </div>
           </div>
