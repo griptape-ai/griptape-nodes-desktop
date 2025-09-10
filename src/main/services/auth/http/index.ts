@@ -26,7 +26,7 @@ export class HttpAuthService {
     });
   }
 
-  // STart a local dev server in some kind of lifecycle hook.
+  // Start a local dev server in some kind of lifecycle hook.
   async start() {
     if (this.server) {
       console.log('Auth server already running');

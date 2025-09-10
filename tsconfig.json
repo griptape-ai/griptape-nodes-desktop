@@ -11,13 +11,7 @@
     "baseUrl": ".",
     "outDir": "dist",
     "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "paths": {
-      "@main/*": ["src/main/*"],
-      "@renderer/*": ["src/renderer/*"],
-      "@shared/*": ["src/shared/*"],
-      "@workers/*": ["src/workers/*"]
-    }
+    "resolveJsonModule": true
   },
   "include": [
     "src/**/*"

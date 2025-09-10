@@ -1,9 +1,10 @@
 import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { PythonService } from '../python';
-import { GriptapeNodesService } from '../griptape-nodes';
-import { getPythonInstallDir, getUvToolDir } from '../downloader';
+import { PythonService } from '../python-service';
+import { GtnService } from '../gtn-service';
 import { attachOutputForwarder } from '../../utils/child-process/output-forwarder';
+import { getGtnExecutablePath } from '../config/paths';
+import { getEnv } from '../config/env';
 
 export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error';
 
@@ -15,8 +16,8 @@ export interface EngineLog {
 
 export class EngineService extends EventEmitter {
   private pythonService: PythonService;
-  private gtnService: GriptapeNodesService;
-  private appDataPath: string;
+  private gtnService: GtnService;
+  private userDataDir: string;
   private engineProcess: ChildProcess | null = null;
   private status: EngineStatus = 'not-ready';
   private logs: EngineLog[] = [];
@@ -27,11 +28,11 @@ export class EngineService extends EventEmitter {
   private stdoutBuffer = ''; // Buffer for incomplete stdout lines
   private stderrBuffer = ''; // Buffer for incomplete stderr lines
 
-  constructor(pythonService: PythonService, gtnService: GriptapeNodesService, appDataPath: string) {
+  constructor(pythonService: PythonService, gtnService: GtnService, userDataDir: string) {
     super();
     this.pythonService = pythonService;
     this.gtnService = gtnService;
-    this.appDataPath = appDataPath;
+    this.userDataDir = userDataDir;
     this.checkStatus();
   }
 
@@ -77,34 +78,35 @@ export class EngineService extends EventEmitter {
    * Check and update engine status
    */
   checkStatus(): void {
-    const oldStatus = this.status;
-    console.log('[ENGINE] Checking status...');
+    console.warn("checkStatus not yet implemented");
+    // const oldStatus = this.status;
+    // console.log('[ENGINE] Checking status...');
 
-    const gtnReady = this.pythonService.isGriptapeNodesReady();
-    console.log('[ENGINE] Griptape-nodes ready:', gtnReady);
-    if (!gtnReady) {
-      // Don't override initializing status if we're in the middle of setup
-      if (this.status !== 'initializing') {
-        this.status = 'not-ready';
-        this.addLog('stderr', 'Griptape Nodes is not installed');
-      }
-    } else if (!this.isInitialized()) {
-      const isInit = this.isInitialized();
-      console.log('[ENGINE] Griptape-nodes initialized:', isInit);
-      this.status = 'not-ready';
-      this.addLog('stderr', 'Griptape Nodes not initialized. Run "gtn init" first.');
-    } else if (this.engineProcess && !this.engineProcess.killed) {
-      this.status = 'running';
-    } else {
-      this.status = 'ready';
-    }
+    // const gtnReady = this.pythonService.isGriptapeNodesReady();
+    // console.log('[ENGINE] Griptape-nodes ready:', gtnReady);
+    // if (!gtnReady) {
+    //   // Don't override initializing status if we're in the middle of setup
+    //   if (this.status !== 'initializing') {
+    //     this.status = 'not-ready';
+    //     this.addLog('stderr', 'Griptape Nodes is not installed');
+    //   }
+    // } else if (!this.isInitialized()) {
+    //   const isInit = this.isInitialized();
+    //   console.log('[ENGINE] Griptape-nodes initialized:', isInit);
+    //   this.status = 'not-ready';
+    //   this.addLog('stderr', 'Griptape Nodes not initialized. Run "gtn init" first.');
+    // } else if (this.engineProcess && !this.engineProcess.killed) {
+    //   this.status = 'running';
+    // } else {
+    //   this.status = 'ready';
+    // }
 
-    if (oldStatus !== this.status) {
-      console.log('[ENGINE] Status changed from', oldStatus, 'to', this.status);
-      this.emit('status-changed', this.status);
-    } else {
-      console.log('[ENGINE] Status unchanged:', this.status);
-    }
+    // if (oldStatus !== this.status) {
+    //   console.log('[ENGINE] Status changed from', oldStatus, 'to', this.status);
+    //   this.emit('status-changed', this.status);
+    // } else {
+    //   console.log('[ENGINE] Status unchanged:', this.status);
+    // }
   }
 
   /**
@@ -173,27 +175,18 @@ export class EngineService extends EventEmitter {
     }
 
     try {
-      const gtnPath = this.pythonService.getGriptapeNodesPath();
-      if (!gtnPath) {
-        throw new Error('Griptape Nodes executable not found');
-      }
+      const gtnPath = getGtnExecutablePath(this.userDataDir);
 
       // Clear logs from previous session when starting fresh
       this.logs = [];
       this.addLog('stdout', 'Starting Griptape Nodes engine...');
       console.log('[ENGINE] Starting Griptape Nodes engine...');
       console.log(`[ENGINE] Command: ${gtnPath} engine`);
-      console.log(`[ENGINE] Working directory: ${this.gtnService.getConfigDirectory()}`);
 
       // Spawn the engine process from config directory so it finds the config file
       this.engineProcess = spawn(gtnPath, ['--no-update', 'engine'], {
-        cwd: this.gtnService.getConfigDirectory(),
         env: {
-          ...process.env,
-          GTN_LIBRARIES_BASE_DIR: getGtnLibrariesBaseDir(this.appDataPath),
-          UV_PYTHON_INSTALL_DIR: getPythonInstallDir(this.appDataPath),
-          UV_TOOL_DIR: getUvToolDir(this.appDataPath),
-          UV_MANAGED_PYTHON: '1',
+          ...getEnv(this.userDataDir),
           // Force color output for terminals that support it
           FORCE_COLOR: '1',
           RICH_FORCE_TERMINAL: "1",

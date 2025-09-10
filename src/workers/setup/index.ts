@@ -1,63 +1,98 @@
-import { parentPort, workerData } from 'worker_threads';
-import { PythonService } from '../../main/services/python';
-import { EnvironmentSetupService } from '../../main/services/environment-setup';
-import { downloadAndInstallAll } from '../../main/services/downloader';
+import { workerData } from 'worker_threads';
+import { installUv } from '../../main/services/setup/install-uv';
+import { UvService } from '../../main/services/uv-service';
 
 async function runSetup() {
-  try {
-    console.log('[SETUP WORKER] Starting post-installation setup...');
-    console.log('[SETUP WORKER] Worker data:', workerData);
-    
-    if (!workerData?.userDataPath) {
-      throw new Error('userDataPath must be provided in workerData');
-    }
-    
-    console.log('[SETUP WORKER] Using userDataPath:', workerData.userDataPath);
-    
-    // First, download and install all components (uv, Python, griptape-nodes)
-    console.log('[SETUP WORKER] Installing uv, Python, and griptape-nodes...');
-    await downloadAndInstallAll(process.platform, process.arch, workerData.userDataPath);
-    
-    const pythonService = new PythonService(workerData.userDataPath);
-    const environmentSetupService = new EnvironmentSetupService(pythonService, workerData.userDataPath);
-    
-    const pythonReady = pythonService.isReady();
-    console.log('[SETUP WORKER] Python service ready:', pythonReady);
-    if (!pythonReady) {
-      parentPort?.postMessage({ 
-        type: 'error', 
-        message: 'Python service is not ready after installation' 
-      });
-      return;
-    }
-
-    // Run post-install setup and collect environment info
-    console.log('[SETUP WORKER] Running post-install setup...');
-    const envInfo = await environmentSetupService.runPostInstallSetup();
-    console.log('[SETUP WORKER] Post-install setup completed. Griptape-nodes installed:', envInfo.griptapeNodes.installed);
-    
-    // Report results
-    if (envInfo.errors.length > 0) {
-      console.warn('[SETUP WORKER] Setup completed with warnings:', envInfo.errors);
-      parentPort?.postMessage({ 
-        type: 'partial', 
-        message: 'Post-installation setup completed with warnings',
-        data: envInfo
-      });
-    } else {
-      parentPort?.postMessage({ 
-        type: 'success', 
-        message: 'Post-installation setup completed successfully',
-        data: envInfo
-      });
-    }
-  } catch (error) {
-    console.error('[SETUP WORKER] Error during setup:', error);
-    parentPort?.postMessage({ 
-      type: 'error', 
-      message: `Failed to complete post-installation setup: ${error instanceof Error ? error.message : 'Unknown error'}` 
-    });
+  console.log('[SETUP WORKER] Starting post-installation setup...');
+  if (!workerData) {
+    throw new Error("workerData must be provided to worker.js")
   }
+  if (!workerData.userDataPath) {
+    throw new Error("userDataPath must be provided to worker.js")
+  }
+  if (!workerData.gtnDefaultWorkspaceDir) {
+    throw new Error("gtnDefaultWorkspaceDir must be provided to worker.js")
+  }
+  
+  const userDataPath = workerData.userDataPath;
+  const gtnDefaultWorkspaceDir = workerData.gtnDefaultWorkspaceDir;
+
+  
+  console.log('[SETUP WORKER] Worker data:', workerData);
+  console.log('[SETUP WORKER] Using userDataPath:', userDataPath);
+  console.log('[SETUP WORKER] Using gtnDefaultWorkspaceDir:', gtnDefaultWorkspaceDir);
+
+  // TODO: PythonService is a horrible abstraction for this collection of methods.
+  const uvService = new UvService(userDataPath);
+  
+  ////////
+  // UV //
+  ////////
+
+  console.log("Installing uv...")
+  const uvExecutable = await installUv(userDataPath);
+  const uvVersion = uvService.getUvVersion();
+
+
+  // ////////////
+  // // Python //
+  // ////////////
+
+  // console.log("Installing python...");
+  // await installPython(uvExecutable, userDataPath);
+  // const pythonExecutablePath = pythonService.getPythonExecutablePath();
+  // if (!pythonExecutablePath) {
+  //   throw new Error('Python failed to install correctly, pythonExecutablePath was null');
+  // }
+  // const pythonVersion = pythonService.execPythonSync('import sys; print(sys.version)');
+
+
+  // ////////////////////
+  // // Griptape Nodes //
+  // ////////////////////
+
+  // console.log("Installing griptape-nodes")
+  // await installGtn(uvExecutable, userDataPath);
+  // const gtnExecutablePath = pythonService.getGriptapeNodesPath();
+  // if (!gtnExecutablePath) {
+  //   throw new Error("Griptape nodes failed to install correctly, gtnExecutablePath was null");
+  // }
+  // const gtnVersion = pythonService.getGriptapeNodesVersion();
+  // if (!gtnVersion) {
+  //   throw new Error("Griptape nodes failed to install correctly, gtnVersion was null");
+  // }
+
+
+  // //////////////////
+  // // Persist Info //
+  // //////////////////
+  
+  // console.log("Saving environment info...")
+  // const environmentInfoService = new EnvironmentInfoService(pythonService, userDataPath);
+  // environmentInfoService.saveEnvironmentInfo({
+  //   python: {
+  //     version: pythonVersion,
+  //     executable: pythonExecutablePath,
+  //   },
+  //   griptapeNodes: {
+  //     path: gtnExecutablePath,
+  //     version: gtnVersion,
+  //     installed: true
+  //   },
+  //   uv: {
+  //     version: uvVersion,
+  //     toolDir: getUvToolDir(userDataPath),
+  //     pythonInstallDir: getPythonInstallDir(userDataPath)
+  //   },
+  //   system: {
+  //     platform: process.platform,
+  //     arch: process.arch,
+  //     nodeVersion: process.version,
+  //     electronVersion: process.versions.electron || 'Unknown'
+  //   },
+  //   collectedAt: new Date().toISOString(),
+  //   errors: [],
+  // });
 }
 
 runSetup();
