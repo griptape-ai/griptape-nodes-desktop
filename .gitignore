@@ -9,8 +9,9 @@ out
 # Environment variables
 .env
 
-# Development userData directory
-_userdata
+# Development userData and document directories
+/_userdata/
+/_documents/
 
 # Generated icons
 generated/
