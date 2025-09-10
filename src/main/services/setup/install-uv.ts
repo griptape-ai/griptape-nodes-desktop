@@ -4,11 +4,11 @@ import { getUvInstallDir } from '../config/paths';
 
 export async function installUv(userDataDir: string): Promise<void> {
   const uvInstallDir = getUvInstallDir(userDataDir);
-  const child = (process.platform === 'win32') ? windows(uvInstallDir) : unix(uvInstallDir);
+  const child = (process.platform === 'win32') ? spawnWindows(uvInstallDir) : spawnUnix(uvInstallDir);
   await attachOutputForwarder(child, { logPrefix: 'INSTALL-UV' });
 }
 
-function windows(uvInstallDir: string): ChildProcess {
+function spawnWindows(uvInstallDir: string): ChildProcess {
   return spawn(
       'powershell.exe',
       [
@@ -27,9 +27,9 @@ function windows(uvInstallDir: string): ChildProcess {
     )
 }
 
-function unix(uvInstallDir: string): ChildProcess {
+function spawnUnix(uvInstallDir: string): ChildProcess {
   return exec(
-    `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" UV_NO_MODIFY_PATH=1 sh`,
+    `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`,
     {
       env: {},
     }

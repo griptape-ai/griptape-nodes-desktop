@@ -2,7 +2,6 @@ import { getGtnLibrariesBaseDir, getPythonInstallDir, getUvToolBinDir, getUvTool
 
 export function getEnv(userDataDir: string) {
   return {
-    ...process.env,
     UV_PYTHON_INSTALL_DIR: getPythonInstallDir(userDataDir),
     UV_TOOL_DIR: getUvToolDir(userDataDir),
     UV_TOOL_BIN_DIR: getUvToolBinDir(userDataDir),

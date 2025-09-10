@@ -13,22 +13,15 @@ export function getUvInstallDir(userDataPath: string): string {
   return path.join(userDataPath, 'uv');
 }
 
-export function getUvPlatformSpecificDir(userDataDir: string): string {
-  const uvInstallDir = getUvInstallDir(userDataDir);
-  const platform = process.platform;
-  const arch = process.arch;
-  return path.join(uvInstallDir, `${platform}-${arch}`);
-}
-
 export function getUvDownloadedArchivePath(userDataDir: string, uvBuild: UvBuild): string {
   const uvInstallDir = getUvInstallDir(userDataDir);
   return path.join(uvInstallDir, uvBuild.filename);
 }
 
 export function getUvExecutablePath(userDataDir: string): string {
-  const uvPlatformSpecificDir = getUvPlatformSpecificDir(userDataDir);
-  const platform = process.platform;
-  return path.join(uvPlatformSpecificDir, platform === 'win32' ? 'uv.exe' : 'uv');
+  const uvInstallDir = getUvInstallDir(userDataDir);
+  const uvExecutableName = (process.platform === 'win32') ? 'uv.exe' : 'uv';
+  return path.join(uvInstallDir, uvExecutableName);
 }
 
 export function getUvToolDir(userDataPath: string): string {

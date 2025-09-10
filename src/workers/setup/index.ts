@@ -1,6 +1,7 @@
 import { workerData } from 'worker_threads';
 import { installUv } from '../../main/services/setup/install-uv';
 import { UvService } from '../../main/services/uv-service';
+import { installPython } from '../../main/services/setup/install-python';
 
 async function runSetup() {
   console.log('[SETUP WORKER] Starting post-installation setup...');
@@ -23,23 +24,22 @@ async function runSetup() {
   console.log('[SETUP WORKER] Using gtnDefaultWorkspaceDir:', gtnDefaultWorkspaceDir);
 
   // TODO: PythonService is a horrible abstraction for this collection of methods.
-  const uvService = new UvService(userDataPath);
+  // const uvService = new UvService(userDataPath);
   
   ////////
   // UV //
   ////////
 
   console.log("Installing uv...")
-  const uvExecutable = await installUv(userDataPath);
-  const uvVersion = uvService.getUvVersion();
+  await installUv(userDataPath);
 
+  ////////////
+  // Python //
+  ////////////
 
-  // ////////////
-  // // Python //
-  // ////////////
+  console.log("Installing python...");
+  await installPython(userDataPath);
 
-  // console.log("Installing python...");
-  // await installPython(uvExecutable, userDataPath);
   // const pythonExecutablePath = pythonService.getPythonExecutablePath();
   // if (!pythonExecutablePath) {
   //   throw new Error('Python failed to install correctly, pythonExecutablePath was null');
