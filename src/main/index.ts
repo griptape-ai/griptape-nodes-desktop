@@ -79,7 +79,7 @@ const createWindow = () => {
     height: 800,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: process.platform === 'darwin' ? { x: 20, y: 18 } : undefined,
-    frame: process.platform !== 'darwin' ? false : true,
+    frame: process.platform === 'darwin' ? false : true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
