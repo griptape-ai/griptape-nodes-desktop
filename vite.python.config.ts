@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        entryFileNames: 'python-worker.js'
+        entryFileNames: 'python.js'
       }
     }
   }

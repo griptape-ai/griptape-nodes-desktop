@@ -11,7 +11,7 @@ import {
   Layers,
   ExternalLink
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useEngine } from '../contexts/EngineContext';
 import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip';

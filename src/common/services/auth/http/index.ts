@@ -1,4 +1,5 @@
 import { BrowserWindow, shell } from 'electron';
+import { EventEmitter } from "node:events";
 import express from 'express';
 import { Server } from 'http';
 import Store from 'electron-store';
@@ -12,22 +13,37 @@ interface AuthData {
   user?: any;
 }
 
-export class HttpAuthService {
+interface Events {
+  'auth:http:login:started': [];
+  'auth:http:login:succeeded': [{apiKey: string, tokens: any, user: any}];
+  'auth:http:login:failed': [{reason: string}];
+  'auth:http:apiKey:changed': [{apiKey: string}];
+}
+
+export class HttpAuthService extends EventEmitter<Events> {
   private server: Server | null = null;
   private authResolve: ((value: any) => void) | null = null;
   private authReject: ((reason?: any) => void) | null = null;
   private store: Store<AuthData>;
 
   constructor() {
+    super();
     // Initialize secure storage
-    this.store = new Store<AuthData>({
-      name: 'auth-storage',
-      encryptionKey: 'griptape-nodes-auth'
-    });
+    this.store = new Store<AuthData>();
+    
   }
 
   // Start a local dev server in some kind of lifecycle hook.
   async start() {
+
+    // React to changes to api key.
+    this.store.onDidChange('apiKey', (newValue: string, oldValue) => this.emit('auth:http:apiKey:changed', {apiKey: newValue}));
+    // Propagate the initial state?
+    const apiKey = this.store.get('apiKey');
+    if (apiKey) {
+      this.emit('auth:http:apiKey:changed', { apiKey });
+    }
+
     if (this.server) {
       console.log('Auth server already running');
       return;
@@ -116,10 +132,14 @@ export class HttpAuthService {
     }
   }
 
-
-  // Check if we have stored credentials
+  // Check if we have stored credentials\
   hasStoredCredentials(): boolean {
-    return !!this.store.get('apiKey');
+    const apiKey = this.store.get('apiKey');
+    const tokens = this.store.get('tokens');
+    const user = this.store.get('user');
+    
+    // Only return if we have complete credentials
+    return apiKey && tokens && user;
   }
 
   // Get stored credentials
@@ -148,36 +168,40 @@ export class HttpAuthService {
     }
   }
 
-  async login(): Promise<any> {
+  async login(): Promise<void> {
+    this.emit('auth:http:login:started');
+
     // Check if we have complete credentials
     const stored = this.getStoredCredentials();
     if (stored) {
       console.log('Using stored credentials');
-      return {
-        success: true,
-        ...stored
-      };
+      this.emit('auth:http:login:succeeded', {
+        apiKey: stored.apiKey,
+        tokens: stored.tokens,
+        user: stored.tokens,
+      });
+      return;
     }
-    
-    console.log('No complete credentials, starting OAuth flow');
 
     return new Promise((resolve, reject) => {
       this.authResolve = resolve;
       this.authReject = reject;
 
       const state = Math.random().toString(36).substring(7);
-      shell.openExternal(`https://auth.cloud.griptape.ai/authorize?` +
+      const url = `https://auth.cloud.griptape.ai/authorize?` +
         `response_type=code&` +
         `client_id=bK5Fijuoy90ftmcwVUZABA5THOZyzHnH&` +
         `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
         `audience=${encodeURIComponent('https://cloud.griptape.ai/api')}&` +
         `state=${state}&` +
-        `scope=openid%20profile%20email`);
+        `scope=openid%20profile%20email`;
+      shell.openExternal(url);
 
       // Set timeout
       setTimeout(() => {
         if (this.authResolve) {
           this.authReject?.(new Error('Authentication timeout'));
+          this.emit('auth:http:login:failed', { reason: "Timedout after 5 minutes" });
           this.authResolve = null;
           this.authReject = null;
         }
@@ -201,16 +225,12 @@ export class HttpAuthService {
       let apiKey = this.store.get('apiKey');
       if (!apiKey) {
         apiKey = await this.generateApiKey(tokens.access_token);
-        console.log('Generated new API key:', apiKey);
         this.store.set('apiKey', apiKey);
-      } else {
-        console.log('Using existing API key');
       }
-      
+
       // Store credentials
       this.store.set('tokens', tokens);
       this.store.set('user', userInfo);
-      console.log('Credentials stored successfully');
       
       // Resolve the auth promise if it exists
       this.authResolve?.({
@@ -219,9 +239,15 @@ export class HttpAuthService {
         user: userInfo,
         apiKey
       });
+      this.emit('auth:http:login:succeeded', {
+        apiKey,
+        tokens,
+        user: userInfo,
+      });
     } catch (error) {
       console.error('Error handling auth code:', error);
       this.authReject?.(error);
+      this.emit('auth:http:login:failed', { reason: error.toString() });
     } finally {
       this.authResolve = null;
       this.authReject = null;

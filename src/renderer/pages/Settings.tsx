@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { cn } from '../../lib/utils';
+import { cn } from '../utils';
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth();

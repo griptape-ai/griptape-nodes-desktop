@@ -1,8 +1,8 @@
 import { spawn } from 'child_process';
-import { getUvExecutablePath } from './config/paths';
-import { getEnv } from './config/env';
-import { attachOutputForwarder } from '../utils/child-process/output-forwarder';
-import { collectStdout } from '../utils/child-process/collect-stdout';
+import { getUvExecutablePath } from '../config/paths';
+import { getEnv } from '../config/env';
+import { attachOutputForwarder } from '../child-process/output-forwarder';
+import { collectStdout } from '../child-process/collect-stdout';
 
 export class UvService {
   private userDataDir: string;

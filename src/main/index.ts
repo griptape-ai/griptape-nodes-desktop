@@ -2,14 +2,16 @@ import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron';
 import { Worker } from 'worker_threads';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
-import { PythonService } from './services/python-service';
-import { EnvironmentInfoService } from './services/setup/environment-info';
-import { GtnService } from './services/gtn-service';
-import { EngineService } from './services/engine';
-import { HttpAuthService } from './services/auth/http';
-import { CustomAuthService } from './services/auth/custom';
-import { getPythonVersion } from './services/config/versions';
-import { UvService } from './services/uv-service';
+import { PythonService } from '../common/services/python-service';
+import { EnvironmentInfoService } from '../common/services/environment-info';
+import { GtnService } from '../common/services/gtn-service';
+import { EngineService } from '../common/services/engine-service';
+import { HttpAuthService } from '../common/services/auth/http';
+import { CustomAuthService } from '../common/services/auth/custom';
+import { getPythonVersion } from '../common/config/versions';
+import { UvService } from '../common/services/uv-service';
+import { SetupService } from '../common/services/setup-service';
+import { Coordinator } from './coordinator';
 
 // Build info injected at compile time
 declare const __BUILD_INFO__: {
@@ -34,6 +36,10 @@ if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
   const devUserDataPath = path.join(app.getAppPath(), '_userdata');
   app.setPath('userData', devUserDataPath);
   console.log('Development mode: userData set to', devUserDataPath);
+
+  const devDocumentsPath = path.join(app.getAppPath(), '_documents');
+  app.setPath('documents', devDocumentsPath);
+  console.log('Development mode: documents set to', devDocumentsPath);
 }
 
 // Initialize services with proper paths
@@ -51,75 +57,20 @@ if (process.env.NODE_ENV === 'development' && process.env.AUTH_SCHEME === 'custo
 
 // Services
 const uvService = new UvService(userDataPath);
-const pythonService = new PythonService(userDataPath);
 const environmentInfoService = new EnvironmentInfoService(userDataPath);
-const griptapeNodesService = new GtnService(userDataPath, gtnDefaultWorkspaceDir);
-const engineService = new EngineService(pythonService, griptapeNodesService, userDataPath);
-const authService = (process.env.AUTH_SCHEME === 'custom')
-  ? new CustomAuthService()
-  : new HttpAuthService();
-
-type State = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE';
-
-// GLOBAL STATE, yippie!
-let setupState: State = 'NOT_STARTED';
-let loginState: State = 'NOT_STARTED';
-let globalApiKey: string|null = null;
-let gtnInitializationState: State = 'NOT_STARTED';
-
-
-const setup = () => {
-  console.log("setup: NOT_STARTED => IN_PROGRESS")
-  setupState = "IN_PROGRESS";
-  const setupWorker = new Worker(path.join(__dirname, 'worker.js'), {
-    workerData: { userDataPath, gtnDefaultWorkspaceDir }
-  });
-  setupWorker.on('exit', (code) => {
-    if (code !== 0) {
-      throw new Error(`Setup worker exited with non-zero exit code: ${code}`);
-    }
-
-    console.log("setup: IN_PROGRESS => DONE")
-    setupState = "DONE";
-    proceed();
-  });
-}
-
-// This is horrible, but better than the ai stuff.
-const proceed = () => {
-  if (setupState == 'NOT_STARTED') {
-    setup();
-  }
-  if (loginState == 'NOT_STARTED') {
-    const creds = authService.getStoredCredentials();
-    if (creds && creds.apiKey) {
-      globalApiKey = creds.apiKey;
-      loginState = 'DONE';
-    }
-  }
-  if (setupState == 'DONE' && loginState == 'DONE') {
-    // start gtn init
-    console.log("gtn-init: NOT_STARTED => IN_PROGRESS")
-    gtnInitializationState = 'IN_PROGRESS';
-    engineService.setInitializing();
-    if (!globalApiKey) {
-      throw new Error("Expected to have an api key now.")
-    }
-    griptapeNodesService.initialize({
-      apiKey: globalApiKey,
-      workspaceDirectory: gtnDefaultWorkspaceDir
-    })
-    .then(() => griptapeNodesService.syncLibraries())
-    .then(() => {
-      console.log("gtn-init: IN_PROGRESS => DONE");
-      gtnInitializationState = 'DONE';
-      engineService.start();
-
-      griptapeNodesService.runGtn(["config", "list"]);
-    })
-    
-  }
-}
+const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir);
+const engineService = new EngineService(userDataPath, gtnService);
+// const authService = (process.env.AUTH_SCHEME === 'custom')
+//   ? new CustomAuthService()
+//   : new HttpAuthService();
+const authService = new HttpAuthService();
+const setupService = new SetupService(userDataPath);
+const coordinator = new Coordinator(
+  setupService,
+  authService,
+  gtnService,
+  engineService,
+);
 
 const createWindow = () => {
   // Create the browser window.
@@ -158,26 +109,12 @@ const createWindow = () => {
   setupIPC();
 }
 
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
-  console.log('[INIT] App ready event fired');
-
-  authService.start();
-  
-
+  coordinator.start();
   createWindow();
-
-  // Debug: Check resource paths
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('process.cwd():', process.cwd());
-  console.log('app.getAppPath():', app.getAppPath());
-
-  
-  proceed();
-  
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -396,38 +333,7 @@ const setupIPC = () => {
   });
 
   // Handle Auth Login
-  ipcMain.handle('auth:login', async () => {
-    try {
-      loginState = 'IN_PROGRESS'
-      console.log("loginState: NOT_STARTED => IN_PROGRESS")
-      const result = await authService.login();
-
-      const apiKey = result.apiKey;
-      if (!apiKey) {
-        throw new Error("Login did not return an apiKey");
-      }
-
-      console.log("loginState: IN_PROGRESS => DONE")
-      loginState = 'DONE';
-
-      globalApiKey = apiKey;
-      proceed();
-
-      // Send success event to all windows
-      BrowserWindow.getAllWindows().forEach(window => {
-        window.webContents.send('auth:login-success', result);
-      });
-
-      return result;
-    } catch (error) {
-      // Send error event to all windows
-      BrowserWindow.getAllWindows().forEach(window => {
-        window.webContents.send('auth:login-error', error.message);
-      });
-
-      throw error;
-    }
-  });
+  ipcMain.handle('auth:login', () => authService.login());
 
   // Handle environment variable requests
   ipcMain.handle('get-env-var', (event, key: string) => {
@@ -494,31 +400,14 @@ const setupIPC = () => {
     }
   });
 
-  // Set up engine event listeners to notify renderer
-  // First remove any existing listeners to prevent duplicates
-  engineService.removeAllListeners('status-changed');
-  engineService.removeAllListeners('log');
-
-  engineService.on('status-changed', (status) => {
-    BrowserWindow.getAllWindows().forEach(window => {
-      window.webContents.send('engine:status-changed', status);
-    });
-  });
-
-  engineService.on('log', (log) => {
-    BrowserWindow.getAllWindows().forEach(window => {
-      window.webContents.send('engine:log', log);
-    });
-  });
-
   // Griptape Nodes configuration handlers
   ipcMain.handle('gtn:get-workspace', () => {
-    return griptapeNodesService.getWorkspaceDirectory();
+    return gtnService.getWorkspaceDirectory();
   });
 
   ipcMain.handle('gtn:set-workspace', async (event, directory: string) => {
     try {
-      const result = await griptapeNodesService.updateWorkspaceDirectory(directory);
+      const result = await gtnService.updateWorkspaceDirectory(directory);
 
       if (result.success) {
         // Restart engine if it was running

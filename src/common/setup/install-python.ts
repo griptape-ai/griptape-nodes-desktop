@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import { spawn } from 'child_process';
-import { attachOutputForwarder } from '../../utils/child-process/output-forwarder';
-import { getEnv } from '../config/env';
-import { getPythonVersion } from '../config/versions';
-import { getUvExecutablePath } from '../config/paths';
+import { attachOutputForwarder } from '../main/utils/child-process/output-forwarder';
+import { getEnv } from '../main/services/config/env';
+import { getPythonVersion } from '../main/services/config/versions';
+import { getUvExecutablePath } from '../main/services/config/paths';
 
 
 export async function installPython(userDataDir: string): Promise<void> {

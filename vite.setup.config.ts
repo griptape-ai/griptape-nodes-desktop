@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        entryFileNames: 'worker.js'
+        entryFileNames: 'setup.js'
       }
     }
   }

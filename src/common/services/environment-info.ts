@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { PythonService } from '../python-service';
 
 export interface EnvironmentInfo {
   python: {

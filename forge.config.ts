@@ -81,13 +81,13 @@ const config: ForgeConfig = {
           target: 'preload',
         },
         {
-          entry: 'src/workers/setup/index.ts',
-          config: 'vite.worker.config.ts',
+          entry: 'src/setup/index.ts',
+          config: 'vite.setup.config.ts',
           target: 'main',
         },
         {
-          entry: 'src/workers/python-worker.ts',
-          config: 'vite.python-worker.config.ts',
+          entry: 'src/python/index.ts',
+          config: 'vite.python.config.ts',
           target: 'main',
         },
       ],

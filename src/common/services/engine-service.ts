@@ -1,8 +1,8 @@
 import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { PythonService } from '../python-service';
-import { GtnService } from '../gtn-service';
-import { attachOutputForwarder } from '../../utils/child-process/output-forwarder';
+import { PythonService } from './python-service';
+import { GtnService } from './gtn-service';
+import { attachOutputForwarder } from '../child-process/output-forwarder';
 import { getGtnExecutablePath } from '../config/paths';
 import { getEnv } from '../config/env';
 
@@ -14,10 +14,13 @@ export interface EngineLog {
   message: string;
 }
 
-export class EngineService extends EventEmitter {
-  private pythonService: PythonService;
-  private gtnService: GtnService;
-  private userDataDir: string;
+interface Events {
+  'engine:status-changed': [EngineStatus];
+  'engine:log': [string]
+  'engine:logs-cleared': [];
+}
+
+export class EngineService extends EventEmitter<Events> {
   private engineProcess: ChildProcess | null = null;
   private status: EngineStatus = 'not-ready';
   private logs: EngineLog[] = [];
@@ -28,12 +31,11 @@ export class EngineService extends EventEmitter {
   private stdoutBuffer = ''; // Buffer for incomplete stdout lines
   private stderrBuffer = ''; // Buffer for incomplete stderr lines
 
-  constructor(pythonService: PythonService, gtnService: GtnService, userDataDir: string) {
+  constructor(
+    private userDataDir: string,
+    private gtnService: GtnService,
+  ) {
     super();
-    this.pythonService = pythonService;
-    this.gtnService = gtnService;
-    this.userDataDir = userDataDir;
-    this.checkStatus();
   }
 
   /**
@@ -49,7 +51,7 @@ export class EngineService extends EventEmitter {
   setInitializing(): void {
     this.status = 'initializing';
     this.addLog('stdout', 'Setting up Griptape Nodes environment...');
-    this.emit('status-changed', this.status);
+    this.emit('engine:status-changed', this.status);
   }
 
   /**
@@ -64,49 +66,7 @@ export class EngineService extends EventEmitter {
    */
   clearLogs(): void {
     this.logs = [];
-    this.emit('logs-cleared');
-  }
-
-  /**
-   * Check if gtn init has been run
-   */
-  private isInitialized(): boolean {
-    return this.gtnService.isInitialized();
-  }
-
-  /**
-   * Check and update engine status
-   */
-  checkStatus(): void {
-    console.warn("checkStatus not yet implemented");
-    // const oldStatus = this.status;
-    // console.log('[ENGINE] Checking status...');
-
-    // const gtnReady = this.pythonService.isGriptapeNodesReady();
-    // console.log('[ENGINE] Griptape-nodes ready:', gtnReady);
-    // if (!gtnReady) {
-    //   // Don't override initializing status if we're in the middle of setup
-    //   if (this.status !== 'initializing') {
-    //     this.status = 'not-ready';
-    //     this.addLog('stderr', 'Griptape Nodes is not installed');
-    //   }
-    // } else if (!this.isInitialized()) {
-    //   const isInit = this.isInitialized();
-    //   console.log('[ENGINE] Griptape-nodes initialized:', isInit);
-    //   this.status = 'not-ready';
-    //   this.addLog('stderr', 'Griptape Nodes not initialized. Run "gtn init" first.');
-    // } else if (this.engineProcess && !this.engineProcess.killed) {
-    //   this.status = 'running';
-    // } else {
-    //   this.status = 'ready';
-    // }
-
-    // if (oldStatus !== this.status) {
-    //   console.log('[ENGINE] Status changed from', oldStatus, 'to', this.status);
-    //   this.emit('status-changed', this.status);
-    // } else {
-    //   console.log('[ENGINE] Status unchanged:', this.status);
-    // }
+    this.emit('engine:logs-cleared');
   }
 
   /**
@@ -124,7 +84,7 @@ export class EngineService extends EventEmitter {
       // Remove save/restore cursor position
       .replace(/\x1b\[[su]/gi, '')
       // Remove Windows-specific ANSI sequences
-      .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+      // .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
       // Remove color reset and other SGR sequences
       .replace(/\x1b\[\d*;?\d*;?\d*;?\d*m/g, '')
       // Remove bracketed paste mode
@@ -158,25 +118,20 @@ export class EngineService extends EventEmitter {
       this.logs = this.logs.slice(-this.maxLogSize);
     }
 
-    this.emit('log', log);
+    this.emit('engine:log', log);
   }
 
   /**
    * Start the engine
    */
   async start(): Promise<void> {
-    if (this.status === 'not-ready') {
-      throw new Error('Engine cannot be started. Griptape Nodes is not ready.');
-    }
-
-    if (this.status === 'running') {
-      console.log('Engine is already running');
+    const gtnPath = this.gtnService.gtnExecutablePath;
+    if (!this.gtnService.gtnExecutableExists()) {
+      this.setStatus('initializing');
       return;
     }
 
     try {
-      const gtnPath = getGtnExecutablePath(this.userDataDir);
-
       // Clear logs from previous session when starting fresh
       this.logs = [];
       this.addLog('stdout', 'Starting Griptape Nodes engine...');
@@ -199,6 +154,7 @@ export class EngineService extends EventEmitter {
         },
         stdio: ['pipe', 'pipe', 'pipe']
       });
+      this.setStatus('running');
 
       attachOutputForwarder(this.engineProcess, { logPrefix: "GTN-ENGINE" })
 
@@ -287,17 +243,16 @@ export class EngineService extends EventEmitter {
         }
 
         this.engineProcess = null;
-        this.checkStatus();
 
         // Auto-restart if it crashed unexpectedly
         if (code !== 0 && this.restartAttempts < this.maxRestartAttempts) {
           this.restartAttempts++;
           this.addLog('stdout', `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
           setTimeout(() => this.start(), this.restartDelay);
-        } else if (this.restartAttempts >= this.maxRestartAttempts) {
+          this.setStatus('ready');
+        } else {
           this.addLog('stderr', 'Maximum restart attempts reached. Engine will not auto-restart.');
-          this.status = 'error';
-          this.emit('status-changed', this.status);
+          this.setStatus('error');
         }
       });
 
@@ -305,21 +260,21 @@ export class EngineService extends EventEmitter {
       this.engineProcess.on('error', (error) => {
         this.addLog('stderr', `Engine process error: ${error.message}`);
         this.addLog('stderr', `Error code: ${(error as any).code}, errno: ${(error as any).errno}`);
-        this.status = 'error';
-        this.emit('status-changed', this.status);
+        this.setStatus('error');
       });
-
-      // Update status
-      this.status = 'running';
-      this.emit('status-changed', this.status);
-      this.restartAttempts = 0; // Reset restart attempts on successful start
 
     } catch (error) {
       this.addLog('stderr', `Failed to start engine: ${error.message}`);
-      this.status = 'error';
-      this.emit('status-changed', this.status);
-      throw error;
+      this.setStatus('error');
     }
+  }
+
+  private setStatus(status: EngineStatus) {
+    if (status == this.status) {
+      return;
+    }
+    this.status = status;
+    this.emit('engine:status-changed', status);
   }
 
   /**
@@ -351,7 +306,6 @@ export class EngineService extends EventEmitter {
         this.engineProcess?.stdout?.removeAllListeners();
         this.engineProcess?.stderr?.removeAllListeners();
         this.engineProcess = null;
-        this.checkStatus();
         resolve();
       });
 
@@ -374,8 +328,6 @@ export class EngineService extends EventEmitter {
    */
   async initialize(): Promise<void> {
     console.log('[ENGINE] Initialize called');
-    // Re-check status to see if conditions have changed
-    this.checkStatus();
 
     // Auto-start the engine if it's ready
     if (this.status === 'ready') {
@@ -388,7 +340,7 @@ export class EngineService extends EventEmitter {
     } else {
       console.log(`[ENGINE] Not ready to start. Status: ${this.status}`);
       // Emit status change to notify UI of current state
-      this.emit('status-changed', this.status);
+      this.emit('engine:status-changed', this.status);
     }
   }
 

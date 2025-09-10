@@ -1,21 +1,21 @@
 import * as path from 'path';
 
 
+
 export function getXdgConfigHome(userDataPath: string): string {
   return path.join(userDataPath, 'xdg_config_home');
 }
 
-export function getGtnLibrariesBaseDir(userDataPath: string): string {
-  return path.join(userDataPath, 'gtn-libraries');
+export function getXdgDataHome(userDataPath: string): string {
+  return path.join(userDataPath, 'xdg_data_home');
+}
+
+export function getGtnConfigPath(userDataDir: string): string {
+  return path.join(getXdgConfigHome(userDataDir), "griptape_nodes", "griptape_nodes_config.json");
 }
 
 export function getUvInstallDir(userDataPath: string): string {
   return path.join(userDataPath, 'uv');
-}
-
-export function getUvDownloadedArchivePath(userDataDir: string, uvBuild: UvBuild): string {
-  const uvInstallDir = getUvInstallDir(userDataDir);
-  return path.join(uvInstallDir, uvBuild.filename);
 }
 
 export function getUvExecutablePath(userDataDir: string): string {

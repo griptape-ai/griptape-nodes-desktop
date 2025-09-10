@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { getBuildInfo } from './src/shared/build-info';
+import { getBuildInfo } from './src/common/build-info';
 import { resolve } from 'path';
 import { commonWatchIgnored } from './vite.common.config';
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ExternalLink, Loader2 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '../utils';
 import headerLogoSrc from '/griptape_nodes_header_logo.svg';
 import animatedNodesSrc from '/animated_nodes.svg';
 
