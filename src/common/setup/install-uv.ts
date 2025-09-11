@@ -1,6 +1,6 @@
 import { ChildProcess, exec, spawn } from 'child_process';
-import { attachOutputForwarder } from '../main/utils/child-process/output-forwarder';
-import { getUvInstallDir } from '../main/services/config/paths';
+import { attachOutputForwarder } from '../../common/child-process/output-forwarder';
+import { getCwd, getUvInstallDir } from '../../common/config/paths';
 
 export async function installUv(userDataDir: string): Promise<void> {
   const uvInstallDir = getUvInstallDir(userDataDir);
@@ -16,6 +16,7 @@ function spawnWindows(uvInstallDir: string): ChildProcess {
         '-c', `$env:UV_INSTALL_DIR = "${uvInstallDir}";irm https://astral.sh/uv/install.ps1 | iex`,
       ],
       {
+        cwd: getCwd(this.userDataDir),
         // Important! We must not use the default value of `process.env`. If we do,
         // then we may indavertently inherit incorrect powershell module paths from
         // a parent process. For example if we are in development mode and run `npm start`
@@ -31,6 +32,7 @@ function spawnUnix(uvInstallDir: string): ChildProcess {
   return exec(
     `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`,
     {
+      cwd: getCwd(this.userDataDir),
       env: {},
     }
   )

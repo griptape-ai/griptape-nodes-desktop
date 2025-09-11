@@ -1,11 +1,11 @@
 import { parentPort, workerData } from 'worker_threads';
-import { installUv } from './install-uv';
-import { findPythonExecutablePath, installPython } from './install-python';
+import { getGtnExecutablePath, getUvExecutablePath } from '../../common/config/paths';
+import { GtnService } from '../../common/services/gtn-service';
+import { PythonService } from '../../common/services/python-service';
+import { UvService } from '../../common/services/uv-service';
 import { installGtn } from './install-gtn';
-import { getGtnExecutablePath, getUvExecutablePath } from '../common/config/paths';
-import { UvService } from '../common/services/uv-service';
-import { PythonService } from '../common/services/python-service';
-import { GtnService } from '../common/services/gtn-service';
+import { findPythonExecutablePath, installPython } from './install-python';
+import { installUv } from './install-uv';
 
 async function setupWorkerMain() {
   const userDataPath = workerData?.userDataPath;

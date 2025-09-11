@@ -1,7 +1,7 @@
-import React from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
+import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { cn } from '../utils';
+import { cn } from '../utils/utils';
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();

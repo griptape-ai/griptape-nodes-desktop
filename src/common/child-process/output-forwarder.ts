@@ -1,5 +1,6 @@
 import { ChildProcess } from 'child_process';
 import readline from 'readline';
+import { logger } from '@/logger';
 
 export interface OutputForwarderOptions {
   logPrefix: string;
@@ -17,14 +18,14 @@ export function attachOutputForwarder(
     if (child.stdout) {
       readline
         .createInterface({ input: child.stdout })
-        .on('line', (line) => console.log(`[${logPrefix}] ${line}`));
+        .on('line', (line) => logger.info(`[${logPrefix}] ${line}`));
     }
 
     // stderr
     if (child.stderr) {
       readline
         .createInterface({ input: child.stderr })
-        .on('line', (line) => console.error(`[${errorPrefix}] ${line}`));
+        .on('line', (line) => logger.error(`[${errorPrefix}] ${line}`));
     }
 
     child.on('close', (code) => {

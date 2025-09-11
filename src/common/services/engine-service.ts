@@ -1,10 +1,11 @@
 import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { PythonService } from './python-service';
-import { GtnService } from './gtn-service';
 import { attachOutputForwarder } from '../child-process/output-forwarder';
-import { getGtnExecutablePath } from '../config/paths';
 import { getEnv } from '../config/env';
+import { getCwd, getGtnExecutablePath } from '../config/paths';
+import { GtnService } from './gtn-service';
+import { PythonService } from './python-service';
+import { logger } from '@/logger';
 
 export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error';
 
@@ -16,7 +17,7 @@ export interface EngineLog {
 
 interface Events {
   'engine:status-changed': [EngineStatus];
-  'engine:log': [string]
+  'engine:log': [EngineLog]
   'engine:logs-cleared': [];
 }
 
@@ -135,11 +136,18 @@ export class EngineService extends EventEmitter<Events> {
       // Clear logs from previous session when starting fresh
       this.logs = [];
       this.addLog('stdout', 'Starting Griptape Nodes engine...');
-      console.log('[ENGINE] Starting Griptape Nodes engine...');
-      console.log(`[ENGINE] Command: ${gtnPath} engine`);
+      logger.info('[ENGINE] Starting Griptape Nodes engine...');
+      logger.info(`[ENGINE] Command: ${gtnPath} engine`);
 
       // Spawn the engine process from config directory so it finds the config file
-      this.engineProcess = spawn(gtnPath, ['--no-update', 'engine'], {
+      this.engineProcess = spawn(
+        gtnPath,
+        [
+          '--no-update',
+          'engine',
+        ],
+        {
+        cwd: getCwd(this.userDataDir),
         env: {
           ...getEnv(this.userDataDir),
           // Force color output for terminals that support it
@@ -282,7 +290,7 @@ export class EngineService extends EventEmitter<Events> {
    */
   async stop(): Promise<void> {
     if (!this.engineProcess || this.engineProcess.killed) {
-      console.log('Engine is not running');
+      logger.info('Engine is not running');
       return;
     }
 
@@ -327,18 +335,18 @@ export class EngineService extends EventEmitter<Events> {
    * Initialize the service and start engine if possible
    */
   async initialize(): Promise<void> {
-    console.log('[ENGINE] Initialize called');
+    logger.info('[ENGINE] Initialize called');
 
     // Auto-start the engine if it's ready
     if (this.status === 'ready') {
-      console.log('[ENGINE] Status is ready, attempting to start...');
+      logger.info('[ENGINE] Status is ready, attempting to start...');
       try {
         await this.start();
       } catch (error) {
-        console.error('[ENGINE] Failed to auto-start engine:', error);
+        logger.error('[ENGINE] Failed to auto-start engine:', error);
       }
     } else {
-      console.log(`[ENGINE] Not ready to start. Status: ${this.status}`);
+      logger.info(`[ENGINE] Not ready to start. Status: ${this.status}`);
       // Emit status change to notify UI of current state
       this.emit('engine:status-changed', this.status);
     }

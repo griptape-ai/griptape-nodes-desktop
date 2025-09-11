@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '@/logger';
 
 export interface EnvironmentInfo {
   python: {
@@ -45,9 +46,9 @@ export class EnvironmentInfoService {
 
       // Write environment info to file
       fs.writeFileSync(this.envInfoFile, JSON.stringify(info, null, 2));
-      console.log('Environment info saved to:', this.envInfoFile);
+      logger.info('Environment info saved to:', this.envInfoFile);
     } catch (error) {
-      console.error('Failed to save environment info:', error);
+      logger.error('Failed to save environment info:', error);
       throw error;
     }
   }
@@ -63,7 +64,7 @@ export class EnvironmentInfoService {
       }
       return null;
     } catch (error) {
-      console.error('Failed to load environment info:', error);
+      logger.error('Failed to load environment info:', error);
       return null;
     }
   }
@@ -82,18 +83,10 @@ export class EnvironmentInfoService {
     try {
       if (fs.existsSync(this.envInfoFile)) {
         fs.unlinkSync(this.envInfoFile);
-        console.log('Environment info cleared');
+        logger.info('Environment info cleared');
       }
     } catch (error) {
-      console.error('Failed to clear environment info:', error);
+      logger.error('Failed to clear environment info:', error);
     }
-  }
-
-  /**
-   * Refresh environment info without reinstalling
-   */
-  async refreshEnvironmentInfo(): Promise<EnvironmentInfo> {
-    console.log('Refreshing environment information...');
-    return this.runPostInstallSetup();
   }
 }

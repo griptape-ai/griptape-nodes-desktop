@@ -1,12 +1,12 @@
-import type { ForgeConfig } from '@electron-forge/shared-types';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerRpm } from '@electron-forge/maker-rpm';
-import { PublisherGithub } from '@electron-forge/publisher-github';
-import { VitePlugin } from '@electron-forge/plugin-vite';
+import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
-import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { VitePlugin } from '@electron-forge/plugin-vite';
+import { PublisherGithub } from '@electron-forge/publisher-github';
+import type { ForgeConfig } from '@electron-forge/shared-types';
 import { generateAssets } from './forge.hooks';
 
 const config: ForgeConfig = {
@@ -81,12 +81,12 @@ const config: ForgeConfig = {
           target: 'preload',
         },
         {
-          entry: 'src/setup/index.ts',
+          entry: 'src/workers/setup/index.ts',
           config: 'vite.setup.config.ts',
           target: 'main',
         },
         {
-          entry: 'src/python/index.ts',
+          entry: 'src/workers/python/index.ts',
           config: 'vite.python.config.ts',
           target: 'main',
         },

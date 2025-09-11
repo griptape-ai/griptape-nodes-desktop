@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
-import { useEngine } from '../contexts/EngineContext';
-import { List, type RowComponentProps } from 'react-window';
 import Convert from 'ansi-to-html';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { List, type RowComponentProps } from 'react-window';
+import { useEngine } from '../contexts/EngineContext';
 
 const ansiConverter = new Convert({
   fg: '#e5e7eb',
@@ -198,7 +198,7 @@ const Engine: React.FC = () => {
             linkIndex++;
 
             // Clean up the text by removing ANSI color codes and control characters
-            let cleanText = text
+            const cleanText = text
               // Remove ANSI color codes like [1;34m and [0m
               .replace(/\x1b?\[[0-9;]*m/g, '')
               // Remove control characters (including char code 26 - SUB character)

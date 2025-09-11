@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { cn } from '../utils';
+import { cn } from '../utils/utils';
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth();
@@ -35,26 +35,6 @@ const Settings: React.FC = () => {
       setError('Failed to load environment information');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const refreshEnvironmentInfo = async () => {
-    setRefreshing(true);
-    setError(null);
-    
-    try {
-      const result = await window.pythonAPI.refreshEnvironmentInfo();
-      
-      if (result.success && result.data) {
-        setEnvironmentInfo(result.data);
-      } else {
-        setError(result.error || 'Failed to refresh environment information');
-      }
-    } catch (err) {
-      console.error('Failed to refresh environment info:', err);
-      setError('Failed to refresh environment information');
-    } finally {
-      setRefreshing(false);
     }
   };
 

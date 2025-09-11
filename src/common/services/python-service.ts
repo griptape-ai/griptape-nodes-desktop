@@ -1,7 +1,8 @@
 import { ChildProcess, spawn } from 'child_process';
-import { getEnv } from '../config/env';
-import { attachOutputForwarder } from '../child-process/output-forwarder';
 import { collectStdout } from '../child-process/collect-stdout';
+import { attachOutputForwarder } from '../child-process/output-forwarder';
+import { getEnv } from '../config/env';
+import { getCwd } from '../config/paths';
 
 export class PythonService {
   constructor(
@@ -18,7 +19,8 @@ export class PythonService {
 
   private spawnPython(command: string): ChildProcess {
     const env = getEnv(this.userDataDir);
-    const child = spawn(this.pythonExecutablePath, ['-c', command], { env });
+    const cwd = getCwd(this.userDataDir);
+    const child = spawn(this.pythonExecutablePath, ['-c', command], { cwd, env });
     attachOutputForwarder(child, { logPrefix: `python ${command}` });
     return child;
   }

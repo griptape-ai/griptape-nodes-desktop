@@ -1,10 +1,11 @@
-import { CustomAuthService } from "../common/services/auth/custom";
-import { SetupService } from "../common/services/setup-service"
-import { Bus } from "./bus";
-import { HttpAuthService } from "../common/services/auth/http";
-import { EngineService } from "../common/services/engine-service";
 import { BrowserWindow } from "electron";
 import { GtnService } from "src/common/services/gtn-service";
+import { CustomAuthService } from "../common/services/auth/custom";
+import { HttpAuthService } from "../common/services/auth/http";
+import { EngineService } from "../common/services/engine-service";
+import { SetupService } from "../common/services/setup-service"
+import { Bus } from "./bus";
+import { logger } from '@/logger';
 
 type AppState = {
     apiKey?: string,
@@ -30,19 +31,19 @@ export class Coordinator {
         this.state = {};
         
         this.setupService.on('setup:uv:succeeded', ({ uvExecutablePath, uvVersion }) => {
-            console.log("[COORD] this.setupService.on('setup:uv:succeeded')");
+            logger.info("[COORD] this.setupService.on('setup:uv:succeeded')");
             this.state.uvExecutablePath = uvExecutablePath;
             this.state.uvVersion = uvVersion;
         });
         
         this.setupService.on('setup:python:succeeded', ({ pythonExecutablePath, pythonVersion }) => {
-            console.log("[COORD] this.setupService.on('setup:python:succeeded')");
+            logger.info("[COORD] this.setupService.on('setup:python:succeeded')");
             this.state.pythonExecutablePath = pythonExecutablePath;
             this.state.pythonVersion = pythonVersion;
         });
         
         this.setupService.on('setup:gtn:succeeded', async ({ gtnExecutablePath, gtnVersion }) => {
-            console.log("[COORD] this.setupService.on('setup:gtn:succeeded')");
+            logger.info("[COORD] this.setupService.on('setup:gtn:succeeded')");
             this.state.gtnExecutablePath = gtnExecutablePath;
             this.state.gtnVersion = gtnVersion;
             
@@ -56,18 +57,18 @@ export class Coordinator {
             // TRY NOW?
             
             // ????? NOW!? --- no after initializing for the first time of course - a new event!
-            console.log("[COORD] setup:gtn:succeeded - engineService.start()");
+            logger.info("[COORD] setup:gtn:succeeded - engineService.start()");
             engineService.start();
         });
         
         this.authService.on('auth:http:login:started', () => {
-            console.log("[COORD] this.authService.on('auth:http:login:started')");
+            logger.info("[COORD] this.authService.on('auth:http:login:started')");
         })
         
         this.authService.on('auth:http:login:succeeded', async (results) => {
             const { apiKey } = results;
             const partialApiKey = [apiKey.slice(0, 7), apiKey.slice(-5, -1)].join("...");
-            console.log("[COORD] this.authService.on('auth:http:login:succeeded') apikey: ", partialApiKey);
+            logger.info("[COORD] this.authService.on('auth:http:login:succeeded') apikey: ", partialApiKey);
             this.state.apiKey = apiKey;
 
             // Send success event to all windows
@@ -76,25 +77,25 @@ export class Coordinator {
             });
             
             // ????? NOW!? --- no after initializing for the first time of course - a new event!
-            console.log("[COORD] auth:http:login:succeeded - engineService.start()");
+            logger.info("[COORD] auth:http:login:succeeded - engineService.start()");
             engineService.start();
         });
 
         this.authService.on('auth:http:apiKey:changed', async ({ apiKey }) => {
             const partialApiKey = [apiKey.slice(0, 7), apiKey.slice(-5, -1)].join("...");
-            console.log("[COORD] await gtnService.initialize({apiKey}) apiKey:", partialApiKey);
+            logger.info("[COORD] await gtnService.initialize({apiKey}) apiKey:", partialApiKey);
             await gtnService.initialize({apiKey});
         })
         
         this.authService.on('auth:http:login:failed', ({ reason }) => {
-            console.log("[COORD] this.authService.on('auth:http:login:failed')");
+            logger.info("[COORD] this.authService.on('auth:http:login:failed')");
             BrowserWindow.getAllWindows().forEach(window => {
                 window.webContents.send('auth:login-error', reason);
             });
         });
         
         this.engineService.on('engine:status-changed', (status) => {
-            console.log("[COORD] this.engineService.on('engine:status-changed') status=", status);
+            logger.info("[COORD] this.engineService.on('engine:status-changed') status=", status);
             BrowserWindow.getAllWindows().forEach(window => {
                 window.webContents.send('engine:status-changed', status);
             });

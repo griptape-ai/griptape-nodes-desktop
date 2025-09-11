@@ -1,17 +1,16 @@
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron';
-import { Worker } from 'worker_threads';
 import path from 'node:path';
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron';
 import started from 'electron-squirrel-startup';
-import { PythonService } from '../common/services/python-service';
+import { getPythonVersion } from '../common/config/versions';
+import { CustomAuthService } from '../common/services/auth/custom';
+import { HttpAuthService } from '../common/services/auth/http';
+import { EngineService } from '../common/services/engine-service';
 import { EnvironmentInfoService } from '../common/services/environment-info';
 import { GtnService } from '../common/services/gtn-service';
-import { EngineService } from '../common/services/engine-service';
-import { HttpAuthService } from '../common/services/auth/http';
-import { CustomAuthService } from '../common/services/auth/custom';
-import { getPythonVersion } from '../common/config/versions';
-import { UvService } from '../common/services/uv-service';
 import { SetupService } from '../common/services/setup-service';
+import { UvService } from '../common/services/uv-service';
 import { Coordinator } from './coordinator';
+import { logger } from '@/logger';
 
 // Build info injected at compile time
 declare const __BUILD_INFO__: {
@@ -28,22 +27,27 @@ if (started) {
   app.quit();
 }
 
-console.log('app.isPackaged:', app.isPackaged);
-console.log('__dirname:', __dirname);
+logger.info('app.isPackaged:', app.isPackaged);
+logger.info('__dirname:', __dirname);
 
 // Set userData path for development
 if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
   const devUserDataPath = path.join(app.getAppPath(), '_userdata');
   app.setPath('userData', devUserDataPath);
-  console.log('Development mode: userData set to', devUserDataPath);
+  logger.info('Development mode: userData set to', devUserDataPath);
 
   const devDocumentsPath = path.join(app.getAppPath(), '_documents');
   app.setPath('documents', devDocumentsPath);
-  console.log('Development mode: documents set to', devDocumentsPath);
+  logger.info('Development mode: documents set to', devDocumentsPath);
+
+  const devLogsPath = path.join(app.getAppPath(), '_logs');
+  app.setPath('logs', devLogsPath);
+  logger.info('Development mode: logs set to', devLogsPath);
 }
 
 // Initialize services with proper paths
 const userDataPath = app.getPath('userData');
+const logsPath = app.getPath('logs');
 const gtnDefaultWorkspaceDir = path.join(app.getPath('documents'), 'GriptapeNodes');
 
 // Register custom URL scheme for OAuth callback
@@ -64,7 +68,7 @@ const engineService = new EngineService(userDataPath, gtnService);
 //   ? new CustomAuthService()
 //   : new HttpAuthService();
 const authService = new HttpAuthService();
-const setupService = new SetupService(userDataPath);
+const setupService = new SetupService(userDataPath, logsPath);
 const coordinator = new Coordinator(
   setupService,
   authService,
@@ -168,7 +172,7 @@ const showAboutDialog = () => {
   // Load persisted environment info
   const envInfo = environmentInfoService.loadEnvironmentInfo();
 
-  let detailText = [
+  const detailText = [
     `Version: ${__BUILD_INFO__.version}`,
     `Commit: ${__BUILD_INFO__.commitHash.substring(0, 8)}`,
     `Branch: ${__BUILD_INFO__.branch}`,
@@ -282,22 +286,6 @@ const setupIPC = () => {
           error: 'Environment info not yet collected'
         };
       }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  });
-
-  // Handle environment info refresh requests
-  ipcMain.handle('refresh-environment-info', async () => {
-    try {
-      const envInfo = await environmentInfoService.refreshEnvironmentInfo();
-      return {
-        success: true,
-        data: envInfo
-      };
     } catch (error) {
       return {
         success: false,

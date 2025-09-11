@@ -1,8 +1,9 @@
-import { BrowserWindow, shell } from 'electron';
-import { EventEmitter } from "node:events";
-import express from 'express';
 import { Server } from 'http';
+import { EventEmitter } from "node:events";
+import { BrowserWindow, shell } from 'electron';
 import Store from 'electron-store';
+import express from 'express';
+import { logger } from '@/logger';
 
 const PORT = 5172;
 const REDIRECT_URI = `http://localhost:${PORT}/`;
@@ -45,7 +46,7 @@ export class HttpAuthService extends EventEmitter<Events> {
     }
 
     if (this.server) {
-      console.log('Auth server already running');
+      logger.info('Auth server already running');
       return;
     }
 
@@ -56,7 +57,7 @@ export class HttpAuthService extends EventEmitter<Events> {
       const { code, state, error, error_description } = req.query;
       
       // Log the code
-      console.log('OAuth callback received - code:', code);
+      logger.info('OAuth callback received - code:', code);
       
       // Simple success message
       res.send(`
@@ -114,7 +115,7 @@ export class HttpAuthService extends EventEmitter<Events> {
     // Start server
     return new Promise<void>((resolve, reject) => {
       this.server = app.listen(PORT, () => {
-        console.log(`Auth server listening on http://localhost:${PORT}`);
+        logger.info(`Auth server listening on http://localhost:${PORT}`);
         resolve();
       }).on('error', reject);
     });
@@ -124,7 +125,7 @@ export class HttpAuthService extends EventEmitter<Events> {
     if (this.server) {
       return new Promise<void>((resolve) => {
         this.server!.close(() => {
-          console.log('Auth server stopped');
+          logger.info('Auth server stopped');
           this.server = null;
           resolve();
         });
@@ -174,7 +175,7 @@ export class HttpAuthService extends EventEmitter<Events> {
     // Check if we have complete credentials
     const stored = this.getStoredCredentials();
     if (stored) {
-      console.log('Using stored credentials');
+      logger.info('Using stored credentials');
       this.emit('auth:http:login:succeeded', {
         apiKey: stored.apiKey,
         tokens: stored.tokens,
@@ -211,15 +212,15 @@ export class HttpAuthService extends EventEmitter<Events> {
 
   private async handleAuthCode(code: string, state: string) {
     try {
-      console.log('Handling auth code:', code, 'state:', state);
+      logger.info('Handling auth code:', code, 'state:', state);
       
       // Exchange code for tokens
       const tokens = await this.exchangeCodeForTokens(code);
-      console.log('Got tokens:', tokens);
+      logger.info('Got tokens:', tokens);
       
       // Get user info
       const userInfo = await this.getUserInfo(tokens.access_token);
-      console.log('Got user info:', userInfo);
+      logger.info('Got user info:', userInfo);
       
       // Check if we already have an API key, only generate if needed
       let apiKey = this.store.get('apiKey');
@@ -245,7 +246,7 @@ export class HttpAuthService extends EventEmitter<Events> {
         user: userInfo,
       });
     } catch (error) {
-      console.error('Error handling auth code:', error);
+      logger.error('Error handling auth code:', error);
       this.authReject?.(error);
       this.emit('auth:http:login:failed', { reason: error.toString() });
     } finally {

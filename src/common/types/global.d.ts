@@ -51,11 +51,6 @@ declare global {
         };
         error?: string;
       }>;
-      refreshEnvironmentInfo: () => Promise<{
-        success: boolean;
-        data?: any;
-        error?: string;
-      }>;
     };
     oauthAPI: {
       login: () => Promise<{

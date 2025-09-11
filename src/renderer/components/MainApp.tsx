@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Sidebar } from './Sidebar';
+import { EngineProvider } from '../contexts/EngineContext';
 import Dashboard from '../pages/Dashboard';
 import Engine from '../pages/Engine';
 import Settings from '../pages/Settings';
-import { EngineProvider } from '../contexts/EngineContext';
+import { Sidebar } from './Sidebar';
 import headerLogoSrc from '/griptape_nodes_header_logo.svg';
 
 const MainApp: React.FC = () => {

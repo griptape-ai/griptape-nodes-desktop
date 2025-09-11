@@ -41,7 +41,7 @@ export class CustomAuthService {
   // // Handle URL scheme callback (for when app is already running)
   // app.on('open-url', (event, url) => {
   //   event.preventDefault();
-  //   console.log('Received URL:', url);
+  //   logger.info('Received URL:', url);
   //   oauthService.handleUrlCallback(url);
   // });
 

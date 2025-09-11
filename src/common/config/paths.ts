@@ -1,5 +1,5 @@
 import * as path from 'path';
-
+import * as fs from 'fs';
 
 
 export function getXdgConfigHome(userDataPath: string): string {
@@ -44,5 +44,12 @@ export function getGtnExecutablePath(userDataDir: string) {
 }
 
 export function getEnvironmentInfoPath(userDataPath: string) {
-    return path.join(userDataPath, 'environment-info.json')
+  return path.join(userDataPath, 'environment-info.json')
+}
+
+// An central, writable cwd for spawning subprocesses.
+export function getCwd(userDataDir: string) {
+  const cwd = path.join(userDataDir, "tmp");
+  fs.mkdirSync(cwd, { recursive: true });
+  return cwd;
 }

@@ -1,9 +1,9 @@
 import React from 'react';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import LoadingSpinner from './LoadingSpinner';
 import LoginPage from './LoginPage';
 import MainApp from './MainApp';
-import LoadingSpinner from './LoadingSpinner';
 
 const AppContent: React.FC = () => {
   const isElectron = typeof window.electronAPI !== 'undefined';

@@ -1,8 +1,8 @@
-import * as fs from 'fs';
 import { spawn } from 'child_process';
-import { attachOutputForwarder } from '../main/utils/child-process/output-forwarder';
-import { getEnv } from '../main/services/config/env';
-import { getUvExecutablePath } from '../main/services/config/paths';
+import * as fs from 'fs';
+import { attachOutputForwarder } from '../../common/child-process/output-forwarder';
+import { getEnv } from '../../common/config/env';
+import { getCwd, getUvExecutablePath } from '../../common/config/paths';
 
 export async function installGtn(userDataDir: string): Promise<void> {
   const uvExecutablePath = getUvExecutablePath(userDataDir);
@@ -11,6 +11,7 @@ export async function installGtn(userDataDir: string): Promise<void> {
     }
 
   const installProcess = spawn(uvExecutablePath, ['tool', 'install', '--quiet', 'griptape-nodes'], {
+    cwd: getCwd(this.userDataDir),
     env: getEnv(userDataDir),
   });
   await attachOutputForwarder(installProcess, {

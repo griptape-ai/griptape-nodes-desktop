@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 
+
 export const getBuildInfo = () => {
   // Get package.json version
   const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));

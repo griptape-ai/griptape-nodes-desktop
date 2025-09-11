@@ -1,4 +1,3 @@
-import React, { useState, useRef, useEffect } from 'react';
 import { 
   Home, 
   Settings, 
@@ -11,9 +10,10 @@ import {
   Layers,
   ExternalLink
 } from 'lucide-react';
-import { cn } from '../utils';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEngine } from '../contexts/EngineContext';
+import { cn } from '../utils/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip';
 import markLightSrc from '/griptape_nodes_mark_light.svg';
 import markDarkSrc from '/griptape_nodes_mark_dark.svg';

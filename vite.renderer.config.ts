@@ -1,12 +1,17 @@
+import path, { resolve } from 'path';
 import { defineConfig } from 'vite';
 import { getBuildInfo } from './src/common/build-info';
-import { resolve } from 'path';
 import { commonWatchIgnored } from './vite.common.config';
 
 const buildInfo = getBuildInfo();
 
 // https://vitejs.dev/config
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@/logger": path.resolve(__dirname, "src/renderer/utils/logger.ts")
+    }
+  },
   define: {
     __BUILD_INFO__: JSON.stringify(buildInfo)
   },

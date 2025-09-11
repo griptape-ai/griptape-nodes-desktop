@@ -2,12 +2,12 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 
 import { contextBridge, ipcRenderer } from 'electron';
+import { logger } from '@/logger';
 
 // Expose APIs to renderer process
 contextBridge.exposeInMainWorld('pythonAPI', {
   getPythonInfo: () => ipcRenderer.invoke('get-python-info'),
-  getEnvironmentInfo: () => ipcRenderer.invoke('get-environment-info'),
-  refreshEnvironmentInfo: () => ipcRenderer.invoke('refresh-environment-info')
+  getEnvironmentInfo: () => ipcRenderer.invoke('get-environment-info')
 });
 
 contextBridge.exposeInMainWorld('oauthAPI', {
@@ -79,7 +79,7 @@ if (process.env.NODE_ENV === 'development') {
   window.addEventListener('message', (event) => {
     // Check if this is an OAuth callback message
     if (event.data && event.data.type === 'oauth-callback') {
-      console.log('Received OAuth callback via PostMessage:', event.data);
+      logger.info('Received OAuth callback via PostMessage:', event.data);
       
       // Forward to main process via IPC
       ipcRenderer.invoke('oauth-dev-callback', event.data.data);

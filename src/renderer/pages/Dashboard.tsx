@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { ExternalLink, FolderOpen } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useEngine } from '../contexts/EngineContext';
-import { cn } from '../utils';
+import { cn } from '../utils/utils';
 
 const Dashboard: React.FC = () => {
   const { status: engineStatus } = useEngine();

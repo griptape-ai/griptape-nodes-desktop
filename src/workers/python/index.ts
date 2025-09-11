@@ -1,6 +1,6 @@
-import { parentPort } from 'worker_threads';
 import { spawn } from 'child_process';
 import * as path from 'path';
+import { parentPort } from 'worker_threads';
 
 interface WorkerMessage {
   type: 'execute';
@@ -22,8 +22,8 @@ const CHAR_DELAY_MS = 5; // Delay between character chunks
 const CHUNK_SIZE = 3; // Number of characters to emit at once
 
 class OutputStreamer {
-  private buffer: string = '';
-  private streaming: boolean = false;
+  private buffer = '';
+  private streaming = false;
   private streamType: 'stdout' | 'stderr';
 
   constructor(streamType: 'stdout' | 'stderr') {

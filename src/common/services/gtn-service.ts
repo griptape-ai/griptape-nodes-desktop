@@ -1,20 +1,20 @@
-import * as fs from 'fs';
-import { getGtnConfigPath, getGtnExecutablePath, getXdgConfigHome, getXdgDataHome } from '../config/paths';
 import { ChildProcess, spawn } from 'child_process';
-import { getEnv } from '../config/env';
-import { attachOutputForwarder } from '../child-process/output-forwarder';
-import { collectStdout } from '../child-process/collect-stdout';
-
+import * as fs from 'fs';
+import * as path from "path";
 import { readdir } from "fs/promises";
-import { join, resolve } from "path";
+import { collectStdout } from '../child-process/collect-stdout';
+import { attachOutputForwarder } from '../child-process/output-forwarder';
+import { getEnv } from '../config/env';
+import { getCwd, getGtnConfigPath, getGtnExecutablePath, getXdgDataHome } from '../config/paths';
+import { logger } from '@/logger';
 
 async function findFiles(dir: string, target: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const results = await Promise.all(
     entries.map(async (e): Promise<string[] | string> => {
-      const fullPath = join(dir, e.name);
+      const fullPath = path.join(dir, e.name);
       if (e.isDirectory()) return findFiles(fullPath, target);
-      if (e.isFile() && e.name === target) return resolve(fullPath);
+      if (e.isFile() && e.name === target) return path.resolve(fullPath);
       return [];
     })
   );
@@ -88,7 +88,7 @@ export class GtnService {
     if (apiKeyIndex !== -1 && apiKeyIndex + 1 < sanitizedArgs.length) {
       sanitizedArgs[apiKeyIndex + 1] = '[REDACTED]';
     }
-    console.log('Running gtn init with args:', sanitizedArgs.join(' '));
+    logger.info('Running gtn init with args:', sanitizedArgs.join(' '));
 
     // Execute gtn init from the config directory so it finds our config file (async)
     this.runGtn(args);
@@ -151,6 +151,7 @@ export class GtnService {
       "on_app_initialization_complete",
       "libraries_to_register",
     ], libraryPaths);
+    fs.mkdirSync(path.dirname(gtnConfigPath), { recursive: true });
     fs.writeFileSync(gtnConfigPath, JSON.stringify(json, null, 2), 'utf8');
   }
 
@@ -170,7 +171,8 @@ export class GtnService {
     }
 
     const env = getEnv(this.userDataDir);
-    const child = spawn(this.gtnExecutablePath, args, { env });
+    const cwd = getCwd(this.userDataDir);
+    const child = spawn(this.gtnExecutablePath, args, { env, cwd });
     attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0,10) });
     return child;
   }

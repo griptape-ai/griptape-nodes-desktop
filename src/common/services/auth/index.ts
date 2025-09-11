@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { logger } from '@/logger';
 
 interface OAuthTokens {
   access_token: string;
@@ -39,7 +40,7 @@ export class OAuthService {
 
       // // In development, we need to manually check for auth completion
       // if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
-      //   console.log('Development mode: Manual auth check will be needed');
+      //   logger.info('Development mode: Manual auth check will be needed');
       //   // Store a reference to this OAuth flow
       //   const oauthService = this;
         
@@ -69,7 +70,7 @@ export class OAuthService {
             
       //       if (result) {
       //         const authData = JSON.parse(result);
-      //         console.log('Found auth data:', authData);
+      //         logger.info('Found auth data:', authData);
               
       //         // Build URL from auth data and handle it
       //         const params = new URLSearchParams();
@@ -86,7 +87,7 @@ export class OAuthService {
             
       //       return { success: false, message: 'No auth data found' };
       //     } catch (error) {
-      //       console.error('Error checking auth completion:', error);
+      //       logger.error('Error checking auth completion:', error);
       //       return { success: false, error: error.message };
       //     }
       //   });
@@ -105,7 +106,7 @@ export class OAuthService {
 
   async handleUrlCallback(url: string): Promise<void> {
     try {
-      console.log('Handling URL callback:', url);
+      logger.info('Handling URL callback:', url);
       
       const urlObj = new URL(url);
       const code = urlObj.searchParams.get('code');
@@ -114,13 +115,13 @@ export class OAuthService {
 
       if (error) {
         const errorMessage = errorDescription || error;
-        console.error('OAuth error:', errorMessage);
+        logger.error('OAuth error:', errorMessage);
         this.authPromiseReject?.(new Error(errorMessage));
         return;
       }
 
       if (!code) {
-        console.error('No authorization code in callback URL');
+        logger.error('No authorization code in callback URL');
         this.authPromiseReject?.(new Error('No authorization code received'));
         return;
       }
@@ -134,7 +135,7 @@ export class OAuthService {
       // Generate API key
       const apiKey = await this.generateApiKey(tokens.access_token);
 
-      console.log('OAuth flow completed successfully');
+      logger.info('OAuth flow completed successfully');
       this.authPromiseResolve?.({
         success: true,
         tokens,
@@ -143,7 +144,7 @@ export class OAuthService {
       });
 
     } catch (error) {
-      console.error('OAuth callback error:', error);
+      logger.error('OAuth callback error:', error);
       this.authPromiseReject?.(error);
     } finally {
       // Clear promise handlers
