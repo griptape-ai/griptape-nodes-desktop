@@ -352,41 +352,11 @@ const setupIPC = () => {
     return { success: true };
   });
 
-  ipcMain.handle('engine:start', async () => {
-    try {
-      await engineService.start();
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  });
+  ipcMain.handle('engine:start', () => engineService.start());
 
-  ipcMain.handle('engine:stop', async () => {
-    try {
-      await engineService.stop();
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  });
+  ipcMain.handle('engine:stop', () => engineService.stop());
 
-  ipcMain.handle('engine:restart', async () => {
-    try {
-      await engineService.restart();
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  });
+  ipcMain.handle('engine:restart', () => engineService.restart());
 
   // Griptape Nodes configuration handlers
   ipcMain.handle('gtn:get-workspace', () => {

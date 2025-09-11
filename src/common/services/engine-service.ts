@@ -126,11 +126,14 @@ export class EngineService extends EventEmitter<Events> {
    * Start the engine
    */
   async start(): Promise<void> {
-    const gtnPath = this.gtnService.gtnExecutablePath;
+    // HACK! Lazily getting the executable path this way SUCKS!
+    const gtnPath = this.gtnService.getGtnExecutablePath();
     if (!this.gtnService.gtnExecutableExists()) {
       this.setStatus('initializing');
       return;
     }
+
+    this.setStatus('running');
 
     try {
       // Clear logs from previous session when starting fresh
@@ -162,7 +165,6 @@ export class EngineService extends EventEmitter<Events> {
         },
         stdio: ['pipe', 'pipe', 'pipe']
       });
-      this.setStatus('running');
 
       attachOutputForwarder(this.engineProcess, { logPrefix: "GTN-ENGINE" })
 
@@ -225,7 +227,7 @@ export class EngineService extends EventEmitter<Events> {
       });
 
       // Handle process exit
-      this.engineProcess.on('exit', (code, signal) => {
+      this.engineProcess.once('exit', (code, signal) => {
         // Flush any remaining buffered data
         if (this.stdoutBuffer.trim().length > 0) {
           this.addLog('stdout', this.stdoutBuffer);
@@ -236,25 +238,20 @@ export class EngineService extends EventEmitter<Events> {
           this.stderrBuffer = '';
         }
 
-        if (code !== 0) {
-          this.addLog('stderr', `Engine process failed with exit code ${code} and signal ${signal}`);
-        } else {
-          this.addLog('stdout', `Engine process exited normally with code ${code}`);
-        }
-
         // Clean up the process and its listeners
-        const processToClean = this.engineProcess;
-        if (processToClean) {
-          processToClean.removeAllListeners();
-          processToClean.stdout?.removeAllListeners();
-          processToClean.stderr?.removeAllListeners();
-        }
-
+        this.engineProcess?.removeAllListeners();
+        this.engineProcess?.stdout?.removeAllListeners();
+        this.engineProcess?.stderr?.removeAllListeners();
         this.engineProcess = null;
 
         // Auto-restart if it crashed unexpectedly
-        if (code !== 0 && this.restartAttempts < this.maxRestartAttempts) {
+        if (this.status == 'ready') {
+          // This means someone "stopped" the engine.
+          this.restartAttempts = 0;
+          this.addLog('stdout', 'Engine stopped.');
+        } else if (this.status == 'running' && code !== 0 && this.restartAttempts < this.maxRestartAttempts) {
           this.restartAttempts++;
+          this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`);
           this.addLog('stdout', `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
           setTimeout(() => this.start(), this.restartDelay);
           this.setStatus('ready');
@@ -289,37 +286,21 @@ export class EngineService extends EventEmitter<Events> {
    * Stop the engine
    */
   async stop(): Promise<void> {
-    if (!this.engineProcess || this.engineProcess.killed) {
-      logger.info('Engine is not running');
-      return;
+    if (this.status == 'running') {
+      // Set status to ready so that the exit handler doesn't try to restart.
+      this.setStatus('ready');
     }
-
-    this.addLog('stdout', 'Stopping Griptape Nodes engine...');
-
-    // Clear buffers when stopping
-    this.stdoutBuffer = '';
-    this.stderrBuffer = '';
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.addLog('stderr', 'Engine stop timeout, forcing kill...');
-        this.engineProcess?.kill('SIGKILL');
-        resolve();
-      }, 10000);
-
-      this.engineProcess?.once('exit', () => {
-        clearTimeout(timeout);
-        // Remove all listeners from the process to prevent memory leaks
-        this.engineProcess?.removeAllListeners();
-        this.engineProcess?.stdout?.removeAllListeners();
-        this.engineProcess?.stderr?.removeAllListeners();
-        this.engineProcess = null;
-        resolve();
-      });
-
-      // Try graceful shutdown first
-      this.engineProcess?.kill('SIGTERM');
-    });
+    // Try kill first.
+    if (this.engineProcess) {
+      // Let process exit event handle the clean up.
+      this.engineProcess.kill('SIGKILL');
+    }
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Try sigterm after graceperiod.
+    if (this.engineProcess) {
+      // Let process exit event handle the clean up.
+      this.engineProcess.kill('SIGTERM');
+    }
   }
 
   /**

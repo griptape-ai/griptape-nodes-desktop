@@ -2,6 +2,7 @@ import { ChildProcess, exec, spawn } from 'child_process';
 import { attachOutputForwarder } from "../../common/child-process/output-forwarder";
 import { getUvInstallDir } from '../../common/config/paths';
 import { getCwd } from '../../common/config/paths';
+import { getEnv } from '../../common/config/env';
 
 export async function installUv(userDataDir: string): Promise<void> {
   const uvInstallDir = getUvInstallDir(userDataDir);
@@ -33,6 +34,10 @@ function spawnUnix(userDataDir: string, uvInstallDir: string): ChildProcess {
   return exec(
     `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`,
     {
+      env: {
+        ...getEnv(userDataDir),
+        PATH: '/usr/bin:/bin',  // A minimal path that should work on unix.
+      },
       cwd: getCwd(userDataDir),
     }
   )

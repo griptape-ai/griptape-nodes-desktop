@@ -18,7 +18,6 @@ type AppState = {
 }
 
 export class Coordinator {
-    bus: Bus
     state: AppState
     
     constructor(
@@ -27,7 +26,6 @@ export class Coordinator {
         private gtnService: GtnService,
         private engineService: EngineService,
     ) {
-        this.bus = new Bus();
         this.state = {};
         
         this.setupService.on('setup:uv:succeeded', ({ uvExecutablePath, uvVersion }) => {
@@ -47,17 +45,11 @@ export class Coordinator {
             this.state.gtnExecutablePath = gtnExecutablePath;
             this.state.gtnVersion = gtnVersion;
             
-            // HACK!
-            this.gtnService.gtnExecutablePath = gtnExecutablePath;
-            
+            // HACK! Lazily setting the executable path this way SUCKS!
+            this.gtnService.setGtnExecutablePath(gtnExecutablePath);
             await gtnService.syncLibraries();
-
             await gtnService.registerLibraries();
-
-            // TRY NOW?
-            
-            // ????? NOW!? --- no after initializing for the first time of course - a new event!
-            logger.info("[COORD] setup:gtn:succeeded - engineService.start()");
+            // I don't actually think this is the right place to start it, but it works for now.
             engineService.start();
         });
         

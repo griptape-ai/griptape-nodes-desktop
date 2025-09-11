@@ -36,6 +36,19 @@ function setNested(
   }, obj);
 }
 
+export function mergeNestedArray<T>({ obj, path, items, unique }: {
+  obj: Record<string, any>;
+  path: string[];
+  items: T[];
+  unique: boolean;
+}): void {
+  const parent = path.slice(0, -1).reduce<any>((a, k) =>
+    a[k] && typeof a[k] === "object" && !Array.isArray(a[k]) ? a[k] : (a[k] = {}), obj);
+  const key = path[path.length - 1], cur = parent[key],
+        base: T[] = cur === undefined ? [] : Array.isArray(cur) ? cur : [cur];
+  parent[key] = unique ? Array.from(new Set<T>([...base, ...items])) : [...base, ...items];
+}
+
 
 export class GtnService {
   private workspaceDirectory?: string;
@@ -47,6 +60,10 @@ export class GtnService {
 
   setGtnExecutablePath(gtnExecutablePath?: string) {
     this.gtnExecutablePath = gtnExecutablePath;
+  }
+
+  getGtnExecutablePath(): string|null {
+    return this.gtnExecutablePath;
   }
 
   /**
@@ -131,26 +148,51 @@ export class GtnService {
     // }
   }
 
+  async findLibraryConfigPaths() {
+    let libraryPaths = await findFiles(getXdgDataHome(this.userDataDir), "griptape_nodes_library.json");
+    // Filter out advanced media lib for now, until we add library management.
+    libraryPaths = libraryPaths.filter(value => !value.includes("griptape_nodes_advanced_media_library"));
+    return libraryPaths
+  }
+
   /**
    * Sync libraries with current engine version
    */
   async syncLibraries() {
+
+    let libraryPaths = await this.findLibraryConfigPaths();
+    if (libraryPaths) {
+      // Skip sync if already installed.
+      // Ideally we'd force retry installation if a library
+      // is FLAWED or UNUSABLE. But that's for later.
+      return;
+    }
+
+    // Syncing is slow. Lets first juest check
     const child = await this.runGtn(['libraries', 'sync']);
+
+    // We don't actually care about the output here. We just
+    // want it to finish. Ideally we'd have another util like
+    // this that doesn't waste time and space buffering the
+    // output.
     await collectStdout(child);
   }
 
   async registerLibraries() {
-    let libraryPaths = await findFiles(getXdgDataHome(this.userDataDir), "griptape_nodes_library.json");
-    // Filter out advanced media lib.
-    libraryPaths = libraryPaths.filter(value => !value.includes("griptape_nodes_advanced_media_library"));
+    let libraryPaths = await this.findLibraryConfigPaths();
     const gtnConfigPath = getGtnConfigPath(this.userDataDir);
     const data = fs.existsSync(gtnConfigPath) ? fs.readFileSync(gtnConfigPath, 'utf8') : "{}";
     const json = JSON.parse(data);
-    setNested(json, [
-      "app_events",
-      "on_app_initialization_complete",
-      "libraries_to_register",
-    ], libraryPaths);
+    mergeNestedArray({
+      obj: json,
+      path: [
+        "app_events",
+        "on_app_initialization_complete",
+        "libraries_to_register",
+      ],
+      items: libraryPaths,
+      unique: true,
+    });
     fs.mkdirSync(path.dirname(gtnConfigPath), { recursive: true });
     fs.writeFileSync(gtnConfigPath, JSON.stringify(json, null, 2), 'utf8');
   }

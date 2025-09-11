@@ -294,7 +294,7 @@ const Engine: React.FC = () => {
           </button>
           <button
             onClick={restartEngine}
-            disabled={isLoading || status === 'not-ready' || status === 'initializing'}
+            disabled={isLoading || status === 'not-ready' || status == 'ready' || status === 'initializing'}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Restart Engine

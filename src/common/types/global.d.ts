@@ -6,7 +6,7 @@ export interface EngineLog {
   message: string;
 }
 
-export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'error';
+export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'initializing' | 'error';
 
 declare global {
   interface Window {

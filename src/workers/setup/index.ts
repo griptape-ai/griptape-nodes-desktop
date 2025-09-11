@@ -6,6 +6,7 @@ import { UvService } from '../../common/services/uv-service';
 import { installGtn } from './install-gtn';
 import { findPythonExecutablePath, installPython } from './install-python';
 import { installUv } from './install-uv';
+import * as fs from 'fs';
 
 async function setupWorkerMain() {
   const userDataPath = workerData?.userDataPath;
@@ -21,8 +22,10 @@ async function setupWorkerMain() {
 async function setupUv(userDataPath: string): Promise<string> {
   parentPort.postMessage({ type: 'setup:uv:started' });
   try {
-    await installUv(userDataPath);
     const uvExecutablePath = getUvExecutablePath(userDataPath);
+    if (!fs.existsSync(uvExecutablePath)) {
+      await installUv(userDataPath);
+    }
     const uvVersion = await new UvService(userDataPath).getUvVersion()
     parentPort.postMessage({
       type: 'setup:uv:succeeded',

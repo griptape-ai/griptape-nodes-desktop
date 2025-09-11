@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import path from 'node:path';
 import { Worker } from 'worker_threads';
 import { logger } from '@/logger';
+// TODO: import Store from 'electron-store';
 
 
 interface SetupEvents {
@@ -44,9 +45,19 @@ function isSetupEvent(x: unknown): x is SetupEvent {
     (SETUP_EVENT_KEYS as readonly string[]).includes(x);
 }
 
+// TODO: interface SetupData {
+// TODO:   uvExecutablePath?: string,
+// TODO:   uvVersion?: string,
+// TODO:   pythonExecutablePath?: string,
+// TODO:   pythonVersion?: string,
+// TODO:   gtnExecutablePath?: string,
+// TODO:   gtnVersion?: string,
+// TODO: }
+
 
 export class SetupService extends EventEmitter<SetupEvents> {
   private worker: Worker|null;
+  // TODO: private store: Store<SetupData>;
 
   constructor(
     private userDataPath: string,
@@ -54,6 +65,8 @@ export class SetupService extends EventEmitter<SetupEvents> {
   ) {
     super();
     this.worker = null;
+    // TODO: this.store = new Store();
+    // TODO: this.store.onDidChange('uvExecutablePath', );
   }
   
   async start() {
