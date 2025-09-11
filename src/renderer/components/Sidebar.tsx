@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEngine } from '../contexts/EngineContext';
 import { cn } from '../utils/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip';
+import { getStatusIcon, getStatusTooltip } from '../utils/engineStatusIcons';
 import markLightSrc from '/griptape_nodes_mark_light.svg';
 import markDarkSrc from '/griptape_nodes_mark_dark.svg';
 
@@ -58,37 +59,6 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
     setIsProfileOpen(false);
   };
 
-  const getStatusDot = () => {
-    switch (status) {
-      case 'running':
-        return 'bg-green-500';
-      case 'ready':
-        return 'bg-yellow-500';
-      case 'initializing':
-        return 'bg-blue-500';
-      case 'error':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
-  const getStatusTooltip = () => {
-    switch (status) {
-      case 'running':
-        return 'Engine is running';
-      case 'ready':
-        return 'Engine is ready to start';
-      case 'initializing':
-        return 'Setting up environment...';
-      case 'error':
-        return 'Engine encountered an error';
-      case 'not-ready':
-        return 'Engine is not initialized';
-      default:
-        return 'Unknown status';
-    }
-  };
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -150,10 +120,12 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
                   {item.showStatus && (
                     <Tooltip delayDuration={500}>
                       <TooltipTrigger asChild>
-                        <div className={`w-2 h-2 rounded-full ${getStatusDot()} animate-pulse`}></div>
+                        <div className="flex items-center">
+                          {getStatusIcon(status, 'sm')}
+                        </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{getStatusTooltip()}</p>
+                        <p>{getStatusTooltip(status)}</p>
                       </TooltipContent>
                     </Tooltip>
                   )}

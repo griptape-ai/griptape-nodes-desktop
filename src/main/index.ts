@@ -81,6 +81,8 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 1200,
+    minHeight: 800,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: process.platform === 'darwin' ? { x: 20, y: 18 } : undefined,
     frame: process.platform === 'darwin' ? false : true,

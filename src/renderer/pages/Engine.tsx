@@ -1,7 +1,9 @@
 import Convert from 'ansi-to-html';
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { List, type RowComponentProps } from 'react-window';
+import { Play, Square, RotateCcw } from 'lucide-react';
 import { useEngine } from '../contexts/EngineContext';
+import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons';
 
 const ansiConverter = new Convert({
   fg: '#e5e7eb',
@@ -117,35 +119,6 @@ const Engine: React.FC = () => {
   }, []);
 
 
-  const getStatusColor = useCallback(() => {
-    switch (status) {
-      case 'running':
-        return 'text-green-600 dark:text-green-400';
-      case 'ready':
-        return 'text-yellow-600 dark:text-yellow-400';
-      case 'initializing':
-        return 'text-blue-600 dark:text-blue-400';
-      case 'error':
-        return 'text-red-600 dark:text-red-400';
-      default:
-        return 'text-gray-600 dark:text-gray-400';
-    }
-  }, [status]);
-
-  const getStatusDot = useCallback(() => {
-    switch (status) {
-      case 'running':
-        return 'bg-green-500';
-      case 'ready':
-        return 'bg-yellow-500';
-      case 'initializing':
-        return 'bg-blue-500';
-      case 'error':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
-  }, [status]);
 
   const formatTimestamp = useCallback((timestamp: Date) => {
     const date = new Date(timestamp);
@@ -269,9 +242,9 @@ const Engine: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Engine Status</h2>
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${getStatusDot()} animate-pulse`}></div>
-            <span className={`font-medium ${getStatusColor()}`}>
-              {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+            {getStatusIcon(status, 'md')}
+            <span className={`font-medium ${getStatusColor(status)}`}>
+              {status === 'ready' ? 'Stopped' : status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
             </span>
           </div>
         </div>
@@ -281,22 +254,25 @@ const Engine: React.FC = () => {
           <button
             onClick={startEngine}
             disabled={isLoading || status === 'running' || status === 'not-ready' || status === 'initializing'}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
+            <Play className="w-4 h-4" />
             Start Engine
           </button>
           <button
             onClick={stopEngine}
             disabled={isLoading || status !== 'running'}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
+            <Square className="w-4 h-4" />
             Stop Engine
           </button>
           <button
             onClick={restartEngine}
             disabled={isLoading || status === 'not-ready' || status == 'ready' || status === 'initializing'}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
+            <RotateCcw className="w-4 h-4" />
             Restart Engine
           </button>
         </div>

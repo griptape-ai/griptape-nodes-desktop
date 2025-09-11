@@ -2,6 +2,7 @@ import { ExternalLink, FolderOpen } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useEngine } from '../contexts/EngineContext';
 import { cn } from '../utils/utils';
+import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons';
 
 const Dashboard: React.FC = () => {
   const { status: engineStatus } = useEngine();
@@ -20,35 +21,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const getStatusColor = () => {
-    switch (engineStatus) {
-      case 'running':
-        return 'text-green-600 dark:text-green-400';
-      case 'ready':
-        return 'text-yellow-600 dark:text-yellow-400';
-      case 'initializing':
-        return 'text-blue-600 dark:text-blue-400';
-      case 'error':
-        return 'text-red-600 dark:text-red-400';
-      default:
-        return 'text-gray-600 dark:text-gray-400';
-    }
-  };
-
-  const getStatusDot = () => {
-    switch (engineStatus) {
-      case 'running':
-        return 'bg-green-500';
-      case 'ready':
-        return 'bg-yellow-500';
-      case 'initializing':
-        return 'bg-blue-500';
-      case 'error':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -80,9 +52,9 @@ const Dashboard: React.FC = () => {
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h3 className="text-lg font-semibold mb-3">Engine Status</h3>
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${getStatusDot()} animate-pulse`}></div>
-            <span className={`font-medium ${getStatusColor()}`}>
-              {engineStatus.charAt(0).toUpperCase() + engineStatus.slice(1).replace('-', ' ')}
+            {getStatusIcon(engineStatus, 'md')}
+            <span className={`font-medium ${getStatusColor(engineStatus)}`}>
+              {engineStatus === 'ready' ? 'Stopped' : engineStatus.charAt(0).toUpperCase() + engineStatus.slice(1).replace('-', ' ')}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-3">
