@@ -3,6 +3,7 @@ import { GtnService } from "src/common/services/gtn-service";
 import { CustomAuthService } from "../common/services/auth/custom";
 import { HttpAuthService } from "../common/services/auth/http";
 import { EngineService } from "../common/services/engine-service";
+import { MetricsService } from "../common/services/metrics-service";
 import { SetupService } from "../common/services/setup-service"
 import { Bus } from "./bus";
 import { logger } from '@/logger';
@@ -25,6 +26,7 @@ export class Coordinator {
         private authService: HttpAuthService, //|CustomAuthService,
         private gtnService: GtnService,
         private engineService: EngineService,
+        private metricsService: MetricsService,
     ) {
         this.state = {};
         
@@ -99,14 +101,29 @@ export class Coordinator {
             });
         });
         
+        // Forward metrics events to all windows
+        this.metricsService.on('metrics:updated', (metrics) => {
+            BrowserWindow.getAllWindows().forEach(window => {
+                window.webContents.send('metrics:updated', metrics);
+            });
+        });
+        
+        this.metricsService.on('metrics:error', (error) => {
+            logger.error("[COORD] Metrics collection error:", error);
+            BrowserWindow.getAllWindows().forEach(window => {
+                window.webContents.send('metrics:error', error.message);
+            });
+        });
+        
     }
     
     async start() {
         this.setupService.start();
         this.authService.start();
+        this.metricsService.start(); // Start metrics collection immediately
     }
     
     async stop() {
-        
+        this.metricsService.destroy();
     }
 }

@@ -7,6 +7,7 @@ import { HttpAuthService } from '../common/services/auth/http';
 import { EngineService } from '../common/services/engine-service';
 import { EnvironmentInfoService } from '../common/services/environment-info';
 import { GtnService } from '../common/services/gtn-service';
+import { MetricsService } from '../common/services/metrics-service';
 import { SetupService } from '../common/services/setup-service';
 import { UvService } from '../common/services/uv-service';
 import { Coordinator } from './coordinator';
@@ -64,6 +65,7 @@ const uvService = new UvService(userDataPath);
 const environmentInfoService = new EnvironmentInfoService(userDataPath);
 const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir);
 const engineService = new EngineService(userDataPath, gtnService);
+const metricsService = new MetricsService(); // 500ms default interval
 // const authService = (process.env.AUTH_SCHEME === 'custom')
 //   ? new CustomAuthService()
 //   : new HttpAuthService();
@@ -74,6 +76,7 @@ const coordinator = new Coordinator(
   authService,
   gtnService,
   engineService,
+  metricsService,
 );
 
 const createWindow = () => {
@@ -359,6 +362,28 @@ const setupIPC = () => {
   ipcMain.handle('engine:stop', () => engineService.stop());
 
   ipcMain.handle('engine:restart', () => engineService.restart());
+
+  // Metrics Service handlers
+  ipcMain.handle('metrics:get-latest', () => {
+    return metricsService.getLatestMetrics();
+  });
+
+  ipcMain.handle('metrics:get-history', () => {
+    return metricsService.getMetricsHistory();
+  });
+
+  ipcMain.handle('metrics:get-recent', (event, count: number) => {
+    return metricsService.getRecentHistory(count);
+  });
+
+  ipcMain.handle('metrics:get-stats', () => {
+    return metricsService.getHistoryStats();
+  });
+
+  ipcMain.handle('metrics:clear-history', () => {
+    metricsService.clearHistory();
+    return { success: true };
+  });
 
   // Griptape Nodes configuration handlers
   ipcMain.handle('gtn:get-workspace', () => {

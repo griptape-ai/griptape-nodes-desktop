@@ -8,6 +8,30 @@ export interface EngineLog {
 
 export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'initializing' | 'error';
 
+export interface SystemMetrics {
+  cpu: {
+    usage: number; // CPU usage percentage
+    temperature?: number; // CPU temperature in Celsius (if available)
+  };
+  memory: {
+    total: number; // Total system memory in bytes
+    used: number; // Used memory in bytes
+    free: number; // Free memory in bytes
+    usage: number; // Memory usage percentage
+  };
+  gpu: {
+    controllers: Array<{
+      vendor: string;
+      model: string;
+      vram?: number; // VRAM in MB (if available)
+      memoryUsed?: number; // VRAM used in MB (if available)
+      memoryFree?: number; // VRAM free in MB (if available)
+      usage?: number; // GPU usage percentage (if available)
+    }>;
+  };
+  timestamp: Date;
+}
+
 declare global {
   interface Window {
     pythonAPI: {
@@ -86,6 +110,17 @@ declare global {
       getWorkspace: () => Promise<string>;
       setWorkspace: (directory: string) => Promise<{ success: boolean; error?: string }>;
       selectDirectory: () => Promise<string | null>;
+    };
+    metricsAPI: {
+      getLatest: () => Promise<SystemMetrics | null>;
+      getHistory: () => Promise<SystemMetrics[]>;
+      getRecent: (count: number) => Promise<SystemMetrics[]>;
+      getStats: () => Promise<{ count: number; maxSize: number; memoryUsageMB: number }>;
+      clearHistory: () => Promise<{ success: boolean }>;
+      onMetricsUpdate: (callback: (event: any, metrics: SystemMetrics) => void) => void;
+      removeMetricsUpdate: (callback: (event: any, metrics: SystemMetrics) => void) => void;
+      onMetricsError: (callback: (event: any, error: string) => void) => void;
+      removeMetricsError: (callback: (event: any, error: string) => void) => void;
     };
     electronAPI?: {
       getEnvVar: (key: string) => Promise<string | null>;

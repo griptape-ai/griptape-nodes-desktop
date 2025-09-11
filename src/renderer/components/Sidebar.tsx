@@ -16,6 +16,7 @@ import { useEngine } from '../contexts/EngineContext';
 import { cn } from '../utils/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip';
 import { getStatusIcon, getStatusTooltip } from '../utils/engineStatusIcons';
+import { SystemMetricsMini } from './SystemMetricsMini';
 import markLightSrc from '/griptape_nodes_mark_light.svg';
 import markDarkSrc from '/griptape_nodes_mark_dark.svg';
 
@@ -135,6 +136,11 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
           })}
         </ul>
       </nav>
+
+      {/* System Metrics Mini */}
+      <div className="flex-shrink-0 px-2 py-3">
+        <SystemMetricsMini />
+      </div>
 
       {/* Profile Section */}
       <div className="flex-shrink-0 border-t border-border p-2">

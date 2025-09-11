@@ -43,6 +43,26 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
   selectDirectory: () => ipcRenderer.invoke('gtn:select-directory')
 });
 
+contextBridge.exposeInMainWorld('metricsAPI', {
+  getLatest: () => ipcRenderer.invoke('metrics:get-latest'),
+  getHistory: () => ipcRenderer.invoke('metrics:get-history'),
+  getRecent: (count: number) => ipcRenderer.invoke('metrics:get-recent', count),
+  getStats: () => ipcRenderer.invoke('metrics:get-stats'),
+  clearHistory: () => ipcRenderer.invoke('metrics:clear-history'),
+  onMetricsUpdate: (callback: (event: any, metrics: any) => void) => {
+    ipcRenderer.on('metrics:updated', callback);
+  },
+  removeMetricsUpdate: (callback: (event: any, metrics: any) => void) => {
+    ipcRenderer.removeListener('metrics:updated', callback);
+  },
+  onMetricsError: (callback: (event: any, error: string) => void) => {
+    ipcRenderer.on('metrics:error', callback);
+  },
+  removeMetricsError: (callback: (event: any, error: string) => void) => {
+    ipcRenderer.removeListener('metrics:error', callback);
+  }
+});
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getEnvVar: (key: string) => ipcRenderer.invoke('get-env-var', key),
   isDevelopment: () => ipcRenderer.invoke('is-development'),
