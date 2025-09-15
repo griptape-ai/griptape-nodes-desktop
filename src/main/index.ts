@@ -27,6 +27,8 @@ if (started) {
   app.quit();
 }
 
+app.setAppUserModelId("ai.griptape.GriptapeNodes")
+
 logger.info('app.isPackaged:', app.isPackaged);
 logger.info('__dirname:', __dirname);
 
