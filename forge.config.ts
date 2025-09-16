@@ -7,12 +7,12 @@ import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { PublisherGithub } from '@electron-forge/publisher-github';
 import type { ForgeConfig } from '@electron-forge/shared-types';
-import { generateAssets } from './forge.hooks';
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    ...(process.platform === 'darwin' && { icon: 'generated/icons/icon' }),
+    ...(process.platform === 'darwin' && { icon: 'generated/icons/icon.icns' }),
+    ...(process.platform === 'win32' && { icon: 'generated/icons/icon.ico' }),
     executableName: 'griptape-nodes-desktop',
     appBundleId: 'com.griptape.nodes.desktop',
     protocols: [
@@ -35,20 +35,19 @@ const config: ForgeConfig = {
       },
     }),
   },
-  hooks: {
-    generateAssets
-  },
   rebuildConfig: {},
   makers: [
     // Maker for Windows
     new MakerSquirrel({
       name: "GriptapeNodes",
+      iconUrl: 'https://griptape-nodes-desktop-public.s3.us-west-2.amazonaws.com/icon.ico',
+      setupIcon: 'generated/icons/icon_installer_windows.ico',
     }),
     // Maker for Mac
     new MakerDMG({
       name: "Griptape Nodes Installer",
       title: "Griptape Nodes Installer",
-      icon: 'generated/icons/icon_installer.icns',
+      icon: 'generated/icons/icon_installer_mac.icns',
       iconSize: 100,
     }, ['darwin']),
     new MakerRpm(),
