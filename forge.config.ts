@@ -7,7 +7,6 @@ import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { PublisherGithub } from '@electron-forge/publisher-github';
 import type { ForgeConfig } from '@electron-forge/shared-types';
-import { generateAssets } from './forge.hooks';
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -35,9 +34,6 @@ const config: ForgeConfig = {
         teamId: process.env.APPLE_TEAM_ID,
       },
     }),
-  },
-  hooks: {
-    generateAssets
   },
   rebuildConfig: {},
   makers: [
