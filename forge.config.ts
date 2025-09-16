@@ -40,9 +40,11 @@ const config: ForgeConfig = {
     // Maker for Windows
     new MakerMsix({
       manifestVariables: {
-        packageDisplayName: "Griptape Nodes Desktop",
-        packageDescription: "Desktop application for Griptape Nodes"
-      }
+        publisher: 'Electron Dev',
+      },
+      windowsSignOptions: {
+        certificatePassword: '12345',
+      },
     }),
     // Maker for Mac
     new MakerDMG({
