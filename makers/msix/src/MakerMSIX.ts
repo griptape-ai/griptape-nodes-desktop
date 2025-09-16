@@ -1,4 +1,36 @@
-import { getNameFromAuthor } from '@electron-forge/core-utils';
+// Types and helper function based on @electron-forge/core-utils
+type PackagePerson = string | { name?: string; email?: string; url?: string };
+
+function parseAuthor(author: string): { name?: string; email?: string; url?: string } {
+  const match = author.match(/^(.+?)\s*(?:<(.+?)>)?\s*(?:\((.+?)\))?$/);
+  return {
+    name: match?.[1]?.trim(),
+    email: match?.[2]?.trim(),
+    url: match?.[3]?.trim(),
+  };
+}
+
+function getNameFromAuthor(author: PackagePerson): string {
+  let publisher: PackagePerson = author || '';
+
+  if (typeof publisher === 'string') {
+    publisher = parseAuthor(publisher);
+  }
+
+  if (
+    typeof publisher !== 'string' &&
+    publisher &&
+    typeof publisher.name === 'string'
+  ) {
+    publisher = publisher.name;
+  }
+
+  if (typeof publisher !== 'string') {
+    publisher = '';
+  }
+
+  return publisher;
+}
 import { MakerBase, MakerOptions } from '@electron-forge/maker-base';
 import { ForgePlatform } from '@electron-forge/shared-types';
 import { packageMSIX } from 'electron-windows-msix';
