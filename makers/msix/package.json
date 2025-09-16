@@ -1,0 +1,7 @@
+{
+  "name": "local-msix-maker",
+  "version": "1.0.0",
+  "description": "Temporary local MSIX maker for Electron Forge",
+  "main": "index.ts",
+  "private": true
+}

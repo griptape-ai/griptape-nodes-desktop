@@ -33,6 +33,7 @@
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/react-window": "^1.8.8",
     "electron": "37.3.1",
+    "electron-windows-msix": "^2.0.4",
     "typescript": "^5.9.2",
     "vite": "^5.4.19"
   },

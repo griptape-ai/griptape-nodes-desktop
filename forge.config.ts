@@ -2,7 +2,7 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerRpm } from '@electron-forge/maker-rpm';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import MakerMsix from './makers/msix';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { PublisherGithub } from '@electron-forge/publisher-github';
@@ -38,10 +38,11 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   makers: [
     // Maker for Windows
-    new MakerSquirrel({
-      name: "GriptapeNodes",
-      iconUrl: 'https://griptape-nodes-desktop-public.s3.us-west-2.amazonaws.com/icon.ico',
-      setupIcon: 'generated/icons/icon_installer_windows.ico',
+    new MakerMsix({
+      manifestVariables: {
+        packageDisplayName: "Griptape Nodes Desktop",
+        packageDescription: "Desktop application for Griptape Nodes"
+      }
     }),
     // Maker for Mac
     new MakerDMG({
