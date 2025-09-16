@@ -4,141 +4,172 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 
 const execAsync = promisify(exec);
+const publicDir = path.join(__dirname, '..', 'public');
 
-async function generateIconsFromSource(sourcePath, outputPrefix) {
-  const generatedDir = path.join(__dirname, '..', 'generated', 'icons');
-  const iconsetDir = path.join(generatedDir, `${outputPrefix}.iconset`);
 
-  // Ensure generated directory exists
-  if (!fs.existsSync(generatedDir)) {
-    fs.mkdirSync(generatedDir, { recursive: true });
-  }
-
-  // Check if source icon exists
-  if (!fs.existsSync(sourcePath)) {
-    console.error(`❌ Source icon not found at ${sourcePath}`);
-    return false;
-  }
-
-  console.log(`🎨 Generating ${outputPrefix} icons from ${path.basename(sourcePath)}...`);
-
-  try {
-    // Create iconset directory
-    if (!fs.existsSync(iconsetDir)) {
-      fs.mkdirSync(iconsetDir, { recursive: true });
-    }
-
-    // Generate different sizes for macOS .icns
-    const sizes = [
-      { size: 16, name: 'icon_16x16.png' },
-      { size: 32, name: 'icon_16x16@2x.png' },
-      { size: 32, name: 'icon_32x32.png' },
-      { size: 64, name: 'icon_32x32@2x.png' },
-      { size: 128, name: 'icon_128x128.png' },
-      { size: 256, name: 'icon_128x128@2x.png' },
-      { size: 256, name: 'icon_256x256.png' },
-      { size: 512, name: 'icon_256x256@2x.png' },
-      { size: 512, name: 'icon_512x512.png' },
-      { size: 1024, name: 'icon_512x512@2x.png' }
-    ];
-
-    // Check platform
-    const platform = process.platform;
-
-    if (platform === 'darwin') {
-      // macOS - use sips and iconutil
-      console.log('📱 Generating macOS icons...');
-
-      for (const { size, name } of sizes) {
-        const outputPath = path.join(iconsetDir, name);
-        if (size === 1024) {
-          // Copy the original for the largest size
-          await execAsync(`cp "${sourcePath}" "${outputPath}"`);
-        } else {
-          // Resize for other sizes
-          await execAsync(`sips -z ${size} ${size} "${sourcePath}" --out "${outputPath}"`);
-        }
-        console.log(`  ✓ Generated ${name}`);
-      }
-
-      // Generate .icns file
-      const icnsPath = path.join(generatedDir, `${outputPrefix}.icns`);
-      await execAsync(`iconutil -c icns "${iconsetDir}" -o "${icnsPath}"`);
-      console.log(`  ✓ Generated ${outputPrefix}.icns`);
-
-    } else if (platform === 'linux') {
-      // Linux - use ImageMagick if available
-      console.log('🐧 Generating Linux icons...');
-
-      try {
-        await execAsync('which convert');
-        // ImageMagick is available
-        for (const { size, name } of sizes) {
-          const outputPath = path.join(iconsetDir, name);
-          await execAsync(`convert "${sourcePath}" -resize ${size}x${size} "${outputPath}"`);
-          console.log(`  ✓ Generated ${name}`);
-        }
-      } catch (error) {
-        console.log('  ⚠️  ImageMagick not found. Install it for better icon generation.');
-        console.log('  Using fallback: copying original icon...');
-        // Fallback: just copy the original
-        for (const { size, name } of sizes) {
-          const outputPath = path.join(iconsetDir, name);
-          fs.copyFileSync(sourcePath, outputPath);
-        }
-      }
-
-    } else if (platform === 'win32') {
-      // Windows
-      console.log('🪟 Generating Windows icons...');
-      console.log('  ℹ️  On Windows, .ico generation requires additional tools.');
-      console.log('  Using PNG fallback for now...');
-    }
-
-    // Copy source PNG to generated folder
-    const pngPath = path.join(generatedDir, `${outputPrefix}.png`);
-    fs.copyFileSync(sourcePath, pngPath);
-    console.log(`  ✓ Copied ${outputPrefix}.png`);
-
-    // Copy source as .ico for Windows (simple fallback)
-    const icoPath = path.join(generatedDir, `${outputPrefix}.ico`);
-    fs.copyFileSync(sourcePath, icoPath);
-    console.log(`  ✓ Created ${outputPrefix}.ico (PNG format)`);
-
-    // Clean up iconset directory if not on macOS (since we don't need it)
-    if (platform !== 'darwin') {
-      fs.rmSync(iconsetDir, { recursive: true, force: true });
-    }
-
-    console.log(`✅ ${outputPrefix} icon generation complete!`);
-    return true;
-
-  } catch (error) {
-    console.error(`❌ Error generating ${outputPrefix} icons:`, error.message);
-    return false;
+async function generateIcons() {
+  switch (process.platform) {
+    case 'darwin':
+      await generateMacIcons();
+      break;
+    case 'win32':
+      await generateWindowsIcons();
+      break;
+    default:
+      throw new Error('⚠️  Platform not supported');
   }
 }
 
-async function generateIcons() {
-  const platform = process.platform;
+async function generateMacIcons() {
+  const appIcon = path.join(publicDir, 'icon_app_mac.png');
+  const installerIcon = path.join(publicDir, 'icon_installer_mac.png');
 
-  if (platform === 'darwin') {
-    const publicDir = path.join(__dirname, '..', 'public');
+  await generateMacIconsFromSource(appIcon, 'icon');
+  await generateMacIconsFromSource(installerIcon, 'icon_installer_mac');
 
-    // Generate app icons
-    const appIcon = path.join(publicDir, 'icon.png');
-    const appSuccess = await generateIconsFromSource(appIcon, 'icon');
+  console.log('All Mac icons generated successfully!');
+}
 
-    // Generate installer icons
-    const installerIcon = path.join(publicDir, 'icon_installer.png');
-    const installerSuccess = await generateIconsFromSource(installerIcon, 'icon_installer');
+async function generateWindowsIcons() {
+  const appIcon = path.join(publicDir, 'icon_app_windows.png');
+  const installerIcon = path.join(publicDir, 'icon_installer_windows.png');
 
-    if (!appSuccess || !installerSuccess) {
-      process.exit(1);
-    }
+  await generateWindowsIconsFromSource(appIcon, 'icon');
+  await generateWindowsIconsFromSource(installerIcon, 'icon_installer_windows');
 
-    console.log('✅ All icons generated successfully!');
+  console.log('All Windows icons generated successfully!');
+}
+
+async function generateMacIconsFromSource(sourcePath, outputPrefix) {
+  const generatedDir = createGeneratedDir();
+  const iconsetDir = createIconsetDir(generatedDir, outputPrefix);
+
+  console.log(`Generating ${outputPrefix} Mac icons from ${path.basename(sourcePath)}...`);
+
+  await generateMacIconSizes(sourcePath, iconsetDir);
+  await createIcnsFile(iconsetDir, generatedDir, outputPrefix);
+  copySourcePng(sourcePath, generatedDir, outputPrefix);
+
+  console.log(`${outputPrefix} Mac icon generation complete!`);
+  return true;
+}
+
+async function generateWindowsIconsFromSource(sourcePath, outputPrefix) {
+  const generatedDir = createGeneratedDir();
+  const iconsetDir = createIconsetDir(generatedDir, outputPrefix);
+
+  console.log(`Generating ${outputPrefix} Windows icons from ${path.basename(sourcePath)}...`);
+
+  await createWindowsIco(sourcePath, generatedDir, outputPrefix, iconsetDir);
+  copySourcePng(sourcePath, generatedDir, outputPrefix);
+  cleanupTempDir(iconsetDir);
+
+  console.log(`${outputPrefix} Windows icon generation complete!`);
+}
+
+function createGeneratedDir() {
+  const generatedDir = path.join(__dirname, '..', 'generated', 'icons');
+  if (!fs.existsSync(generatedDir)) {
+    fs.mkdirSync(generatedDir, { recursive: true });
   }
+  return generatedDir;
+}
+
+function createIconsetDir(generatedDir, outputPrefix) {
+  const iconsetDir = path.join(generatedDir, `${outputPrefix}.iconset`);
+  if (!fs.existsSync(iconsetDir)) {
+    fs.mkdirSync(iconsetDir, { recursive: true });
+  }
+  return iconsetDir;
+}
+
+async function generateMacIconSizes(sourcePath, iconsetDir) {
+  console.log('Generating macOS icons...');
+
+  const sizes = [
+    { size: 16, name: 'icon_16x16.png' },
+    { size: 32, name: 'icon_16x16@2x.png' },
+    { size: 32, name: 'icon_32x32.png' },
+    { size: 64, name: 'icon_32x32@2x.png' },
+    { size: 128, name: 'icon_128x128.png' },
+    { size: 256, name: 'icon_128x128@2x.png' },
+    { size: 256, name: 'icon_256x256.png' },
+    { size: 512, name: 'icon_256x256@2x.png' },
+    { size: 512, name: 'icon_512x512.png' },
+    { size: 1024, name: 'icon_512x512@2x.png' }
+  ];
+
+  for (const { size, name } of sizes) {
+    await generateSingleIcon(sourcePath, iconsetDir, size, name);
+  }
+}
+
+async function generateSingleIcon(sourcePath, iconsetDir, size, name) {
+  const outputPath = path.join(iconsetDir, name);
+
+  if (size === 1024) {
+    await execAsync(`cp "${sourcePath}" "${outputPath}"`);
+  } else {
+    await execAsync(`sips -z ${size} ${size} "${sourcePath}" --out "${outputPath}"`);
+  }
+}
+
+async function createIcnsFile(iconsetDir, generatedDir, outputPrefix) {
+  const icnsPath = path.join(generatedDir, `${outputPrefix}.icns`);
+  await execAsync(`iconutil -c icns "${iconsetDir}" -o "${icnsPath}"`);
+  console.log(`Generated ${outputPrefix}.icns`);
+}
+
+async function createWindowsIco(sourcePath, generatedDir, outputPrefix, iconsetDir) {
+  console.log('Generating Windows icons...');
+
+  await validateImageMagick();
+  await generateIcoWithImageMagick(sourcePath, generatedDir, outputPrefix, iconsetDir);
+}
+
+async function validateImageMagick() {
+  await execAsync('where magick');
+}
+
+async function generateIcoWithImageMagick(sourcePath, generatedDir, outputPrefix, iconsetDir) {
+  const icoSizes = [16, 32, 48, 64, 128, 256];
+  const tempFiles = await createTempIconFiles(sourcePath, iconsetDir, icoSizes);
+  await combineIntoIco(tempFiles, generatedDir, outputPrefix);
+  cleanupTempFiles(tempFiles);
+}
+
+async function createTempIconFiles(sourcePath, iconsetDir, icoSizes) {
+  const tempFiles = [];
+
+  for (const size of icoSizes) {
+    const tempFile = path.join(iconsetDir, `temp_${size}.png`);
+    await execAsync(`magick "${sourcePath}" -resize ${size}x${size} "${tempFile}"`);
+    tempFiles.push(tempFile);
+    console.log(`Generated ${size}x${size} icon`);
+  }
+
+  return tempFiles;
+}
+
+async function combineIntoIco(tempFiles, generatedDir, outputPrefix) {
+  const icoPath = path.join(generatedDir, `${outputPrefix}.ico`);
+  const tempFilesStr = tempFiles.map(f => `"${f}"`).join(' ');
+  await execAsync(`magick ${tempFilesStr} "${icoPath}"`);
+  console.log(`Generated ${outputPrefix}.ico`);
+}
+
+function cleanupTempFiles(tempFiles) {
+  tempFiles.forEach(file => fs.unlinkSync(file));
+}
+
+function copySourcePng(sourcePath, generatedDir, outputPrefix) {
+  const pngPath = path.join(generatedDir, `${outputPrefix}.png`);
+  fs.copyFileSync(sourcePath, pngPath);
+  console.log(`Copied ${outputPrefix}.png`);
+}
+
+function cleanupTempDir(iconsetDir) {
+  fs.rmSync(iconsetDir, { recursive: true, force: true });
 }
 
 // Run if called directly
