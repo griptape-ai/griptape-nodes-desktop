@@ -40,11 +40,18 @@ const config: ForgeConfig = {
     // Maker for Windows
     new MakerMsix({
       manifestVariables: {
-        publisher: 'Electron Dev',
+        appExecutable: "griptape-nodes-desktop.exe",
+      //   // publisher: 'Electron Dev',
+      //   publisher: 'CN=Dev Publisher',
+        packageIdentity: 'ai.griptape.nodes',
+      //   packageVersion: '1.42.0.0',
+      //   appExecutable: 'hellomsix.exe',
+      //   targetArch: 'x64',
       },
       windowsSignOptions: {
         certificatePassword: '12345',
       },
+      logLevel: "debug",
     }),
     // Maker for Mac
     new MakerDMG({
