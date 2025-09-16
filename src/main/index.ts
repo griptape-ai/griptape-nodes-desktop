@@ -115,6 +115,16 @@ const createWindow = () => {
 
   // Set up IPC handlers (function handles its own initialization state)
   setupIPC();
+
+  // Start engine when window is created (if ready)
+  if (engineService.getStatus() === 'ready') {
+    engineService.start();
+  }
+
+  // Stop engine when window is closed
+  mainWindow.on('closed', () => {
+    engineService.stop();
+  });
 }
 
 // This method will be called when Electron has finished
