@@ -40,6 +40,7 @@ const config: ForgeConfig = {
     // Maker for Windows
     new MakerSquirrel({
       name: "GriptapeNodes",
+      loadingGif: './public/loading.gif',
       iconUrl: 'https://griptape-nodes-desktop-public.s3.us-west-2.amazonaws.com/icon.ico',
       setupIcon: 'generated/icons/icon_installer_windows.ico',
     }),
