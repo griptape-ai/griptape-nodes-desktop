@@ -1,9 +1,17 @@
 name: Release
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
+    inputs:
+      staging:
+        description: 'Create staging release'
+        required: false
+        type: boolean
+        default: false
+      staging_suffix:
+        description: 'Staging tag suffix (e.g., "beta1", "rc1", "test")'
+        required: false
+        type: string
 
 jobs:
   release:
@@ -23,7 +31,17 @@ jobs:
         with:
           lfs: true
 
+      - name: Validate staging inputs
+        if: inputs.staging == true
+        run: |
+          if [ -z "${{ inputs.staging_suffix }}" ]; then
+            echo "Error: staging_suffix is required when staging is true"
+            exit 1
+          fi
+          echo "Staging release with suffix: ${{ inputs.staging_suffix }}"
+
       - name: Configure AWS creds via OIDC
+        if: inputs.staging != true
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::246367841364:role/GriptapeNodesDesktopGithubActions
@@ -70,3 +88,5 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          STAGING: ${{ inputs.staging }}
+          STAGING_SUFFIX: ${{ inputs.staging_suffix }}
