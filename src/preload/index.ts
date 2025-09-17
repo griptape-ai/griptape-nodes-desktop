@@ -43,6 +43,11 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
   selectDirectory: () => ipcRenderer.invoke('gtn:select-directory')
 });
 
+contextBridge.exposeInMainWorld('updateAPI', {
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  isSupported: () => ipcRenderer.invoke('update:is-supported')
+});
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getEnvVar: (key: string) => ipcRenderer.invoke('get-env-var', key),
   isDevelopment: () => ipcRenderer.invoke('is-development'),

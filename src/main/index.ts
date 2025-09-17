@@ -8,6 +8,7 @@ import { EngineService } from '../common/services/engine-service';
 import { EnvironmentInfoService } from '../common/services/environment-info';
 import { GtnService } from '../common/services/gtn-service';
 import { SetupService } from '../common/services/setup-service';
+import { UpdateService } from '../common/services/update-service';
 import { UvService } from '../common/services/uv-service';
 import { Coordinator } from './coordinator';
 import { logger } from '@/logger';
@@ -71,6 +72,7 @@ const engineService = new EngineService(userDataPath, gtnService);
 //   : new HttpAuthService();
 const authService = new HttpAuthService();
 const setupService = new SetupService(userDataPath, logsPath);
+const updateService = new UpdateService();
 const coordinator = new Coordinator(
   setupService,
   authService,
@@ -164,6 +166,15 @@ if (!gotTheLock) {
 }
 
 const createMenu = () => {
+  const checkForUpdatesItem = {
+    label: 'Check for Updates…',
+    click: () => {
+      const focusedWindow = BrowserWindow.getFocusedWindow();
+      updateService.checkForUpdates(focusedWindow || undefined);
+    },
+    enabled: updateService.isSupported()
+  };
+
   const template = [
     {
       label: app.getName(),
@@ -172,6 +183,8 @@ const createMenu = () => {
           label: `About ${app.getName()}`,
           click: showAboutDialog
         },
+        { type: 'separator' },
+        checkForUpdatesItem,
         { type: 'separator' },
         { role: 'quit' }
       ]
@@ -407,6 +420,24 @@ const setupIPC = () => {
       return result.filePaths[0];
     }
     return null;
+  });
+
+  // Update service handlers
+  ipcMain.handle('update:check', async () => {
+    try {
+      const focusedWindow = BrowserWindow.getFocusedWindow();
+      await updateService.checkForUpdates(focusedWindow || undefined);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  });
+
+  ipcMain.handle('update:is-supported', () => {
+    return updateService.isSupported();
   });
 };
 

@@ -3,9 +3,11 @@ import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { MakerZIP } from '@electron-forge/maker-zip';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { PublisherGithub } from '@electron-forge/publisher-github';
+import { PublisherS3 } from '@electron-forge/publisher-s3';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 
 const config: ForgeConfig = {
@@ -38,12 +40,13 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   makers: [
     // Maker for Windows
-    new MakerSquirrel({
+    new MakerSquirrel(arch => ({
       name: "GriptapeNodes",
       loadingGif: './public/loading.gif',
       iconUrl: 'https://griptape-nodes-desktop-public.s3.us-west-2.amazonaws.com/icon.ico',
       setupIcon: 'generated/icons/icon_installer_windows.ico',
-    }),
+      remoteReleases: `https://griptape-nodes-desktop-updates.s3.amazonaws.com/win32/${arch}`
+    })),
     // Maker for Mac
     new MakerDMG({
       name: "Griptape Nodes Installer",
@@ -51,6 +54,10 @@ const config: ForgeConfig = {
       icon: 'generated/icons/icon_installer_mac.icns',
       iconSize: 100,
     }, ['darwin']),
+    // Maker for ZIP updates to Mac app
+    new MakerZIP(arch => ({
+      macUpdateManifestBaseUrl: `https://griptape-nodes-desktop-updates.s3.amazonaws.com/darwin/${arch}`
+    })),
     new MakerRpm(),
     new MakerDeb(),
   ],
@@ -62,7 +69,11 @@ const config: ForgeConfig = {
       },
       draft: true,
       prerelease: true,
-    })
+    }),
+    new PublisherS3({
+      bucket: 'griptape-nodes-desktop-updates',
+      keyResolver: (filename, platform, arch) => `${platform}/${arch}/${filename}`
+    }),
   ],
   plugins: [
     new VitePlugin({
