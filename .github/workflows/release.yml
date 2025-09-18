@@ -35,6 +35,12 @@ jobs:
         id: check
         shell: bash
         run: |
+          # Validate release configuration
+          if [[ "${{ inputs.tag_prefix }}" != "v" && "${{ inputs.draft }}" != "true" && "${{ inputs.prerelease }}" != "true" ]]; then
+            echo "Error: Non-production releases (tag_prefix != 'v') must be either draft or prerelease"
+            exit 1
+          fi
+
           tag_name="${{ inputs.tag_prefix }}$(jq -r '.version' package.json)"
           echo "Checking for existing tag: $tag_name"
 
