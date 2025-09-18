@@ -10,9 +10,8 @@ import { PublisherGithub } from '@electron-forge/publisher-github';
 import { PublisherS3 } from '@electron-forge/publisher-s3';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 
-// Get staging information from environment variables
-const isStaging = process.env.STAGING === 'true';
-const stagingSuffix = process.env.STAGING_SUFFIX;
+// Get tag prefix from environment variables
+const tagPrefix = process.env.TAG_PREFIX;
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -73,12 +72,10 @@ const config: ForgeConfig = {
       },
       draft: true,
       prerelease: true,
-      ...(isStaging && stagingSuffix && {
-        tagPrefix: `staging-${stagingSuffix}`
-      })
+      tagPrefix
     }),
-    // Only include S3 publisher for non-staging releases
-    ...(isStaging ? [] : [
+    // Only include S3 publisher for production releases (when tagPrefix is "v")
+    ...(tagPrefix !== 'v' ? [] : [
       new PublisherS3({
         bucket: 'griptape-nodes-desktop-updates',
         keyResolver: (filename, platform, arch) => `${platform}/${arch}/${filename}`

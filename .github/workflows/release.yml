@@ -3,18 +3,50 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      staging:
-        description: 'Create staging release'
-        required: false
-        type: boolean
-        default: false
-      staging_suffix:
-        description: 'Staging tag suffix (e.g., "beta1", "rc1", "test")'
+      tag_prefix:
+        description: 'Tag prefix (e.g., "beta1", "rc1", "test") - defaults to "v"'
         required: false
         type: string
+        default: v
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_proceed: ${{ steps.check.outputs.should_proceed }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Check for existing release
+        id: check
+        shell: bash
+        run: |
+          tag_name="${{ inputs.tag_prefix }}$(jq -r '.version' package.json)"
+          echo "Checking for existing tag: $tag_name"
+
+          # Check if tag already exists
+          if git tag -l | grep -q "^${tag_name}$"; then
+            echo "Error: Tag $tag_name already exists"
+            exit 1
+          fi
+
+          # Check if GitHub release already exists
+          if gh release view "$tag_name" &>/dev/null; then
+            echo "Error: Release $tag_name already exists on GitHub"
+            exit 1
+          fi
+
+          echo "Tag $tag_name is available"
+          echo "should_proceed=true" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   release:
+    needs: validate
     runs-on: ${{ matrix.os }}
 
     permissions:
@@ -31,18 +63,8 @@ jobs:
         with:
           lfs: true
 
-      - name: Validate staging inputs
-        if: inputs.staging == true
-        shell: bash
-        run: |
-          if [ -z "${{ inputs.staging_suffix }}" ]; then
-            echo "Error: staging_suffix is required when staging is true"
-            exit 1
-          fi
-          echo "Staging release with suffix: ${{ inputs.staging_suffix }}"
-
       - name: Configure AWS creds via OIDC
-        if: inputs.staging != true
+        if: inputs.tag_prefix == 'v'  # Only configure AWS for production releases
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::246367841364:role/GriptapeNodesDesktopGithubActions
@@ -89,5 +111,4 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          STAGING: ${{ inputs.staging }}
-          STAGING_SUFFIX: ${{ inputs.staging_suffix }}
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
