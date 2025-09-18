@@ -33,6 +33,7 @@ jobs:
 
       - name: Validate staging inputs
         if: inputs.staging == true
+        shell: bash
         run: |
           if [ -z "${{ inputs.staging_suffix }}" ]; then
             echo "Error: staging_suffix is required when staging is true"
