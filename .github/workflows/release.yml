@@ -8,6 +8,16 @@ on:
         required: false
         type: string
         default: v
+      draft:
+        description: 'Create as draft release'
+        required: false
+        type: boolean
+        default: true
+      prerelease:
+        description: 'Mark as prerelease'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   validate:
@@ -112,3 +122,5 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           TAG_PREFIX: ${{ inputs.tag_prefix }}
+          DRAFT: ${{ inputs.draft }}
+          PRERELEASE: ${{ inputs.prerelease }}

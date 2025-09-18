@@ -10,8 +10,10 @@ import { PublisherGithub } from '@electron-forge/publisher-github';
 import { PublisherS3 } from '@electron-forge/publisher-s3';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 
-// Get tag prefix from environment variables
+// Get release configuration from environment variables
 const tagPrefix = process.env.TAG_PREFIX;
+const draft = process.env.DRAFT === 'true';
+const prerelease = process.env.PRERELEASE === 'true';
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -70,8 +72,8 @@ const config: ForgeConfig = {
         owner: 'griptape-ai',
         name: 'griptape-nodes-desktop'
       },
-      draft: true,
-      prerelease: true,
+      draft,
+      prerelease,
       tagPrefix
     }),
     // Only include S3 publisher for production releases (when tagPrefix is "v")
