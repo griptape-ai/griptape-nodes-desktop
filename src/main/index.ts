@@ -181,7 +181,7 @@ const createMenu = () => {
       submenu: [
         {
           label: `About ${app.getName()}`,
-          click: showAboutDialog
+          click: async () => await showAboutDialog()
         },
         { type: 'separator' },
         checkForUpdatesItem,
@@ -195,7 +195,7 @@ const createMenu = () => {
   Menu.setApplicationMenu(menu);
 };
 
-const showAboutDialog = () => {
+const showAboutDialog = async () => {
   // Load persisted environment info
   const envInfo = environmentInfoService.loadEnvironmentInfo();
 
@@ -212,21 +212,16 @@ const showAboutDialog = () => {
     ''
   ];
 
-  if (envInfo) {
-    // Use persisted environment info
-    detailText.push(
-      `Python: ${envInfo.python.version.split('\n')[0]}`,
-      `UV: ${envInfo.uv.version}`,
-      `Griptape Nodes: ${envInfo.griptapeNodes.installed ? envInfo.griptapeNodes.version : 'Not installed'}`
-    );
-  } else {
-    // Fallback to direct service calls if no persisted info
-    detailText.push(
-      `Python: ${getPythonVersion()}`,
-      `UV: ${uvService.getUvVersion()}`,
-      // `Griptape Nodes: ${pythonService.isGriptapeNodesReady() ? pythonService.getGriptapeNodesVersion() : 'Not installed'}`
-    );
-  }
+
+  const pythonVersion = envInfo?.python?.version?.split('\n')?.[0] || getPythonVersion() || 'Not installed';
+  const uvVersion = envInfo?.uv?.version || await uvService.getUvVersion() || 'Not installed';
+  // const gtnVersion = envInfo?.griptapeNodes?.version || 'Not installed';
+
+  detailText.push(
+    `Python: ${pythonVersion}`,
+    `UV: ${uvVersion}`,
+    // `Griptape Nodes: ${gtnVersion}`
+  );
 
   dialog.showMessageBox({
     type: 'info',
