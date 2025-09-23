@@ -45,7 +45,7 @@ export function mergeNestedArray<T>({ obj, path, items, unique }: {
   const parent = path.slice(0, -1).reduce<any>((a, k) =>
     a[k] && typeof a[k] === "object" && !Array.isArray(a[k]) ? a[k] : (a[k] = {}), obj);
   const key = path[path.length - 1], cur = parent[key],
-        base: T[] = cur === undefined ? [] : Array.isArray(cur) ? cur : [cur];
+    base: T[] = cur === undefined ? [] : Array.isArray(cur) ? cur : [cur];
   parent[key] = unique ? Array.from(new Set<T>([...base, ...items])) : [...base, ...items];
 }
 
@@ -56,13 +56,13 @@ export class GtnService {
     private userDataDir: string,
     private defaultWorkspaceDir: string,
     private gtnExecutablePath?: string,
-  ) {}
+  ) { }
 
   setGtnExecutablePath(gtnExecutablePath?: string) {
     this.gtnExecutablePath = gtnExecutablePath;
   }
 
-  getGtnExecutablePath(): string|null {
+  getGtnExecutablePath(): string | null {
     return this.gtnExecutablePath;
   }
 
@@ -82,18 +82,18 @@ export class GtnService {
 
     // Build command arguments
     const args = ['init', '--no-interactive'];
-    
+
     // API key is required
     args.push('--api-key', options.apiKey);
-    
+
     // Use workspace directory from options or default
     const workspace = options.workspaceDirectory || this.defaultWorkspaceDir;
     args.push('--workspace-directory', workspace);
-    
+
     // Storage backend (default to local)
     const storageBackend = options.storageBackend || 'local';
     args.push('--storage-backend', storageBackend);
-    
+
     // Bucket name for gtc storage
     if (storageBackend === 'gtc' && options.bucketName) {
       args.push('--bucket-name', options.bucketName);
@@ -214,8 +214,8 @@ export class GtnService {
 
     const env = getEnv(this.userDataDir);
     const cwd = getCwd(this.userDataDir);
-    const child = spawn(this.gtnExecutablePath, args, { env, cwd });
-    attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0,10) });
+    const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], { env, cwd });
+    attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0, 10) });
     return child;
   }
 

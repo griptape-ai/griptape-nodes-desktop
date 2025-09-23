@@ -147,24 +147,24 @@ export class EngineService extends EventEmitter<Events> {
         gtnPath,
         [
           '--no-update',
-          'engine',
+          // 'engine', TODO: uncomment after resolving https://github.com/griptape-ai/griptape-nodes/issues/2315
         ],
         {
-        cwd: getCwd(this.userDataDir),
-        env: {
-          ...getEnv(this.userDataDir),
-          // Force color output for terminals that support it
-          FORCE_COLOR: '1',
-          RICH_FORCE_TERMINAL: "1",
-          PYTHONUNBUFFERED: '1',
-          // Help with Windows terminal compatibility
-          TERM: 'xterm-256color',
-          // Fix Windows Unicode encoding issues
-          PYTHONIOENCODING: 'utf-8',
-          PYTHONUTF8: '1'
-        },
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+          cwd: getCwd(this.userDataDir),
+          env: {
+            ...getEnv(this.userDataDir),
+            // Force color output for terminals that support it
+            FORCE_COLOR: '1',
+            RICH_FORCE_TERMINAL: "1",
+            PYTHONUNBUFFERED: '1',
+            // Help with Windows terminal compatibility
+            TERM: 'xterm-256color',
+            // Fix Windows Unicode encoding issues
+            PYTHONIOENCODING: 'utf-8',
+            PYTHONUTF8: '1'
+          },
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
 
       attachOutputForwarder(this.engineProcess, { logPrefix: "GTN-ENGINE" })
 
