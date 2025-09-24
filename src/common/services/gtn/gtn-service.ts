@@ -143,8 +143,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     logger.info('Running gtn init with args:', sanitizedArgs.join(' '));
 
     // Execute gtn init from the config directory so it finds our config file (async)
-    this.runGtn(args);
-
+    await this.runGtn(args, { wait: true });
   }
 
 
@@ -207,13 +206,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       return;
     }
 
-    const child = await this.runGtn(['libraries', 'sync']);
-
-    // We don't actually care about the output here. We just
-    // want it to finish. Ideally we'd have another util like
-    // this that doesn't waste time and space buffering the
-    // output.
-    await collectStdout(child);
+    await this.runGtn(['libraries', 'sync'], { wait: true });
   }
 
   async registerLibraries() {
@@ -243,7 +236,10 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     this.workspaceDirectory = workspaceDirectory;
   }
 
-  async runGtn(args: string[] = [], forward_logs: boolean = false): Promise<ChildProcess> {
+  async runGtn(args: string[] = [], options?: { forward_logs?: boolean, wait?: boolean }): Promise<ChildProcess> {
+    const wait = options?.wait || false;
+    const forward_logs = options?.forward_logs || false;
+
     // Hack to ensure executable is available by the time login is complete
     // and the UI tries to use it.
     while (!this.gtnExecutablePath) {
@@ -255,6 +251,13 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], { env, cwd });
     if (forward_logs) {
       attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0, 10) });
+    }
+    if (wait) {
+      // We don't actually care about the output here. We just
+      // want it to finish. Ideally we'd have another util like
+      // this that doesn't waste time and space buffering the
+      // output.
+      await collectStdout(child);
     }
     return child;
   }

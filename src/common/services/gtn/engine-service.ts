@@ -49,8 +49,6 @@ export class EngineService extends EventEmitter<EngineEvents> {
     this.emit('ready');
     this.setEngineStatus('ready');
     logger.info("engine service ready");
-
-    logger.info("engine service starting engine automatically since its ready");
   }
 
   async waitForReady(): Promise<void> {
