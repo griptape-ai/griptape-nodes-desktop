@@ -4,14 +4,13 @@ import started from 'electron-squirrel-startup';
 import { getPythonVersion } from '../common/config/versions';
 import { CustomAuthService } from '../common/services/auth/custom';
 import { HttpAuthService } from '../common/services/auth/http';
-import { EngineService } from '../common/services/engine-service';
+import { EngineService } from '../common/services/gtn/engine-service';
 import { EnvironmentInfoService } from '../common/services/environment-info';
-import { GtnService } from '../common/services/gtn-service';
-import { SetupService } from '../common/services/setup-service';
+import { GtnService } from '../common/services/gtn/gtn-service';
 import { UpdateService } from '../common/services/update-service';
-import { UvService } from '../common/services/uv-service';
-import { Coordinator } from './coordinator';
+import { UvService } from '../common/services/uv/uv-service';
 import { logger } from '@/logger';
+import { PythonService } from '../common/services/python/python-service';
 
 // Build info injected at compile time
 declare const __BUILD_INFO__: {
@@ -65,20 +64,14 @@ if (process.env.NODE_ENV === 'development' && process.env.AUTH_SCHEME === 'custo
 // Services
 const uvService = new UvService(userDataPath);
 const environmentInfoService = new EnvironmentInfoService(userDataPath);
-const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir);
-const engineService = new EngineService(userDataPath, gtnService);
+const pythonService = new PythonService(userDataPath, uvService);
+const authService = new HttpAuthService();
 // const authService = (process.env.AUTH_SCHEME === 'custom')
 //   ? new CustomAuthService()
 //   : new HttpAuthService();
-const authService = new HttpAuthService();
-const setupService = new SetupService(userDataPath, logsPath);
+const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir, uvService, pythonService, authService);
+const engineService = new EngineService(userDataPath, gtnService);
 const updateService = new UpdateService();
-const coordinator = new Coordinator(
-  setupService,
-  authService,
-  gtnService,
-  engineService,
-);
 
 const createWindow = () => {
   // Create the browser window.
@@ -120,12 +113,12 @@ const createWindow = () => {
 
   // Start engine when window is created (if ready)
   if (engineService.getStatus() === 'ready') {
-    engineService.start();
+    engineService.startEngine();
   }
 
   // Stop engine when window is closed
   mainWindow.on('closed', () => {
-    engineService.stop();
+    engineService.stopEngine();
   });
 }
 
@@ -133,8 +126,26 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
-  coordinator.start();
+  authService.start();
+  uvService.start();
+  pythonService.start();
+  gtnService.start();
+  engineService.start();
+
+  engineService.on('engine:status-changed', (status) => {
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('engine:status-changed', status);
+    });
+  });
+  engineService.on('engine:log', (log) => {
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('engine:log', log);
+    });
+  });
+
   createWindow();
+
+  engineService.startEngine();
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -320,11 +331,6 @@ const setupIPC = () => {
   ipcMain.handle('auth:logout', async () => {
     authService.clearCredentials();
 
-    // Notify all windows about logout
-    BrowserWindow.getAllWindows().forEach(window => {
-      window.webContents.send('auth:logout-success');
-    });
-
     return { success: true };
   });
 
@@ -374,11 +380,11 @@ const setupIPC = () => {
     return { success: true };
   });
 
-  ipcMain.handle('engine:start', () => engineService.start());
+  ipcMain.handle('engine:start', () => engineService.startEngine());
 
-  ipcMain.handle('engine:stop', () => engineService.stop());
+  ipcMain.handle('engine:stop', () => engineService.stopEngine());
 
-  ipcMain.handle('engine:restart', () => engineService.restart());
+  ipcMain.handle('engine:restart', () => engineService.restartEngine());
 
   // Griptape Nodes configuration handlers
   ipcMain.handle('gtn:get-workspace', () => {
@@ -392,7 +398,7 @@ const setupIPC = () => {
       if (result.success) {
         // Restart engine if it was running
         if (engineService.getStatus() === 'running') {
-          await engineService.restart();
+          await engineService.restartEngine();
         }
       }
 

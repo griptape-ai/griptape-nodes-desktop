@@ -100,16 +100,6 @@ const config: ForgeConfig = {
           config: 'vite.preload.config.ts',
           target: 'preload',
         },
-        {
-          entry: 'src/workers/setup/index.ts',
-          config: 'vite.setup.config.ts',
-          target: 'main',
-        },
-        {
-          entry: 'src/workers/python/index.ts',
-          config: 'vite.python.config.ts',
-          target: 'main',
-        },
       ],
       renderer: [
         {
