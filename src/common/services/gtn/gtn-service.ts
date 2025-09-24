@@ -184,7 +184,11 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   async findLibraryConfigPaths() {
-    let libraryPaths = await findFiles(getXdgDataHome(this.userDataDir), "griptape_nodes_library.json");
+    const dir = getXdgDataHome(this.userDataDir);
+    if (!fs.existsSync((dir))) {
+      return [];
+    }
+    let libraryPaths = await findFiles(dir, "griptape_nodes_library.json");
     // Filter out advanced media lib for now, until we add library management.
     libraryPaths = libraryPaths.filter(value => !value.includes("griptape_nodes_advanced_media_library"));
     return libraryPaths
