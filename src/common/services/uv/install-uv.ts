@@ -1,8 +1,8 @@
 import { ChildProcess, exec, spawn } from 'child_process';
-import { attachOutputForwarder } from "../../common/child-process/output-forwarder";
-import { getUvInstallDir } from '../../common/config/paths';
-import { getCwd } from '../../common/config/paths';
-import { getEnv } from '../../common/config/env';
+import { attachOutputForwarder } from "../../child-process/output-forwarder";
+import { getUvInstallDir } from '../../config/paths';
+import { getCwd } from '../../config/paths';
+import { getEnv } from '../../config/env';
 
 export async function installUv(userDataDir: string): Promise<void> {
   const uvInstallDir = getUvInstallDir(userDataDir);

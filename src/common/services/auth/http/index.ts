@@ -14,35 +14,35 @@ interface AuthData {
   user?: any;
 }
 
-interface Events {
-  'auth:http:login:started': [];
-  'auth:http:login:succeeded': [{apiKey: string, tokens: any, user: any}];
-  'auth:http:login:failed': [{reason: string}];
-  'auth:http:apiKey:changed': [{apiKey: string}];
+interface HttpAuthServiceEvents {
+  'ready': [];
+  'apiKey': [string];
 }
 
-export class HttpAuthService extends EventEmitter<Events> {
+export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   private server: Server | null = null;
   private authResolve: ((value: any) => void) | null = null;
   private authReject: ((reason?: any) => void) | null = null;
-  private store: Store<AuthData>;
+  private store: Store<AuthData>;  // Secure storage
 
   constructor() {
     super();
-    // Initialize secure storage
     this.store = new Store<AuthData>();
-    
   }
 
   // Start a local dev server in some kind of lifecycle hook.
   async start() {
 
     // React to changes to api key.
-    this.store.onDidChange('apiKey', (newValue: string, oldValue) => this.emit('auth:http:apiKey:changed', {apiKey: newValue}));
-    // Propagate the initial state?
+    this.store.onDidChange(
+      'apiKey',
+      (newValue: string, oldValue) => this.emit('apiKey', { apiKey: newValue }),
+    );
+
+    // Propagate the initial state? Not sure if this is needed or not.
     const apiKey = this.store.get('apiKey');
     if (apiKey) {
-      this.emit('auth:http:apiKey:changed', { apiKey });
+      this.emit('apiKey', { apiKey });
     }
 
     if (this.server) {
@@ -51,14 +51,14 @@ export class HttpAuthService extends EventEmitter<Events> {
     }
 
     const app = express();
-    
+
     // OAuth callback route at root
     app.get('/', (req, res) => {
       const { code, state, error, error_description } = req.query;
-      
+
       // Log the code
       logger.info('OAuth callback received - code:', code);
-      
+
       // Simple success message
       res.send(`
         <html>
@@ -88,22 +88,15 @@ export class HttpAuthService extends EventEmitter<Events> {
           </body>
         </html>
       `);
-      
+
       // Send to renderer via IPC and focus the app
       const mainWindow = BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
-        mainWindow.webContents.send('auth:callback', {
-          code,
-          state,
-          error,
-          error_description
-        });
-        
         // Focus the app window
         if (mainWindow.isMinimized()) mainWindow.restore();
         mainWindow.focus();
       }
-      
+
       // Handle internally
       if (code) {
         this.handleAuthCode(code as string, state as string);
@@ -133,12 +126,20 @@ export class HttpAuthService extends EventEmitter<Events> {
     }
   }
 
+  async waitForApiKey(): Promise<string> {
+    const apiKey = this.store.get('apiKey');
+    if (apiKey) {
+      return Promise.resolve(apiKey);
+    }
+    return new Promise(resolve => this.once('apiKey', ({ apiKey }) => resolve(apiKey)))
+  }
+
   // Check if we have stored credentials\
   hasStoredCredentials(): boolean {
     const apiKey = this.store.get('apiKey');
     const tokens = this.store.get('tokens');
     const user = this.store.get('user');
-    
+
     // Only return if we have complete credentials
     return apiKey && tokens && user;
   }
@@ -148,10 +149,10 @@ export class HttpAuthService extends EventEmitter<Events> {
     const apiKey = this.store.get('apiKey');
     const tokens = this.store.get('tokens');
     const user = this.store.get('user');
-    
+
     // Only return if we have complete credentials
     if (!apiKey || !tokens || !user) return null;
-    
+
     return {
       apiKey,
       tokens,
@@ -170,17 +171,10 @@ export class HttpAuthService extends EventEmitter<Events> {
   }
 
   async login(): Promise<void> {
-    this.emit('auth:http:login:started');
-
     // Check if we have complete credentials
     const stored = this.getStoredCredentials();
     if (stored) {
       logger.info('Using stored credentials');
-      this.emit('auth:http:login:succeeded', {
-        apiKey: stored.apiKey,
-        tokens: stored.tokens,
-        user: stored.tokens,
-      });
       return;
     }
 
@@ -202,7 +196,6 @@ export class HttpAuthService extends EventEmitter<Events> {
       setTimeout(() => {
         if (this.authResolve) {
           this.authReject?.(new Error('Authentication timeout'));
-          this.emit('auth:http:login:failed', { reason: "Timedout after 5 minutes" });
           this.authResolve = null;
           this.authReject = null;
         }
@@ -213,15 +206,15 @@ export class HttpAuthService extends EventEmitter<Events> {
   private async handleAuthCode(code: string, state: string) {
     try {
       logger.info('Handling auth code:', code, 'state:', state);
-      
+
       // Exchange code for tokens
       const tokens = await this.exchangeCodeForTokens(code);
       logger.info('Got tokens:', tokens);
-      
+
       // Get user info
       const userInfo = await this.getUserInfo(tokens.access_token);
       logger.info('Got user info:', userInfo);
-      
+
       // Check if we already have an API key, only generate if needed
       let apiKey = this.store.get('apiKey');
       if (!apiKey) {
@@ -232,7 +225,7 @@ export class HttpAuthService extends EventEmitter<Events> {
       // Store credentials
       this.store.set('tokens', tokens);
       this.store.set('user', userInfo);
-      
+
       // Resolve the auth promise if it exists
       this.authResolve?.({
         success: true,
@@ -240,15 +233,9 @@ export class HttpAuthService extends EventEmitter<Events> {
         user: userInfo,
         apiKey
       });
-      this.emit('auth:http:login:succeeded', {
-        apiKey,
-        tokens,
-        user: userInfo,
-      });
     } catch (error) {
       logger.error('Error handling auth code:', error);
       this.authReject?.(error);
-      this.emit('auth:http:login:failed', { reason: error.toString() });
     } finally {
       this.authResolve = null;
       this.authReject = null;

@@ -1,10 +1,10 @@
 import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { attachOutputForwarder } from '../child-process/output-forwarder';
-import { getEnv } from '../config/env';
-import { getCwd, getGtnExecutablePath } from '../config/paths';
-import { GtnService } from './gtn-service';
-import { PythonService } from './python-service';
+import { attachOutputForwarder } from '../../child-process/output-forwarder';
+import { getEnv } from '../../config/env';
+import { getCwd, getGtnExecutablePath } from '../../config/paths';
+import { GtnService } from '../gtn/gtn-service';
+import { PythonService } from '../python/python-service';
 import { logger } from '@/logger';
 
 export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error';
@@ -15,13 +15,14 @@ export interface EngineLog {
   message: string;
 }
 
-interface Events {
+interface EngineEvents {
+  'ready': [];
   'engine:status-changed': [EngineStatus];
   'engine:log': [EngineLog]
   'engine:logs-cleared': [];
 }
 
-export class EngineService extends EventEmitter<Events> {
+export class EngineService extends EventEmitter<EngineEvents> {
   private engineProcess: ChildProcess | null = null;
   private status: EngineStatus = 'not-ready';
   private logs: EngineLog[] = [];
@@ -31,12 +32,30 @@ export class EngineService extends EventEmitter<Events> {
   private restartDelay = 5000; // 5 seconds
   private stdoutBuffer = ''; // Buffer for incomplete stdout lines
   private stderrBuffer = ''; // Buffer for incomplete stderr lines
+  private isReady: boolean = false;
 
   constructor(
     private userDataDir: string,
     private gtnService: GtnService,
   ) {
     super();
+  }
+
+  async start() {
+    logger.info("engine service start");
+    await this.gtnService.waitForReady();
+
+    this.isReady = true;
+    this.emit('ready');
+    this.setEngineStatus('ready');
+    logger.info("engine service ready");
+  }
+
+  async waitForReady(): Promise<void> {
+    if (this.isReady) {
+      return Promise.resolve();
+    }
+    return new Promise(resolve => this.once('ready', resolve));
   }
 
   /**
@@ -76,35 +95,37 @@ export class EngineService extends EventEmitter<Events> {
   private addLog(type: 'stdout' | 'stderr', message: string): void {
     // Clean up control sequences that shouldn't be displayed
     let cleanMessage = message
-      // Remove cursor show/hide sequences
-      .replace(/\x1b\[\?25[lh]/g, '')
-      // Remove other cursor control sequences
-      .replace(/\x1b\[\d*[ABCDEFGHJKST]/gi, '')
-      // Remove clear line/screen sequences
-      .replace(/\x1b\[2?[JK]/gi, '')
-      // Remove save/restore cursor position
-      .replace(/\x1b\[[su]/gi, '')
-      // Remove Windows-specific ANSI sequences
-      // .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
-      // Remove color reset and other SGR sequences
-      .replace(/\x1b\[\d*;?\d*;?\d*;?\d*m/g, '')
-      // Remove bracketed paste mode
-      .replace(/\x1b\[\?2004[lh]/g, '')
-      // Clean up any remaining escape sequences we don't handle
-      .replace(/\x1b\[\?\d+[lh]/g, '')
-      // Handle Windows line endings properly
-      .replace(/\r\n/g, '\n')
-      .replace(/\r(?!\n)/g, '');
+      // TODO: [Add back engine log colors cross platform](https://github.com/griptape-ai/griptape-nodes-desktop/issues/31)
+      // // Remove cursor show/hide sequences
+      // .replace(/\x1b\[\?25[lh]/g, '')
+      // // Remove other cursor control sequences
+      // .replace(/\x1b\[\d*[ABCDEFGHJKST]/gi, '')
+      // // Remove clear line/screen sequences
+      // .replace(/\x1b\[2?[JK]/gi, '')
+      // // Remove save/restore cursor position
+      // .replace(/\x1b\[[su]/gi, '')
+      // // Remove Windows-specific ANSI sequences
+      // // .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+      // // Remove color reset and other SGR sequences
+      // .replace(/\x1b\[\d*;?\d*;?\d*;?\d*m/g, '')
+      // // Remove bracketed paste mode
+      // .replace(/\x1b\[\?2004[lh]/g, '')
+      // // Clean up any remaining escape sequences we don't handle
+      // .replace(/\x1b\[\?\d+[lh]/g, '')
+      // // Handle Windows line endings properly
+      // .replace(/\r\n/g, '\n')
+      // .replace(/\r(?!\n)/g, '');
+      ;
 
     // Don't process OSC 8 hyperlinks here - let the frontend handle them
     // This preserves them for conversion to clickable links in the UI
 
-    cleanMessage = cleanMessage.trim();
+    // cleanMessage = cleanMessage.trim();
 
-    // Skip empty messages after cleaning
-    if (!cleanMessage) {
-      return;
-    }
+    // // Skip empty messages after cleaning
+    // if (!cleanMessage) {
+    //   return;
+    // }
 
     const log: EngineLog = {
       timestamp: new Date(),
@@ -125,20 +146,15 @@ export class EngineService extends EventEmitter<Events> {
   /**
    * Start the engine
    */
-  async start(): Promise<void> {
-    // HACK! Lazily getting the executable path this way SUCKS!
-    const gtnPath = this.gtnService.getGtnExecutablePath();
-    if (!this.gtnService.gtnExecutableExists()) {
-      this.setStatus('initializing');
-      return;
-    }
+  async startEngine(): Promise<void> {
+    await this.waitForReady();
 
-    this.setStatus('running');
+    const gtnPath = await this.gtnService.getGtnExecutablePath();
+    this.setEngineStatus('running');
 
     try {
       // Clear logs from previous session when starting fresh
       this.logs = [];
-      this.addLog('stdout', 'Starting Griptape Nodes engine...');
       logger.info('[ENGINE] Starting Griptape Nodes engine...');
       logger.info(`[ENGINE] Command: ${gtnPath} engine`);
 
@@ -153,15 +169,16 @@ export class EngineService extends EventEmitter<Events> {
           cwd: getCwd(this.userDataDir),
           env: {
             ...getEnv(this.userDataDir),
-            // Force color output for terminals that support it
-            FORCE_COLOR: '1',
-            RICH_FORCE_TERMINAL: "1",
-            PYTHONUNBUFFERED: '1',
-            // Help with Windows terminal compatibility
-            TERM: 'xterm-256color',
-            // Fix Windows Unicode encoding issues
-            PYTHONIOENCODING: 'utf-8',
-            PYTHONUTF8: '1'
+            // TODO: [Add back engine log colors cross platform](https://github.com/griptape-ai/griptape-nodes-desktop/issues/31)
+            // // Force color output for terminals that support it
+            // FORCE_COLOR: '1',
+            // RICH_FORCE_TERMINAL: "1",
+            // PYTHONUNBUFFERED: '1',
+            // // Help with Windows terminal compatibility
+            // TERM: 'xterm-256color',
+            // // Fix Windows Unicode encoding issues
+            // PYTHONIOENCODING: 'utf-8',
+            // PYTHONUTF8: '1'
           },
           stdio: ['pipe', 'pipe', 'pipe']
         });
@@ -253,11 +270,11 @@ export class EngineService extends EventEmitter<Events> {
           this.restartAttempts++;
           this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`);
           this.addLog('stdout', `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
-          setTimeout(() => this.start(), this.restartDelay);
-          this.setStatus('ready');
+          setTimeout(() => this.startEngine(), this.restartDelay);
+          this.setEngineStatus('ready');
         } else {
           this.addLog('stderr', 'Maximum restart attempts reached. Engine will not auto-restart.');
-          this.setStatus('error');
+          this.setEngineStatus('error');
         }
       });
 
@@ -265,16 +282,16 @@ export class EngineService extends EventEmitter<Events> {
       this.engineProcess.on('error', (error) => {
         this.addLog('stderr', `Engine process error: ${error.message}`);
         this.addLog('stderr', `Error code: ${(error as any).code}, errno: ${(error as any).errno}`);
-        this.setStatus('error');
+        this.setEngineStatus('error');
       });
 
     } catch (error) {
       this.addLog('stderr', `Failed to start engine: ${error.message}`);
-      this.setStatus('error');
+      this.setEngineStatus('error');
     }
   }
 
-  private setStatus(status: EngineStatus) {
+  private setEngineStatus(status: EngineStatus) {
     if (status == this.status) {
       return;
     }
@@ -282,13 +299,10 @@ export class EngineService extends EventEmitter<Events> {
     this.emit('engine:status-changed', status);
   }
 
-  /**
-   * Stop the engine
-   */
-  async stop(): Promise<void> {
+  async stopEngine(): Promise<void> {
     if (this.status == 'running') {
       // Set status to ready so that the exit handler doesn't try to restart.
-      this.setStatus('ready');
+      this.setEngineStatus('ready');
     }
     // Try kill first.
     if (this.engineProcess) {
@@ -303,41 +317,14 @@ export class EngineService extends EventEmitter<Events> {
     }
   }
 
-  /**
-   * Restart the engine
-   */
-  async restart(): Promise<void> {
+  async restartEngine(): Promise<void> {
     this.addLog('stdout', 'Restarting Griptape Nodes engine...');
-    await this.stop();
-    await this.start();
+    await this.stopEngine();
+    await this.startEngine();
   }
 
-  /**
-   * Initialize the service and start engine if possible
-   */
-  async initialize(): Promise<void> {
-    logger.info('[ENGINE] Initialize called');
-
-    // Auto-start the engine if it's ready
-    if (this.status === 'ready') {
-      logger.info('[ENGINE] Status is ready, attempting to start...');
-      try {
-        await this.start();
-      } catch (error) {
-        logger.error('[ENGINE] Failed to auto-start engine:', error);
-      }
-    } else {
-      logger.info(`[ENGINE] Not ready to start. Status: ${this.status}`);
-      // Emit status change to notify UI of current state
-      this.emit('engine:status-changed', this.status);
-    }
-  }
-
-  /**
-   * Cleanup when service is destroyed
-   */
   async destroy(): Promise<void> {
-    await this.stop();
+    await this.stopEngine();
     this.removeAllListeners();
   }
 }

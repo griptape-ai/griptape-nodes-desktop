@@ -53,30 +53,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDevelopment: () => ipcRenderer.invoke('is-development'),
   checkAuthCompletion: () => ipcRenderer.invoke('check-auth-completion'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
-  onAuthCallback: (callback: (event: any, data: any) => void) => {
-    ipcRenderer.on('auth:callback', callback);
-  },
-  removeAuthCallback: (callback: (event: any, data: any) => void) => {
-    ipcRenderer.removeListener('auth:callback', callback);
-  },
-  onAuthLoginSuccess: (callback: (event: any, data: any) => void) => {
-    ipcRenderer.on('auth:login-success', callback);
-  },
-  removeAuthLoginSuccess: (callback: (event: any, data: any) => void) => {
-    ipcRenderer.removeListener('auth:login-success', callback);
-  },
-  onAuthLoginError: (callback: (event: any, error: string) => void) => {
-    ipcRenderer.on('auth:login-error', callback);
-  },
-  removeAuthLoginError: (callback: (event: any, error: string) => void) => {
-    ipcRenderer.removeListener('auth:login-error', callback);
-  },
-  onAuthLogout: (callback: () => void) => {
-    ipcRenderer.on('auth:logout-success', callback);
-  },
-  removeAuthLogout: (callback: () => void) => {
-    ipcRenderer.removeListener('auth:logout-success', callback);
-  }
 });
 
 // Listen for PostMessage from OAuth redirect page in development

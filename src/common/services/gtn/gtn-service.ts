@@ -2,11 +2,16 @@ import { ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from "path";
 import { readdir } from "fs/promises";
-import { collectStdout } from '../child-process/collect-stdout';
-import { attachOutputForwarder } from '../child-process/output-forwarder';
-import { getEnv } from '../config/env';
-import { getCwd, getGtnConfigPath, getGtnExecutablePath, getXdgDataHome } from '../config/paths';
+import { collectStdout } from '../../child-process/collect-stdout';
+import { attachOutputForwarder } from '../../child-process/output-forwarder';
+import { getEnv } from '../../config/env';
+import { getCwd, getGtnConfigPath, getGtnExecutablePath, getXdgDataHome } from '../../config/paths';
 import { logger } from '@/logger';
+import { UvService } from '../uv/uv-service';
+import EventEmitter from 'events';
+import { installGtn } from './install-gtn';
+import { PythonService } from '../python/python-service';
+import { HttpAuthService } from '../auth/http';
 
 async function findFiles(dir: string, target: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -50,37 +55,67 @@ export function mergeNestedArray<T>({ obj, path, items, unique }: {
 }
 
 
-export class GtnService {
+interface GtnServiceEvents {
+  'ready': [];
+}
+
+export class GtnService extends EventEmitter<GtnServiceEvents> {
+  private isReady: boolean = false;
   private workspaceDirectory?: string;
+  private gtnExecutablePath?: string;
+
   constructor(
     private userDataDir: string,
     private defaultWorkspaceDir: string,
-    private gtnExecutablePath?: string,
-  ) { }
-
-  setGtnExecutablePath(gtnExecutablePath?: string) {
-    this.gtnExecutablePath = gtnExecutablePath;
+    private uvService: UvService,
+    private pythonService: PythonService,
+    private authService: HttpAuthService,
+  ) {
+    super();
   }
 
-  getGtnExecutablePath(): string | null {
+  async start() {
+    logger.info("gtn service start");
+    await this.uvService.waitForReady();
+    await this.pythonService.waitForReady();
+    await this.installGtn();
+    await this.syncLibraries();
+    await this.registerLibraries();
+    const apiKey = await this.authService.waitForApiKey();
+    await this.initialize({ apiKey })
+
+
+    this.isReady = true;
+    this.emit('ready');
+    logger.info("gtn service ready");
+  }
+
+  async waitForReady(): Promise<void> {
+    if (this.isReady) {
+      return Promise.resolve();
+    }
+    return new Promise(resolve => this.once('ready', resolve));
+  }
+
+  async installGtn() {
+    logger.info('gtn service installGtn start');
+    const uvExecutablePath = await this.uvService.getUvExecutablePath();
+    await installGtn(this.userDataDir, uvExecutablePath);
+    this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir);
+    logger.info('gtn service installGtn end');
+  }
+
+  async getGtnExecutablePath(): Promise<string> {
+    await this.waitForReady();
     return this.gtnExecutablePath;
   }
 
-  /**
-   * Initialize gtn with API key and optional settings
-   */
   async initialize(options: {
     apiKey: string;
     workspaceDirectory?: string;
     storageBackend?: 'local' | 'gtc';
     bucketName?: string;
   }): Promise<void> {
-    const gtnPath = getGtnExecutablePath(this.userDataDir);
-    if (!gtnPath) {
-      throw new Error('Griptape Nodes executable not found');
-    }
-
-    // Build command arguments
     const args = ['init', '--no-interactive'];
 
     // API key is required
@@ -108,8 +143,7 @@ export class GtnService {
     logger.info('Running gtn init with args:', sanitizedArgs.join(' '));
 
     // Execute gtn init from the config directory so it finds our config file (async)
-    this.runGtn(args);
-
+    await this.runGtn(args, { wait: true });
   }
 
 
@@ -149,7 +183,11 @@ export class GtnService {
   }
 
   async findLibraryConfigPaths() {
-    let libraryPaths = await findFiles(getXdgDataHome(this.userDataDir), "griptape_nodes_library.json");
+    const dir = getXdgDataHome(this.userDataDir);
+    if (!fs.existsSync((dir))) {
+      return [];
+    }
+    let libraryPaths = await findFiles(dir, "griptape_nodes_library.json");
     // Filter out advanced media lib for now, until we add library management.
     libraryPaths = libraryPaths.filter(value => !value.includes("griptape_nodes_advanced_media_library"));
     return libraryPaths
@@ -159,23 +197,16 @@ export class GtnService {
    * Sync libraries with current engine version
    */
   async syncLibraries() {
-
     let libraryPaths = await this.findLibraryConfigPaths();
-    if (libraryPaths) {
+    if (libraryPaths.length > 0) {
       // Skip sync if already installed.
       // Ideally we'd force retry installation if a library
       // is FLAWED or UNUSABLE. But that's for later.
+      logger.info(`GtnService: SKIPPING SYNC, libraryPaths: "${libraryPaths}"`)
       return;
     }
 
-    // Syncing is slow. Lets first juest check
-    const child = await this.runGtn(['libraries', 'sync']);
-
-    // We don't actually care about the output here. We just
-    // want it to finish. Ideally we'd have another util like
-    // this that doesn't waste time and space buffering the
-    // output.
-    await collectStdout(child);
+    await this.runGtn(['libraries', 'sync'], { wait: true });
   }
 
   async registerLibraries() {
@@ -205,7 +236,10 @@ export class GtnService {
     this.workspaceDirectory = workspaceDirectory;
   }
 
-  async runGtn(args: string[] = []): Promise<ChildProcess> {
+  async runGtn(args: string[] = [], options?: { forward_logs?: boolean, wait?: boolean }): Promise<ChildProcess> {
+    const wait = options?.wait || false;
+    const forward_logs = options?.forward_logs || false;
+
     // Hack to ensure executable is available by the time login is complete
     // and the UI tries to use it.
     while (!this.gtnExecutablePath) {
@@ -215,7 +249,16 @@ export class GtnService {
     const env = getEnv(this.userDataDir);
     const cwd = getCwd(this.userDataDir);
     const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], { env, cwd });
-    attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0, 10) });
+    if (forward_logs) {
+      attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0, 10) });
+    }
+    if (wait) {
+      // We don't actually care about the output here. We just
+      // want it to finish. Ideally we'd have another util like
+      // this that doesn't waste time and space buffering the
+      // output.
+      await collectStdout(child);
+    }
     return child;
   }
 
