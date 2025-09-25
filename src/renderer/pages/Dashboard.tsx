@@ -7,9 +7,22 @@ import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons';
 const Dashboard: React.FC = () => {
   const { status: engineStatus } = useEngine();
   const [workspaceDir, setWorkspaceDir] = useState<string>('');
+  const [loadingWorkspace, setLoadingWorkspace] = useState(true);
 
   useEffect(() => {
     loadWorkspaceDirectory();
+    window.griptapeAPI.refreshConfig();
+
+    const handleWorkspaceChanged = (event: any, directory: string) => {
+      setWorkspaceDir(directory);
+      setLoadingWorkspace(false);
+    };
+
+    window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged);
+
+    return () => {
+      window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged);
+    };
   }, []);
 
   const loadWorkspaceDirectory = async () => {
@@ -18,6 +31,8 @@ const Dashboard: React.FC = () => {
       setWorkspaceDir(directory);
     } catch (err) {
       console.error('Failed to load workspace directory:', err);
+    } finally {
+      setLoadingWorkspace(false);
     }
   };
 
@@ -90,7 +105,7 @@ const Dashboard: React.FC = () => {
           <div className="flex items-start gap-2 mb-3">
             <FolderOpen className="w-5 h-5 text-muted-foreground mt-0.5" />
             <p className="text-sm font-mono text-muted-foreground break-all">
-              {workspaceDir || 'Not configured'}
+              {loadingWorkspace ? 'Loading...' : (workspaceDir || 'Not configured')}
             </p>
           </div>
           <p className="text-xs text-muted-foreground">

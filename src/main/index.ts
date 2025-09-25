@@ -137,9 +137,16 @@ app.on('ready', async () => {
       window.webContents.send('engine:status-changed', status);
     });
   });
+
   engineService.on('engine:log', (log) => {
     BrowserWindow.getAllWindows().forEach(window => {
       window.webContents.send('engine:log', log);
+    });
+  });
+
+  gtnService.on('workspace-changed', (directory) => {
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('workspace-changed', directory);
     });
   });
 
@@ -387,28 +394,14 @@ const setupIPC = () => {
   ipcMain.handle('engine:restart', () => engineService.restartEngine());
 
   // Griptape Nodes configuration handlers
-  ipcMain.handle('gtn:get-workspace', () => {
-    return gtnService.getWorkspaceDirectory();
+  ipcMain.handle('gtn:get-workspace', async () => {
+    await gtnService.waitForReady();
+    return gtnService.workspaceDirectory;
   });
 
   ipcMain.handle('gtn:set-workspace', async (event, directory: string) => {
-    try {
-      const result = await gtnService.updateWorkspaceDirectory(directory);
-
-      if (result.success) {
-        // Restart engine if it was running
-        if (engineService.getStatus() === 'running') {
-          await engineService.restartEngine();
-        }
-      }
-
-      return result;
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
+    await gtnService.updateWorkspaceDirectory(directory);
+    engineService.restartEngine();
   });
 
   ipcMain.handle('gtn:select-directory', async () => {
@@ -422,6 +415,8 @@ const setupIPC = () => {
     }
     return null;
   });
+
+  ipcMain.handle('gtn:refresh-config', () => gtnService.refreshConfig());
 
   // Update service handlers
   ipcMain.handle('update:check', async () => {
