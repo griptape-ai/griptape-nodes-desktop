@@ -14,10 +14,23 @@ const Settings: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [workspaceDir, setWorkspaceDir] = useState<string>('');
   const [updatingWorkspace, setUpdatingWorkspace] = useState(false);
+  const [loadingWorkspace, setLoadingWorkspace] = useState(true);
 
   useEffect(() => {
     loadEnvironmentInfo();
     loadWorkspaceDirectory();
+    window.griptapeAPI.refreshConfig();
+
+    const handleWorkspaceChanged = (event: any, directory: string) => {
+      setWorkspaceDir(directory);
+      setLoadingWorkspace(false);
+    };
+
+    window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged);
+
+    return () => {
+      window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged);
+    };
   }, []);
 
   const loadEnvironmentInfo = async () => {
@@ -59,6 +72,8 @@ const Settings: React.FC = () => {
       setWorkspaceDir(directory);
     } catch (err) {
       console.error('Failed to load workspace directory:', err);
+    } finally {
+      setLoadingWorkspace(false);
     }
   };
 
@@ -141,14 +156,14 @@ const Settings: React.FC = () => {
           <div className="flex gap-2">
             <input
               type="text"
-              value={workspaceDir}
+              value={loadingWorkspace ? '' : workspaceDir}
               readOnly
               className={cn(
                 "flex-1 px-3 py-2 text-sm rounded-md",
                 "bg-background border border-input",
                 "font-mono"
               )}
-              placeholder="No workspace directory set"
+              placeholder={loadingWorkspace ? "Loading workspace directory..." : "No workspace directory set"}
             />
             <button
               onClick={handleSelectWorkspace}

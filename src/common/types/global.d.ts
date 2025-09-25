@@ -86,6 +86,8 @@ declare global {
       getWorkspace: () => Promise<string>;
       setWorkspace: (directory: string) => Promise<{ success: boolean; error?: string }>;
       selectDirectory: () => Promise<string | null>;
+      onWorkspaceChanged: (callback: (event: any, directory: string) => void) => void;
+      removeWorkspaceChanged: (callback: (event: any, directory: string) => void) => void;
     };
     electronAPI?: {
       getEnvVar: (key: string) => Promise<string | null>;

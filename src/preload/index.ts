@@ -40,7 +40,14 @@ contextBridge.exposeInMainWorld('engineAPI', {
 contextBridge.exposeInMainWorld('griptapeAPI', {
   getWorkspace: () => ipcRenderer.invoke('gtn:get-workspace'),
   setWorkspace: (directory: string) => ipcRenderer.invoke('gtn:set-workspace', directory),
-  selectDirectory: () => ipcRenderer.invoke('gtn:select-directory')
+  selectDirectory: () => ipcRenderer.invoke('gtn:select-directory'),
+  refreshConfig: () => ipcRenderer.invoke('gtn:refresh-config'),
+  onWorkspaceChanged: (callback: (event: any, directory: string) => void) => {
+    ipcRenderer.on('workspace-changed', callback);
+  },
+  removeWorkspaceChanged: (callback: (event: any, directory: string) => void) => {
+    ipcRenderer.removeListener('workspace-changed', callback);
+  }
 });
 
 contextBridge.exposeInMainWorld('updateAPI', {

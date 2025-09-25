@@ -12,6 +12,7 @@ import EventEmitter from 'events';
 import { installGtn } from './install-gtn';
 import { PythonService } from '../python/python-service';
 import { HttpAuthService } from '../auth/http';
+import Store from 'electron-store';
 
 async function findFiles(dir: string, target: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -57,12 +58,17 @@ export function mergeNestedArray<T>({ obj, path, items, unique }: {
 
 interface GtnServiceEvents {
   'ready': [];
+  'workspace-changed': [string];
+}
+
+interface GtnStoreData {
+  workspaceDirectory?: string;
 }
 
 export class GtnService extends EventEmitter<GtnServiceEvents> {
   private isReady: boolean = false;
-  private workspaceDirectory?: string;
   private gtnExecutablePath?: string;
+  private store: Store<GtnStoreData>;
 
   constructor(
     private userDataDir: string,
@@ -72,6 +78,17 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     private authService: HttpAuthService,
   ) {
     super();
+    this.store = new Store<GtnStoreData>({
+      name: 'gtn-workspace',
+      defaults: {}
+    });
+
+    // Listen for store changes
+    this.store.onDidChange('workspaceDirectory', (newValue) => {
+      if (newValue) {
+        this.emit('workspace-changed', newValue);
+      }
+    });
   }
 
   async start() {
@@ -81,9 +98,11 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     await this.installGtn();
     await this.syncLibraries();
     await this.registerLibraries();
-    const apiKey = await this.authService.waitForApiKey();
-    await this.initialize({ apiKey })
-
+    await this.initialize({
+      apiKey: await this.authService.waitForApiKey(),
+      workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
+      storageBackend: 'local',
+    });
 
     this.isReady = true;
     this.emit('ready');
@@ -111,26 +130,26 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   async initialize(options: {
-    apiKey: string;
+    apiKey?: string;
     workspaceDirectory?: string;
     storageBackend?: 'local' | 'gtc';
     bucketName?: string;
   }): Promise<void> {
     const args = ['init', '--no-interactive'];
 
-    // API key is required
-    args.push('--api-key', options.apiKey);
+    if (options.apiKey) {
+      args.push('--api-key', options.apiKey);
+    }
 
-    // Use workspace directory from options or default
-    const workspace = options.workspaceDirectory || this.defaultWorkspaceDir;
-    args.push('--workspace-directory', workspace);
+    if (options.workspaceDirectory) {
+      args.push('--workspace-directory', options.workspaceDirectory);
+    }
 
-    // Storage backend (default to local)
-    const storageBackend = options.storageBackend || 'local';
-    args.push('--storage-backend', storageBackend);
+    if (options.storageBackend) {
+      args.push('--storage-backend', options.storageBackend);
+    }
 
-    // Bucket name for gtc storage
-    if (storageBackend === 'gtc' && options.bucketName) {
+    if (options.storageBackend === 'gtc' && options.bucketName) {
       args.push('--bucket-name', options.bucketName);
     }
 
@@ -146,11 +165,12 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     await this.runGtn(args, { wait: true });
   }
 
+  get workspaceDirectory(): string {
+    return this.store.get('workspaceDirectory');
+  }
 
-  async getWorkspaceDirectory(): Promise<string> {
-    // TODO: Sync with config / cli somehow.
-    await this.refreshConfig()
-    return this.workspaceDirectory || this.defaultWorkspaceDir;
+  set workspaceDirectory(directory: string) {
+    this.store.set('workspaceDirectory', directory);
   }
 
   /**
@@ -229,11 +249,11 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   async refreshConfig() {
+    await this.waitForReady();
     const child = await this.runGtn(['config', 'show']);
     const json = await collectStdout(child);
     const config = JSON.parse(json);
-    const workspaceDirectory = config?.workspace_directory || this.defaultWorkspaceDir;
-    this.workspaceDirectory = workspaceDirectory;
+    this.workspaceDirectory = config?.workspace_directory;
   }
 
   async runGtn(args: string[] = [], options?: { forward_logs?: boolean, wait?: boolean }): Promise<ChildProcess> {
