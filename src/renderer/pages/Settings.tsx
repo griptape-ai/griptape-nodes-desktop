@@ -37,7 +37,7 @@ const Settings: React.FC = () => {
     try {
       setError(null);
       const result = await window.pythonAPI.getEnvironmentInfo();
-      
+
       if (result.success && result.data) {
         setEnvironmentInfo(result.data);
       } else {
@@ -92,12 +92,7 @@ const Settings: React.FC = () => {
   const updateWorkspace = async (directory: string) => {
     setUpdatingWorkspace(true);
     try {
-      const result = await window.griptapeAPI.setWorkspace(directory);
-      if (!result.success) {
-        alert(`Failed to update workspace: ${result.error}`);
-      } else {
-        alert('Workspace directory updated successfully!');
-      }
+      await window.griptapeAPI.setWorkspace(directory);
     } catch (err) {
       console.error('Failed to update workspace:', err);
       alert('Failed to update workspace directory');
@@ -152,6 +147,7 @@ const Settings: React.FC = () => {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             This is where Griptape Nodes will store your workflows and data.
+            <br />Changing the workspace directory will trigger an engine restart.
           </p>
           <div className="flex gap-2">
             <input

@@ -173,33 +173,10 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     this.store.set('workspaceDirectory', directory);
   }
 
-  /**
-   * Update workspace directory
-   */
-  async updateWorkspaceDirectory(directory: string): Promise<{ success: boolean; error?: string }> {
-    throw new Error("Not yet implemented");
-    // try {
-    //   const config = this.loadConfig();
-    //   if (!config || !config.api_key) {
-    //     return { 
-    //       success: false, 
-    //       error: 'Griptape Nodes not initialized. Please log in first.' 
-    //     };
-    //   }
-
-    //   // Re-initialize with new workspace directory
-    //   return await this.initialize({
-    //     apiKey: config.api_key,
-    //     workspaceDirectory: directory,
-    //     storageBackend: config.storage_backend,
-    //     bucketName: config.bucket_name
-    //   });
-    // } catch (error) {
-    //   return { 
-    //     success: false, 
-    //     error: error instanceof Error ? error.message : 'Unknown error' 
-    //   };
-    // }
+  async updateWorkspaceDirectory(workspaceDirectory: string): Promise<void> {
+    await this.waitForReady();
+    await this.initialize({ workspaceDirectory })
+    await this.refreshConfig();
   }
 
   async findLibraryConfigPaths() {
