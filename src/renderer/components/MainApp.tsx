@@ -4,7 +4,7 @@ import Dashboard from '../pages/Dashboard';
 import Engine from '../pages/Engine';
 import Settings from '../pages/Settings';
 import { Sidebar } from './Sidebar';
-import headerLogoSrc from '/griptape_nodes_header_logo.svg';
+import headerLogoSrc from '../../assets/griptape_nodes_header_logo.svg';
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -29,8 +29,8 @@ const MainApp: React.FC = () => {
         {/* Top Bar with logo - draggable */}
         <header className="bg-card border-b border-border px-6 py-3 flex items-center draggable">
           <div className={`flex items-center ${isMac ? 'ml-20' : ''}`}>
-            <img 
-              src={headerLogoSrc} 
+            <img
+              src={headerLogoSrc}
               className="h-8 non-draggable"
               alt="Griptape"
             />

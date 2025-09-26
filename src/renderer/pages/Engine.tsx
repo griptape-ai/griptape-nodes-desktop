@@ -334,6 +334,7 @@ const Engine: React.FC = () => {
                 color: '#e5e7eb',
                 height: '384px'
               }}
+              // @ts-ignore
               initialScrollOffset={logs.length > 0 ? logs.length * 20 : 0}
             />
           )}

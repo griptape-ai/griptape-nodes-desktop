@@ -5,7 +5,7 @@ import { getEnv } from '../../config/env';
 import { getCwd, getGtnExecutablePath } from '../../config/paths';
 import { GtnService } from '../gtn/gtn-service';
 import { PythonService } from '../python/python-service';
-import { logger } from '@/logger';
+import { logger } from '@/main/utils/logger';
 
 export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error';
 
@@ -285,7 +285,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
         this.setEngineStatus('error');
       });
 
-    } catch (error) {
+    } catch (error: any) {
       this.addLog('stderr', `Failed to start engine: ${error.message}`);
       this.setEngineStatus('error');
     }

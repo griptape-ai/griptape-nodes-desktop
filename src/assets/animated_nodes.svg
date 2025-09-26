@@ -1,0 +1,144 @@
+<svg width="895" height="363" viewBox="0 0 895 363" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <defs>
+    <style>
+      .anim-dot {
+        fill: #FDE047;
+      }
+    </style>
+  </defs>
+
+  <!-- First draw all paths in the background - EXTENDED to go behind cards -->
+  <path id="path-orange" d="M251 308.5H339C352.255 308.5 363 297.755 363 284.5V246.5C363 233.245 373.745 222.5 387 222.5H490" stroke="#D97706" stroke-width="2" stroke-linecap="square" stroke-linejoin="bevel"/>
+  <path id="path-blue" d="M167 135.5H423.5C436.755 135.5 447.5 124.755 447.5 111.5V102.5C447.5 89.2452 458.245 78.5 471.5 78.5H745" stroke="#0493B3" stroke-width="2" stroke-linecap="square" stroke-linejoin="bevel"/>
+  <path id="path-darkblue" d="M630 320.5H655C668.255 320.5 679 309.755 679 296.5V200.5C679 187.245 689.745 176.5 703 176.5H745" stroke="#205D9E" stroke-width="2" stroke-linecap="square" stroke-linejoin="bevel"/>
+
+  <!-- Then add the animated dots (above paths, below cards) -->
+  <!-- Orange animation dot with proper timing -->
+  <circle class="anim-dot" r="4" visibility="hidden">
+    <animateMotion
+      id="motionOrange"
+      dur="2s"
+      begin="0s; orangeDelay.end"
+      fill="freeze"
+      visibility="visible">
+      <mpath xlink:href="#path-orange" />
+    </animateMotion>
+    <animate
+      id="orangeDelay"
+      attributeName="visibility"
+      from="visible"
+      to="visible"
+      dur="3s"
+      begin="motionOrange.end"
+      fill="freeze"/>
+  </circle>
+
+  <!-- Blue animation dot with proper timing -->
+  <circle class="anim-dot" r="4" visibility="hidden ">
+    <animateMotion
+      id="motionBlue"
+      dur="3s"
+      begin="0.5s; blueDelay.end"
+      fill="freeze"
+      visibility="visible">
+      <mpath xlink:href="#path-blue" />
+    </animateMotion>
+    <animate
+      id="blueDelay"
+      attributeName="visibility"
+      from="visible"
+      to="visible"
+      dur="2s"
+      begin="motionBlue.end"
+      fill="freeze"/>
+  </circle>
+
+  <!-- Dark Blue animation dot with proper timing -->
+  <circle class="anim-dot" r="4" visibility="hidden">
+    <animateMotion
+      id="motionDarkBlue"
+      dur="2s"
+      begin="1s; darkBlueDelay.end"
+      fill="freeze"
+      visibility="visible">
+      <mpath xlink:href="#path-darkblue" />
+    </animateMotion>
+    <animateMotion
+      id="motionDarkBlue"
+      dur="2s"
+      begin="1s; darkBlueDelay.end"
+      fill="freeze">
+      <mpath xlink:href="#path-darkblue" />
+    </animateMotion>
+    <animate
+      id="darkBlueDelay"
+      attributeName="visibility"
+      from="visible"
+      to="visible"
+      dur="4s"
+      begin="motionDarkBlue.end"
+      fill="freeze"/>
+  </circle>
+
+  <!-- Then add all the cards and UI elements on top -->
+  <!-- Orange node (top left) -->
+  <rect x="0.5" y="57.5" width="166" height="119" rx="7.5" fill="#1E1E1E"/>
+  <rect x="0.5" y="57.5" width="166" height="119" rx="7.5" stroke="#D97706"/>
+  <path d="M0 65C0 60.5817 3.58172 57 8 57H159C163.418 57 167 60.5817 167 65V96H0V65Z" fill="#D97706"/>
+  <circle cx="17" cy="135.5" r="4.5" stroke="#D97706"/>
+  <rect x="34" y="118" width="99" height="35" rx="8" fill="#3B3B3B"/>
+  <circle cx="150" cy="135.5" r="5" fill="#D97706"/>
+
+  <!-- Orange node (bottom left) -->
+  <rect x="84.5" y="230.5" width="166" height="119" rx="7.5" fill="#1E1E1E"/>
+  <rect x="84.5" y="230.5" width="166" height="119" rx="7.5" stroke="#D97706"/>
+  <path d="M84 238C84 233.582 87.5817 230 92 230H243C247.418 230 251 233.582 251 238V269H84V238Z" fill="#D97706"/>
+  <circle cx="101" cy="308.5" r="4.5" stroke="#D97706"/>
+  <rect x="118" y="291" width="99" height="35" rx="8" fill="#3B3B3B"/>
+  <circle cx="234" cy="308.5" r="5" fill="#D97706"/>
+
+  <!-- Blue node (right) -->
+  <rect x="728.5" y="0.5" width="166" height="217" rx="7.5" fill="#1E1E1E"/>
+  <rect x="728.5" y="0.5" width="166" height="217" rx="7.5" stroke="#0493B3"/>
+  <path d="M728 8C728 3.58172 731.582 0 736 0H887C891.418 0 895 3.58172 895 8V39H728V8Z" fill="#0493B3"/>
+  <circle id="targetBlue" cx="745" cy="78.5" r="4.5" fill="#0493B3" stroke="#0493B3">
+     <animate attributeName="fill"
+              values="#0493B3; #A5F3FC; #0493B3"
+              dur="0.4s"
+              begin="motionBlue.end" />
+  </circle>
+  <rect x="762" y="61" width="99" height="35" rx="8" fill="#3B3B3B"/>
+  <circle cx="878" cy="78.5" r="4.5" stroke="#0493B3"/>
+  <circle cx="745" cy="127.5" r="4.5" stroke="#0493B3"/>
+  <rect x="762" y="110" width="99" height="35" rx="8" fill="#3B3B3B"/>
+  <circle cx="878" cy="127.5" r="4.5" stroke="#D97706"/>
+  <circle id="targetDarkBlue" cx="745" cy="176.5" r="4.5" fill="#205D9E" stroke="#205D9E">
+     <animate attributeName="fill"
+              values="#205D9E; #A3BFDB; #205D9E"
+              dur="0.4s"
+              begin="motionDarkBlue.end" />
+  </circle>
+  <rect x="762" y="159" width="99" height="35" rx="8" fill="#3B3B3B"/>
+  <circle cx="878" cy="176.5" r="4.5" stroke="#205D9E"/>
+
+  <!-- Center node -->
+  <rect x="462.5" y="143.5" width="168" height="219" rx="8.5" fill="#1E1E1E"/>
+  <rect x="462.5" y="143.5" width="168" height="219" rx="8.5" stroke="#D7D7D7"/>
+  <path d="M463 152C463 147.582 466.582 144 471 144H622C626.418 144 630 147.582 630 152V183H463V152Z" fill="#205D9E"/>
+  <circle id="targetOrange" cx="480" cy="222.5" r="4.5" fill="#D97706" stroke="#D97706">
+     <animate attributeName="fill"
+              values="#D97706; #FDBA74; #D97706"
+              dur="0.4s"
+              begin="motionOrange.end" />
+  </circle>
+  <rect x="497" y="205" width="99" height="35" rx="8" fill="#3B3B3B"/>
+  <circle cx="613" cy="222.5" r="5" fill="#D97706"/>
+  <circle cx="480" cy="271.5" r="4.5" fill="#D97706" stroke="#D97706"/>
+  <rect x="497" y="254" width="99" height="35" rx="8" fill="#3B3B3B"/>
+  <circle cx="613" cy="271.5" r="5" fill="#D97706"/>
+  <circle cx="480" cy="320.5" r="4.5" stroke="#205D9E"/>
+  <rect x="497" y="303" width="99" height="35" rx="8" fill="#3B3B3B"/>
+  <circle cx="613" cy="320.5" r="5" fill="#205D9E"/>
+
+</svg>

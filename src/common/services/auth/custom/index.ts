@@ -26,11 +26,11 @@ interface AuthData {
 }
 
 export class CustomAuthService {
-  private store: Store<AuthData>;
+  private store: any;
 
   constructor() {
     // Initialize secure storage
-    this.store = new Store<AuthData>({
+    this.store = new Store({
       name: 'auth-storage',
       encryptionKey: 'griptape-nodes-auth'
     });

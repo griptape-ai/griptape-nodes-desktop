@@ -2,7 +2,10 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { logger } from '@/logger';
+
+contextBridge.exposeInMainWorld('electron', {
+  getPreloadPath: () => ipcRenderer.sendSync('get-preload-path')
+});
 
 // Expose APIs to renderer process
 contextBridge.exposeInMainWorld('pythonAPI', {
@@ -62,15 +65,3 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 });
 
-// Listen for PostMessage from OAuth redirect page in development
-if (process.env.NODE_ENV === 'development') {
-  window.addEventListener('message', (event) => {
-    // Check if this is an OAuth callback message
-    if (event.data && event.data.type === 'oauth-callback') {
-      logger.info('Received OAuth callback via PostMessage:', event.data);
-      
-      // Forward to main process via IPC
-      ipcRenderer.invoke('oauth-dev-callback', event.data.data);
-    }
-  });
-}

@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import { BrowserWindow, shell } from 'electron';
 import Store from 'electron-store';
 import express from 'express';
-import { logger } from '@/logger';
+import { logger } from '@/main/utils/logger';
 
 const PORT = 5172;
 const REDIRECT_URI = `http://localhost:${PORT}/`;
@@ -23,11 +23,11 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   private server: Server | null = null;
   private authResolve: ((value: any) => void) | null = null;
   private authReject: ((reason?: any) => void) | null = null;
-  private store: Store<AuthData>;  // Secure storage
+  private store: any;  // Secure storage
 
   constructor() {
     super();
-    this.store = new Store<AuthData>();
+    this.store = new Store();
   }
 
   // Start a local dev server in some kind of lifecycle hook.
@@ -36,13 +36,13 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     // React to changes to api key.
     this.store.onDidChange(
       'apiKey',
-      (newValue: string, oldValue) => this.emit('apiKey', { apiKey: newValue }),
+      (newValue: string, oldValue) => this.emit('apiKey', newValue),
     );
 
     // Propagate the initial state? Not sure if this is needed or not.
     const apiKey = this.store.get('apiKey');
     if (apiKey) {
-      this.emit('apiKey', { apiKey });
+      this.emit('apiKey', apiKey);
     }
 
     if (this.server) {
@@ -131,7 +131,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     if (apiKey) {
       return Promise.resolve(apiKey);
     }
-    return new Promise(resolve => this.once('apiKey', ({ apiKey }) => resolve(apiKey)))
+    return new Promise(resolve => this.once('apiKey', apiKey => resolve(apiKey)))
   }
 
   // Check if we have stored credentials\
@@ -242,7 +242,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     }
   }
 
-  private async exchangeCodeForTokens(code: string) {
+  private async exchangeCodeForTokens(code: string): Promise<{ access_token: string }> {
     const response = await fetch('https://auth.cloud.griptape.ai/oauth/token', {
       method: 'POST',
       headers: {
@@ -262,7 +262,12 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       throw new Error(`Token exchange failed: ${response.statusText} - ${error}`);
     }
 
-    return response.json();
+    const tokens = await response.json() as any;
+    if (!tokens?.access_token) {
+      throw new Error("Expected access_token in response");
+    }
+
+    return tokens;
   }
 
   private async getUserInfo(accessToken: string) {
@@ -279,7 +284,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     return response.json();
   }
 
-  private async generateApiKey(accessToken: string) {
+  private async generateApiKey(accessToken: string): Promise<string> {
     const response = await fetch('https://api.nodes.griptape.ai/api/engines/token', {
       method: 'POST',
       headers: {
@@ -294,7 +299,11 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       throw new Error(`Failed to generate API key: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
+    if (!data?.api_key) {
+      throw new Error("Expected api_key in response");
+    }
+
     return data.api_key;
   }
 }

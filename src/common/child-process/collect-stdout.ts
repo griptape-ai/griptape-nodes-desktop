@@ -1,15 +1,15 @@
-import { spawn, ChildProcessWithoutNullStreams } from "child_process";
+import { spawn, ChildProcess } from "child_process";
 
-export function collectStdout(child: ChildProcessWithoutNullStreams): Promise<string> {
+export function collectStdout(child: ChildProcess): Promise<string> {
   return new Promise((resolve, reject) => {
     let stdout = "";
     let stderr = "";
 
-    child.stdout.on("data", (data) => {
+    child.stdout?.on("data", (data) => {
       stdout += data.toString();
     });
 
-    child.stderr.on("data", (data) => {
+    child.stderr?.on("data", (data) => {
       stderr += data.toString();
     });
 

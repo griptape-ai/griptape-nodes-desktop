@@ -13,7 +13,7 @@ export async function installPython(userDataDir: string): Promise<void> {
   }
 
   const uvProcess = spawn(uvExecutablePath, ['python', 'install', getPythonVersion()], {
-    cwd: getCwd(this.userDataDir),
+    cwd: getCwd(userDataDir),
     env: getEnv(userDataDir),
   });
   await attachOutputForwarder(uvProcess, {
