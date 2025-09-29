@@ -27,7 +27,7 @@ echo "Building for runtime: $RUNTIME"
 echo "Packaged directory: $PACKAGED_DIR"
 echo "App directory: $APP_DIR"
 
-# Create Velopack package
+# Create Velopack package (portable zip only, no pkg)
 VPK_ARGS=(
     --packId "ai.griptape.GriptapeNodes"
     --packVersion "$(node -p "require('./package.json').version")"
@@ -37,6 +37,7 @@ VPK_ARGS=(
     --outputDir "Releases"
     --runtime "$RUNTIME"
     --channel "$CHANNEL"
+    --noPkg
 )
 
 # Add code signing arguments if running in GitHub Actions with certificates
@@ -49,5 +50,38 @@ if [[ -n "$GITHUB_ACTIONS" && -n "$MAC_CERTS_P12" ]]; then
 fi
 
 vpk pack "${VPK_ARGS[@]}"
+
+# Create DMG from the portable zip
+VERSION=$(node -p "require('./package.json').version")
+ZIP_FILE="Releases/GriptapeNodes-$VERSION-$RUNTIME.zip"
+DMG_FILE="Releases/GriptapeNodes-$VERSION-$RUNTIME.dmg"
+TEMP_DIR="Releases/temp_dmg"
+
+if [[ -f "$ZIP_FILE" ]]; then
+    echo "Creating DMG from portable zip..."
+
+    # Create temporary directory and extract zip
+    mkdir -p "$TEMP_DIR"
+    unzip -q "$ZIP_FILE" -d "$TEMP_DIR"
+
+    # Find the extracted app (it should be the .app file in temp dir)
+    EXTRACTED_APP=$(find "$TEMP_DIR" -name "*.app" -type d | head -1)
+
+    if [[ -n "$EXTRACTED_APP" ]]; then
+        # Create DMG with the app
+        hdiutil create -volname "Griptape Nodes" -srcfolder "$EXTRACTED_APP" -ov -format UDZO "$DMG_FILE"
+        echo "DMG created: $DMG_FILE"
+
+        # Clean up temporary files
+        rm -rf "$TEMP_DIR"
+        rm -f "$ZIP_FILE"  # Remove the zip since we now have the DMG
+    else
+        echo "Error: Could not find extracted app in $TEMP_DIR"
+        exit 1
+    fi
+else
+    echo "Error: Portable zip file not found: $ZIP_FILE"
+    exit 1
+fi
 
 echo "Velopack build completed for $RUNTIME"
