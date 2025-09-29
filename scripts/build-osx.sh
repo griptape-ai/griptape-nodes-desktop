@@ -45,6 +45,7 @@ if [[ -n "$GITHUB_ACTIONS" && -n "$MAC_CERTS_P12" ]]; then
     VPK_ARGS+=(--signAppIdentity "Developer ID Application")
     VPK_ARGS+=(--notaryProfile "velopack-profile")
     VPK_ARGS+=(--keychain "$RUNNER_TEMP/app-signing.keychain-db")
+    VPK_ARGS+=(--signEntitlements "entitlements.plist")
 fi
 
 vpk pack "${VPK_ARGS[@]}"
