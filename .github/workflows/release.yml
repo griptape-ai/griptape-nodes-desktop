@@ -100,6 +100,47 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Setup platform variables
+        id: platform
+        run: |
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+
+          # Determine OS and architecture for channel naming
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            OS="linux"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "aarch64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            OS="osx"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            OS="win"
+            ARCH="x64"
+          fi
+
+          # Construct full channel name: {os}-{arch}-{channel}
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          # Set environment variables for subsequent steps
+          echo "OS=$OS" >> $GITHUB_ENV
+          echo "ARCH=$ARCH" >> $GITHUB_ENV
+          echo "USER_CHANNEL=$USER_CHANNEL" >> $GITHUB_ENV
+          echo "FULL_CHANNEL=$FULL_CHANNEL" >> $GITHUB_ENV
+
+          echo "Platform: $OS-$ARCH"
+          echo "Channel: $USER_CHANNEL"
+          echo "Full channel: $FULL_CHANNEL"
+        shell: bash
+
       - name: Install Apple certificates and notary profile
         if: runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
         env:
@@ -131,10 +172,12 @@ jobs:
 
       - name: Download previous Velopack releases
         run: |
+          echo "Downloading previous releases for channel: $FULL_CHANNEL"
+
           if [ "${{ inputs.destination }}" == "github" ]; then
-            vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+            vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --channel "$FULL_CHANNEL"
           else
-            vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2
+            vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -143,33 +186,6 @@ jobs:
 
       - name: Build with Velopack
         run: |
-          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
-
-          # Determine OS and architecture for channel naming
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            OS="linux"
-            ARCH=$(uname -m)
-            if [[ "$ARCH" == "aarch64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="x64"
-            fi
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            OS="osx"
-            ARCH=$(uname -m)
-            if [[ "$ARCH" == "arm64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="x64"
-            fi
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            OS="win"
-            # Windows runners are typically x64, but we should detect properly
-            ARCH="x64"
-          fi
-
-          # Construct full channel name: {os}-{arch}-{channel}
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
           echo "Building for channel: $FULL_CHANNEL"
 
           if [ "$RUNNER_OS" == "Linux" ]; then
@@ -186,32 +202,6 @@ jobs:
       - name: Upload Velopack releases
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
-
-          # Determine OS and architecture (same logic as build step)
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            OS="linux"
-            ARCH=$(uname -m)
-            if [[ "$ARCH" == "aarch64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="x64"
-            fi
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            OS="osx"
-            ARCH=$(uname -m)
-            if [[ "$ARCH" == "arm64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="x64"
-            fi
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            OS="win"
-            ARCH="x64"
-          fi
-
-          # Construct full channel name: {os}-{arch}-{channel}
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
 
           # Tag and release naming
           if [[ "$USER_CHANNEL" == "stable" ]]; then
@@ -232,9 +222,10 @@ jobs:
               --publish \
               --releaseName "$RELEASE_NAME" \
               --tag "$TAG_NAME" \
+              --channel "$FULL_CHANNEL" \
               --token ${{ secrets.GITHUB_TOKEN }}
           else
-            vpk upload s3 --bucket griptape-nodes-desktop-updates --region us-west-2
+            vpk upload s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
           fi
         shell: bash
         env:
