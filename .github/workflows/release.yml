@@ -152,7 +152,7 @@ jobs:
       - name: Download previous Velopack releases
         run: |
           if [ "${{ inputs.destination }}" == "github" ]; then
-            vpk download github --repoUrl https://github.com/${{ github.repository }}
+            vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
           else
             vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2
           fi
