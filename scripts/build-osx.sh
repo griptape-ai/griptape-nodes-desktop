@@ -43,7 +43,7 @@ VPK_ARGS=(
 # Add code signing arguments if running in GitHub Actions with certificates
 if [[ -n "$GITHUB_ACTIONS" && -n "$MAC_CERTS_P12" ]]; then
     echo "Adding code signing arguments for GitHub Actions..."
-    VPK_ARGS+=(--signAppIdentity "Developer ID Application")
+    VPK_ARGS+=(--signAppIdentity "$APPLE_IDENTITY")
     VPK_ARGS+=(--notaryProfile "velopack-profile")
     VPK_ARGS+=(--keychain "$RUNNER_TEMP/app-signing.keychain-db")
     VPK_ARGS+=(--signEntitlements "entitlements.entitlements")

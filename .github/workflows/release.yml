@@ -253,6 +253,7 @@ jobs:
         shell: bash
         env:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
+          APPLE_IDENTITY: ${{ secrets.APPLE_IDENTITY }}
 
       - name: Upload Velopack releases
         if: env.DONE != 'true'
