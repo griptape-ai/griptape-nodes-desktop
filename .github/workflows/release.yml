@@ -58,9 +58,107 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  release:
+  check-tag:
     needs: validate
     runs-on: ${{ matrix.os }}
+    outputs:
+      should-build-macos: ${{ steps.check-macos.outputs.should_build }}
+      should-build-ubuntu: ${{ steps.check-ubuntu.outputs.should_build }}
+      should-build-windows: ${{ steps.check-windows.outputs.should_build }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check tag for macOS
+        if: matrix.os == 'macos-latest'
+        id: check-macos
+        run: |
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          VERSION=$(node -p "require('./package.json').version")
+
+          OS="osx"
+          ARCH=$(uname -m)
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+          else
+            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
+          fi
+
+          echo "Checking macOS tag: $TAG_NAME"
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check tag for Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        id: check-ubuntu
+        run: |
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          VERSION=$(node -p "require('./package.json').version")
+
+          OS="linux"
+          ARCH="x64"
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+          else
+            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
+          fi
+
+          echo "Checking Linux tag: $TAG_NAME"
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check tag for Windows
+        if: matrix.os == 'windows-latest'
+        id: check-windows
+        run: |
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          VERSION=$(node -p "require('./package.json').version")
+
+          OS="win"
+          ARCH="x64"
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+          else
+            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
+          fi
+
+          echo "Checking Windows tag: $TAG_NAME"
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+  release:
+    needs: [validate, check-tag]
+    runs-on: ${{ matrix.os }}
+    if: |
+      (matrix.os == 'macos-latest' && needs.check-tag.outputs.should-build-macos == 'true') ||
+      (matrix.os == 'ubuntu-latest' && needs.check-tag.outputs.should-build-ubuntu == 'true') ||
+      (matrix.os == 'windows-latest' && needs.check-tag.outputs.should-build-windows == 'true')
 
     permissions:
       id-token: write  # required for OIDC
