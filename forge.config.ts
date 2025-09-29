@@ -1,23 +1,14 @@
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { MakerDeb } from '@electron-forge/maker-deb';
-import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerRpm } from '@electron-forge/maker-rpm';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { WebpackPlugin } from '@electron-forge/plugin-webpack';
-import { PublisherGithub } from '@electron-forge/publisher-github';
-import { PublisherS3 } from '@electron-forge/publisher-s3';
 import type { ForgeConfig } from '@electron-forge/shared-types';
 
 import { mainConfig } from './webpack.main.config.ts';
 import { rendererConfig } from './webpack.renderer.config.ts';
-
-// Get release configuration from environment variables
-const tagPrefix = process.env.TAG_PREFIX;
-const draft = process.env.DRAFT === 'true';
-const prerelease = process.env.PRERELEASE === 'true';
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -25,60 +16,19 @@ const config: ForgeConfig = {
     ...(process.platform === 'darwin' && { icon: 'generated/icons/icon.icns' }),
     ...(process.platform === 'win32' && { icon: 'generated/icons/icon.ico' }),
     executableName: 'griptape-nodes-desktop',
-    appBundleId: 'com.griptape.nodes.desktop',
-    protocols: [
-      {
-        name: 'Griptape Nodes Desktop',
-        schemes: ['gtn']
-      }
-    ],
-    // Only enable code signing and notarization in GitHub Actions CI/CD environment
-    ...(process.env.GITHUB_ACTIONS && {
-      osxSign: {
-        identity: process.env.APPLE_IDENTITY,
-        entitlements: 'entitlements.plist',
-        'hardened-runtime': true, // Required for Developer ID Application certificates
-      } as any,
-      osxNotarize: {
-        appleId: process.env.APPLE_ID as string,
-        appleIdPassword: process.env.APPLE_PASSWORD as string,
-        teamId: process.env.APPLE_TEAM_ID as string,
-      },
-    }),
+    appBundleId: 'ai.griptape.nodes.desktop',
+    // protocols: [
+    //   {
+    //     name: 'Griptape Nodes Desktop',
+    //     schemes: ['gtn']
+    //   }
+    // ],
   },
   rebuildConfig: {},
   makers: [
-    // Maker for Mac
-    new MakerDMG({
-      name: "Griptape Nodes Installer",
-      title: "Griptape Nodes Installer",
-      icon: 'generated/icons/icon_installer_mac.icns',
-      iconSize: 100,
-    }, ['darwin']),
-    // Maker for ZIP updates to Mac app
-    new MakerZIP(arch => ({
-      macUpdateManifestBaseUrl: `https://griptape-nodes-desktop-updates.s3.amazonaws.com/darwin/${arch}`
-    })),
-    new MakerRpm(),
-    new MakerDeb(),
-  ],
-  publishers: [
-    new PublisherGithub({
-      repository: {
-        owner: 'griptape-ai',
-        name: 'griptape-nodes-desktop'
-      },
-      draft,
-      prerelease,
-      tagPrefix
-    }),
-    // Only include S3 publisher for production releases (when tagPrefix is "v")
-    ...(tagPrefix !== 'v' ? [] : [
-      new PublisherS3({
-        bucket: 'griptape-nodes-desktop-updates',
-        keyResolver: (filename, platform, arch) => `${platform}/${arch}/${filename}`
-      })
-    ]),
+    new MakerZIP({}, ['darwin']),
+    new MakerRpm({}),
+    new MakerDeb({}),
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),

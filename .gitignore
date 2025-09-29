@@ -1,6 +1,7 @@
 node_modules
 dist
 out
+releases
 .DS_Store
 .eslintcache
 .webpack
@@ -10,7 +11,5 @@ out
 .env
 
 # Development userData and document directories
-/_documents/
-/_logs/
-/_userdata/
+/_*/
 

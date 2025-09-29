@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_proceed: ${{ steps.check.outputs.should_proceed }}
+      is_main_branch: ${{ steps.check.outputs.is_main_branch }}
+      channel: ${{ steps.check.outputs.channel }}
 
     steps:
       - name: Checkout Repository
@@ -35,18 +37,46 @@ jobs:
         id: check
         shell: bash
         run: |
-          # Validate release configuration
-          if [[ "${{ inputs.tag_prefix }}" != "v" && "${{ inputs.draft }}" != "true" && "${{ inputs.prerelease }}" != "true" ]]; then
-            echo "Error: Non-production releases (tag_prefix != 'v') must be either draft or prerelease"
-            exit 1
+          # Determine branch and channel
+          CURRENT_BRANCH="${{ github.ref_name }}"
+
+          if [[ "$CURRENT_BRANCH" == "main" ]]; then
+            IS_MAIN_BRANCH="true"
+            CHANNEL="stable"
+          else
+            IS_MAIN_BRANCH="false"
+            # Sanitize branch name for use as channel (replace / with -)
+            CHANNEL=$(echo "$CURRENT_BRANCH" | sed 's/\//-/g')
           fi
 
-          if [[ "${{ inputs.tag_prefix }}" == "v" && ("${{ inputs.draft }}" == "true" || "${{ inputs.prerelease }}" == "true") ]]; then
-            echo "Error: Production releases (tag_prefix = 'v') cannot be marked as draft or prerelease"
-            exit 1
+          echo "Current branch: $CURRENT_BRANCH"
+          echo "Is main branch: $IS_MAIN_BRANCH"
+          echo "Channel: $CHANNEL"
+
+          # Set outputs
+          echo "is_main_branch=$IS_MAIN_BRANCH" >> $GITHUB_OUTPUT
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+
+          # Validate release configuration (only for main branch)
+          if [[ "$IS_MAIN_BRANCH" == "true" ]]; then
+            if [[ "${{ inputs.tag_prefix }}" != "v" && "${{ inputs.draft }}" != "true" && "${{ inputs.prerelease }}" != "true" ]]; then
+              echo "Error: Non-production releases (tag_prefix != 'v') must be either draft or prerelease"
+              exit 1
+            fi
+
+            if [[ "${{ inputs.tag_prefix }}" == "v" && ("${{ inputs.draft }}" == "true" || "${{ inputs.prerelease }}" == "true") ]]; then
+              echo "Error: Production releases (tag_prefix = 'v') cannot be marked as draft or prerelease"
+              exit 1
+            fi
           fi
 
-          tag_name="${{ inputs.tag_prefix }}$(jq -r '.version' package.json)"
+          # Create tag name (include branch for non-main branches)
+          if [[ "$IS_MAIN_BRANCH" == "true" ]]; then
+            tag_name="${{ inputs.tag_prefix }}$(jq -r '.version' package.json)"
+          else
+            tag_name="${{ inputs.tag_prefix }}$(jq -r '.version' package.json)-$CHANNEL"
+          fi
+
           echo "Checking for existing tag: $tag_name"
 
           # Check if tag already exists
@@ -85,7 +115,6 @@ jobs:
           lfs: true
 
       - name: Configure AWS creds via OIDC
-        if: inputs.tag_prefix == 'v'  # Only configure AWS for production releases
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::246367841364:role/GriptapeNodesDesktopGithubActions
@@ -101,37 +130,70 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Import Mac certificates
+      - name: Install Apple certificates and notary profile
         if: runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
         env:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
           MAC_CERTS_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # Create variables
+          # create variables for file paths
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          
-          # Import certificate from secrets
+
+          # import certificate from secrets
           echo -n "$MAC_CERTS_P12" | base64 --decode -o $CERTIFICATE_PATH
-          
-          # Create temporary keychain
+
+          # create temporary keychain
           security create-keychain -p "$MAC_CERTS_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$MAC_CERTS_PASSWORD" $KEYCHAIN_PATH
-          
-          # Import certificate to keychain
+
+          # import certificate to keychain
           security import $CERTIFICATE_PATH -P "$MAC_CERTS_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple: -k "$MAC_CERTS_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-      - name: Build and Publish
-        run: npm run publish
+          # create notarytool profile
+          xcrun notarytool store-credentials --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" velopack-profile
+
+      - name: Build with Velopack
+        run: |
+          CHANNEL="${{ needs.validate.outputs.channel }}"
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            ./scripts/build-linux.sh "$CHANNEL"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            ./scripts/build-osx.sh "$CHANNEL"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            powershell -ExecutionPolicy Bypass -File ./scripts/build-windows.ps1 -Channel "$CHANNEL"
+          fi
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_IDENTITY: ${{ secrets.APPLE_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          TAG_PREFIX: ${{ inputs.tag_prefix }}
-          DRAFT: ${{ inputs.draft }}
-          PRERELEASE: ${{ inputs.prerelease }}
+          MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
+
+      - name: Publish to S3
+        run: |
+          CHANNEL="${{ needs.validate.outputs.channel }}"
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            ./scripts/publish-linux.sh "$CHANNEL"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            ./scripts/publish-osx.sh "$CHANNEL"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            powershell -ExecutionPolicy Bypass -File ./scripts/publish-windows.ps1 -Channel "$CHANNEL"
+          fi
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Clean up keychain
+        if: runner.os == 'macOS' && always()
+        run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+
+      - name: Upload GitHub Release Assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: releases-${{ runner.os }}-${{ runner.arch }}
+          path: releases/
