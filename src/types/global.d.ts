@@ -67,7 +67,27 @@ declare global {
           email: string;
           email_verified: boolean;
         };
+        apiKey?: string;
         error?: string;
+      }>;
+      logout: () => Promise<{
+        success: boolean;
+      }>;
+      checkAuth: () => Promise<{
+        isAuthenticated: boolean;
+        apiKey?: string;
+        tokens?: {
+          access_token: string;
+          id_token: string;
+          token_type: string;
+          expires_in: number;
+        };
+        user?: {
+          sub: string;
+          name: string;
+          email: string;
+          email_verified: boolean;
+        };
       }>;
     };
     engineAPI: {
@@ -86,6 +106,7 @@ declare global {
       getWorkspace: () => Promise<string>;
       setWorkspace: (directory: string) => Promise<{ success: boolean; error?: string }>;
       selectDirectory: () => Promise<string | null>;
+      refreshConfig: () => Promise<void>;
       onWorkspaceChanged: (callback: (event: any, directory: string) => void) => void;
       removeWorkspaceChanged: (callback: (event: any, directory: string) => void) => void;
     };
@@ -97,4 +118,4 @@ declare global {
   }
 }
 
-export {};
+export { };

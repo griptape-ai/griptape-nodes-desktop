@@ -6,7 +6,7 @@ import { getCwd, getUvExecutablePath } from '../../config/paths';
 import EventEmitter from 'events';
 import { installUv } from './install-uv';
 import * as fs from 'fs';
-import { logger } from '@/logger';
+import { logger } from '@/main/utils/logger';
 
 
 

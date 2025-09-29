@@ -3,7 +3,7 @@ import { collectStdout } from '../../child-process/collect-stdout';
 import { attachOutputForwarder } from '../../child-process/output-forwarder';
 import { getEnv } from '../../config/env';
 import { getCwd } from '../../config/paths';
-import { logger } from '@/logger';
+import { logger } from '@/main/utils/logger';
 import EventEmitter from 'events';
 import { UvService } from '../uv/uv-service';
 import { findPythonExecutablePath, installPython } from './install-python';
@@ -54,19 +54,23 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
 
   async getPythonExecutablePath(): Promise<string> {
     await this.waitForReady();
+    if (!this.pythonExecutablePath) {
+      throw new Error("Expected pythonExecutablePath to be ready");
+    }
     return this.pythonExecutablePath;
   }
 
-  private spawnPython(command: string): ChildProcess {
+  private async spawnPython(command: string): Promise<ChildProcess> {
+    const pythonExecutablePath = await this.getPythonExecutablePath();
     const env = getEnv(this.userDataDir);
     const cwd = getCwd(this.userDataDir);
-    const child = spawn(this.pythonExecutablePath, ['-c', command], { cwd, env });
+    const child = spawn(pythonExecutablePath, ['-c', command], { cwd, env });
     attachOutputForwarder(child, { logPrefix: `python ${command}` });
     return child;
   }
 
   async getPythonVersion(): Promise<string> {
-    const child = this.spawnPython('import sys; print(sys.version)');
+    const child = await this.spawnPython('import sys; print(sys.version)');
     const stdout = await collectStdout(child);
     return stdout.trim();
   }

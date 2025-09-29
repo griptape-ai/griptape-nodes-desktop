@@ -1,6 +1,6 @@
 import { ChildProcess } from 'child_process';
 import readline from 'readline';
-import { logger } from '@/logger';
+import { logger } from '@/main/utils/logger';
 
 export interface OutputForwarderOptions {
   logPrefix: string;

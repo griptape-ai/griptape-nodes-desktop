@@ -6,7 +6,7 @@ import { collectStdout } from '../../child-process/collect-stdout';
 import { attachOutputForwarder } from '../../child-process/output-forwarder';
 import { getEnv } from '../../config/env';
 import { getCwd, getGtnConfigPath, getGtnExecutablePath, getXdgDataHome } from '../../config/paths';
-import { logger } from '@/logger';
+import { logger } from '@/main/utils/logger';
 import { UvService } from '../uv/uv-service';
 import EventEmitter from 'events';
 import { installGtn } from './install-gtn';
@@ -68,7 +68,7 @@ interface GtnStoreData {
 export class GtnService extends EventEmitter<GtnServiceEvents> {
   private isReady: boolean = false;
   private gtnExecutablePath?: string;
-  private store: Store<GtnStoreData>;
+  private store: any;
 
   constructor(
     private userDataDir: string,
@@ -78,7 +78,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     private authService: HttpAuthService,
   ) {
     super();
-    this.store = new Store<GtnStoreData>({
+    this.store = new Store({
       name: 'gtn-workspace',
       defaults: {}
     });
@@ -126,6 +126,9 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
   async getGtnExecutablePath(): Promise<string> {
     await this.waitForReady();
+    if (!this.gtnExecutablePath) {
+      throw new Error("Expected gtnExecutablePath to be ready");
+    }
     return this.gtnExecutablePath;
   }
 
@@ -265,6 +268,6 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   gtnExecutableExists(): boolean {
-    return fs.existsSync(this.gtnExecutablePath);
+    return !!this.gtnExecutablePath && fs.existsSync(this.gtnExecutablePath);
   }
 }

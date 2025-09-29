@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { autoUpdater } from 'electron';
 import { updateElectronApp, UpdateSourceType } from 'update-electron-app';
-import { logger } from '../utils/logger.renderer';
+import { logger } from '@/main/utils/logger';
 
 export class UpdateService {
   private checking = false;

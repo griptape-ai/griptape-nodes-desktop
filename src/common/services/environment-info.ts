@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { logger } from '@/logger';
+import { logger } from '@/main/utils/logger';
 
 export interface EnvironmentInfo {
   python: {

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
-import type { EngineStatus, EngineLog } from '../../common/types/global';
+import type { EngineStatus, EngineLog } from '@/types/global';
 
 interface EngineContextType {
   status: EngineStatus;

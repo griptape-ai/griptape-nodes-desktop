@@ -2,8 +2,8 @@ import { ExternalLink } from 'lucide-react';
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../utils/utils';
-import headerLogoSrc from '/griptape_nodes_header_logo.svg';
-import animatedNodesSrc from '/animated_nodes.svg';
+import headerLogoSrc from '../../assets/griptape_nodes_header_logo.svg';
+import animatedNodesSrc from '../../assets/animated_nodes.svg';
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -45,7 +45,7 @@ const LoginPage: React.FC = () => {
             <div className="mb-12">
               <img src={animatedNodesSrc} alt="Animated Griptape Nodes" className="w-full max-w-lg" />
             </div>
-            
+
             {/* Login content */}
             <div className="w-full max-w-md space-y-8">
               <div className={cn(
@@ -78,7 +78,7 @@ const LoginPage: React.FC = () => {
                 <ExternalLink className="w-5 h-5" />
                 Log In with Browser
               </button>
-              
+
               {error && (
                 <div className="mt-6">
                   <div className="p-4 bg-red-900/20 border border-red-700 rounded-md">
@@ -93,19 +93,19 @@ const LoginPage: React.FC = () => {
         {/* Footer */}
         <div className="flex justify-center gap-4 p-6 pt-4 border-t border-gray-700/50 text-sm">
           <span className="text-gray-500">Need Help?</span>
-          <button 
+          <button
             onClick={() => openExternalLink('https://docs.griptapenodes.com/en/stable/')}
             className="text-blue-400 hover:underline"
           >
             Documentation
           </button>
-          <button 
+          <button
             onClick={() => openExternalLink('https://docs.griptapenodes.com/en/stable/faq')}
             className="text-blue-400 hover:underline"
           >
             FAQ
           </button>
-          <button 
+          <button
             onClick={() => openExternalLink('https://discord.gg/griptape')}
             className="text-blue-400 hover:underline"
           >

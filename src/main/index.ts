@@ -9,8 +9,11 @@ import { EnvironmentInfoService } from '../common/services/environment-info';
 import { GtnService } from '../common/services/gtn/gtn-service';
 import { UpdateService } from '../common/services/update-service';
 import { UvService } from '../common/services/uv/uv-service';
-import { logger } from '@/logger';
+import { logger } from '@/main/utils/logger';
 import { PythonService } from '../common/services/python/python-service';
+
+declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
+declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 
 // Build info injected at compile time
 declare const __BUILD_INFO__: {
@@ -84,18 +87,14 @@ const createWindow = () => {
     trafficLightPosition: process.platform === 'darwin' ? { x: 20, y: 18 } : undefined,
     frame: process.platform === 'darwin' ? false : true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       nodeIntegration: false,
       contextIsolation: true,
     },
   });
 
   // and load the index.html of the app.
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-  }
+  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
   // Open the DevTools in development only
   if (process.env.NODE_ENV === 'development') {
@@ -288,7 +287,7 @@ const setupKeyboardShortcuts = (mainWindow: BrowserWindow) => {
       { role: 'copy' },
       { role: 'paste' },
       { type: 'separator' },
-      { role: 'selectall' }
+      { role: 'selectAll' }
     ]);
     menu.popup({ window: mainWindow });
   });
@@ -308,6 +307,10 @@ const setupIPC = () => {
   // Store reference to main window for sending events
   BrowserWindow.getAllWindows().forEach(window => {
     if (!mainWindow) mainWindow = window;
+  });
+
+  ipcMain.on('get-preload-path', (e) => {
+    e.returnValue = MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY;
   });
 
   // Handle environment info requests (from persisted data)

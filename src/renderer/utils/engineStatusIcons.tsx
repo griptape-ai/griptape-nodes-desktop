@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, Square } from 'lucide-react';
-import type { EngineStatus } from '../../common/types/global';
+import type { EngineStatus } from '@/types/global';
 
 interface StatusIconProps {
   status: EngineStatus;
@@ -10,20 +10,20 @@ interface StatusIconProps {
 
 const sizeClasses = {
   sm: 'w-2 h-2',
-  md: 'w-3 h-3', 
+  md: 'w-3 h-3',
   lg: 'w-4 h-4'
 };
 
 const spinnerSizeClasses = {
   sm: 'w-3 h-3',
-  md: 'w-4 h-4', 
+  md: 'w-4 h-4',
   lg: 'w-5 h-5'
 };
 
 export const getStatusIcon = (status: EngineStatus, size: 'sm' | 'md' | 'lg' = 'md') => {
   const dotSizeClass = sizeClasses[size];
   const spinnerSizeClass = spinnerSizeClasses[size];
-  
+
   switch (status) {
     case 'running':
       return <div className={`${dotSizeClass} bg-green-500 rounded-full`} />;

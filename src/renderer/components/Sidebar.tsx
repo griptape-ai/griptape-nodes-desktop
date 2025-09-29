@@ -1,23 +1,22 @@
-import { 
-  Home, 
-  Settings, 
-  FileText, 
-  User2, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  Home,
+  Settings,
+  User2,
+  ChevronDown,
+  ChevronUp,
   LogOut,
   Code,
   Layers,
   ExternalLink
 } from 'lucide-react';
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEngine } from '../contexts/EngineContext';
 import { cn } from '../utils/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip';
 import { getStatusIcon, getStatusTooltip } from '../utils/engineStatusIcons';
-import markLightSrc from '/griptape_nodes_mark_light.svg';
-import markDarkSrc from '/griptape_nodes_mark_dark.svg';
+import markLightSrc from '@/assets/griptape_nodes_mark_light.svg';
+import markDarkSrc from '@/assets/griptape_nodes_mark_dark.svg';
 
 interface SidebarProps {
   className?: string;
@@ -76,13 +75,13 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
       {!hideHeader && (
         <div className="flex-shrink-0 px-4 py-4 border-b border-border draggable">
           <div className="flex items-center gap-2">
-            <img 
-              src={markLightSrc} 
+            <img
+              src={markLightSrc}
               className="hidden w-8 h-8 dark:block non-draggable"
               alt="Griptape Nodes Logo"
             />
-            <img 
-              src={markDarkSrc} 
+            <img
+              src={markDarkSrc}
               className="block w-8 h-8 dark:hidden non-draggable"
               alt="Griptape Nodes Logo"
             />
@@ -158,7 +157,7 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
 
           {/* Profile Menu Popover */}
           {isProfileOpen && (
-            <div 
+            <div
               ref={profileMenuRef}
               className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-md shadow-lg p-1 z-50"
             >

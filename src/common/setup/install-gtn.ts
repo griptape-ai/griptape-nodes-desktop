@@ -6,12 +6,12 @@ import { getCwd, getUvExecutablePath } from '../../common/config/paths';
 
 export async function installGtn(userDataDir: string): Promise<void> {
   const uvExecutablePath = getUvExecutablePath(userDataDir);
-    if (!fs.existsSync(uvExecutablePath)) {
-      throw new Error(`UV executable not found at: ${uvExecutablePath}`);
-    }
+  if (!fs.existsSync(uvExecutablePath)) {
+    throw new Error(`UV executable not found at: ${uvExecutablePath}`);
+  }
 
   const installProcess = spawn(uvExecutablePath, ['tool', 'install', '--quiet', 'griptape-nodes'], {
-    cwd: getCwd(this.userDataDir),
+    cwd: getCwd(userDataDir),
     env: getEnv(userDataDir),
   });
   await attachOutputForwarder(installProcess, {
