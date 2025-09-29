@@ -254,6 +254,7 @@ jobs:
         env:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
           APPLE_IDENTITY: ${{ secrets.APPLE_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
 
       - name: Upload Velopack releases
         if: env.DONE != 'true'

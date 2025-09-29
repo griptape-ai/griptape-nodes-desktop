@@ -43,13 +43,40 @@ VPK_ARGS=(
 # Add code signing arguments if running in GitHub Actions with certificates
 if [[ -n "$GITHUB_ACTIONS" && -n "$MAC_CERTS_P12" ]]; then
     echo "Adding code signing arguments for GitHub Actions..."
-    VPK_ARGS+=(--signAppIdentity "$APPLE_IDENTITY")
+
+    # Debug: Show available environment variables
+    echo "DEBUG: APPLE_ID = '$APPLE_ID'"
+    echo "DEBUG: APPLE_IDENTITY = '$APPLE_IDENTITY'"
+    echo "DEBUG: MAC_CERTS_P12 present = $([ -n "$MAC_CERTS_P12" ] && echo 'YES' || echo 'NO')"
+
+    # Debug: List available code signing identities
+    echo "DEBUG: Available code signing identities:"
+    security find-identity -v -p codesigning "$RUNNER_TEMP/app-signing.keychain-db" || echo "Failed to list identities"
+
+    # Use APPLE_IDENTITY if set, otherwise try to detect from APPLE_ID
+    if [[ -n "$APPLE_IDENTITY" ]]; then
+        SIGNING_IDENTITY="$APPLE_IDENTITY"
+        echo "DEBUG: Using APPLE_IDENTITY: '$SIGNING_IDENTITY'"
+    elif [[ -n "$APPLE_ID" ]]; then
+        # Try to find identity that contains the Apple ID
+        SIGNING_IDENTITY=$(security find-identity -v -p codesigning "$RUNNER_TEMP/app-signing.keychain-db" | grep "Developer ID Application" | head -1 | sed -n 's/.*"\(.*\)".*/\1/p')
+        echo "DEBUG: Detected identity from keychain: '$SIGNING_IDENTITY'"
+    else
+        echo "ERROR: Neither APPLE_IDENTITY nor APPLE_ID is set"
+        exit 1
+    fi
+
+    VPK_ARGS+=(--signAppIdentity "$SIGNING_IDENTITY")
     VPK_ARGS+=(--notaryProfile "velopack-profile")
     VPK_ARGS+=(--keychain "$RUNNER_TEMP/app-signing.keychain-db")
     VPK_ARGS+=(--signEntitlements "entitlements.entitlements")
+
+    echo "DEBUG: Final signing identity: '$SIGNING_IDENTITY'"
 fi
 
-vpk pack "${VPK_ARGS[@]}"
+# Enable verbose logging for vpk pack
+echo "DEBUG: Running vpk pack with args: ${VPK_ARGS[*]}"
+vpk pack --verbose "${VPK_ARGS[@]}"
 
 # Create DMG from the portable zip
 VERSION=$(node -p "require('./package.json').version")
