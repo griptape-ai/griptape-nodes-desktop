@@ -167,8 +167,8 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$MAC_CERTS_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-          # create notarytool profile
-          xcrun notarytool store-credentials --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" velopack-profile
+          # create notarytool profile using keychain
+          xcrun notarytool store-credentials --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" --keychain "$KEYCHAIN_PATH" velopack-profile
 
       - name: Download previous Velopack releases
         run: |
