@@ -3,28 +3,16 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      tag_prefix:
-        description: 'Tag prefix (e.g., "beta1", "rc1", "test") - defaults to "v"'
+      channel:
+        description: 'Release channel (stable, beta, dev, etc.) - defaults to branch name'
         required: false
         type: string
-        default: v
-      draft:
-        description: 'Create as draft release'
-        required: false
-        type: boolean
-        default: true
-      prerelease:
-        description: 'Mark as prerelease'
-        required: false
-        type: boolean
-        default: true
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     outputs:
       should_proceed: ${{ steps.check.outputs.should_proceed }}
-      is_main_branch: ${{ steps.check.outputs.is_main_branch }}
       channel: ${{ steps.check.outputs.channel }}
 
     steps:
@@ -37,44 +25,30 @@ jobs:
         id: check
         shell: bash
         run: |
-          # Determine branch and channel
+          # Determine channel from input or branch name
           CURRENT_BRANCH="${{ github.ref_name }}"
 
-          if [[ "$CURRENT_BRANCH" == "main" ]]; then
-            IS_MAIN_BRANCH="true"
+          if [[ -n "${{ inputs.channel }}" ]]; then
+            CHANNEL="${{ inputs.channel }}"
+          elif [[ "$CURRENT_BRANCH" == "main" ]]; then
             CHANNEL="stable"
           else
-            IS_MAIN_BRANCH="false"
             # Sanitize branch name for use as channel (replace / with -)
             CHANNEL=$(echo "$CURRENT_BRANCH" | sed 's/\//-/g')
           fi
 
           echo "Current branch: $CURRENT_BRANCH"
-          echo "Is main branch: $IS_MAIN_BRANCH"
           echo "Channel: $CHANNEL"
 
           # Set outputs
-          echo "is_main_branch=$IS_MAIN_BRANCH" >> $GITHUB_OUTPUT
           echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
 
-          # Validate release configuration (only for main branch)
-          if [[ "$IS_MAIN_BRANCH" == "true" ]]; then
-            if [[ "${{ inputs.tag_prefix }}" != "v" && "${{ inputs.draft }}" != "true" && "${{ inputs.prerelease }}" != "true" ]]; then
-              echo "Error: Non-production releases (tag_prefix != 'v') must be either draft or prerelease"
-              exit 1
-            fi
-
-            if [[ "${{ inputs.tag_prefix }}" == "v" && ("${{ inputs.draft }}" == "true" || "${{ inputs.prerelease }}" == "true") ]]; then
-              echo "Error: Production releases (tag_prefix = 'v') cannot be marked as draft or prerelease"
-              exit 1
-            fi
-          fi
-
-          # Create tag name (include branch for non-main branches)
-          if [[ "$IS_MAIN_BRANCH" == "true" ]]; then
-            tag_name="${{ inputs.tag_prefix }}$(jq -r '.version' package.json)"
+          # Create tag name
+          VERSION=$(jq -r '.version' package.json)
+          if [[ "$CHANNEL" == "stable" ]]; then
+            tag_name="v${VERSION}"
           else
-            tag_name="${{ inputs.tag_prefix }}$(jq -r '.version' package.json)-$CHANNEL"
+            tag_name="v${VERSION}-${CHANNEL}"
           fi
 
           echo "Checking for existing tag: $tag_name"
