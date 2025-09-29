@@ -58,107 +58,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  check-tag:
-    needs: validate
-    runs-on: ${{ matrix.os }}
-    outputs:
-      should-build-macos: ${{ steps.check-macos.outputs.should_build }}
-      should-build-ubuntu: ${{ steps.check-ubuntu.outputs.should_build }}
-      should-build-windows: ${{ steps.check-windows.outputs.should_build }}
-
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Check tag for macOS
-        if: matrix.os == 'macos-latest'
-        id: check-macos
-        run: |
-          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
-          VERSION=$(node -p "require('./package.json').version")
-
-          OS="osx"
-          ARCH=$(uname -m)
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
-
-          if [[ "$USER_CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
-          else
-            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
-          fi
-
-          echo "Checking macOS tag: $TAG_NAME"
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
-            echo "should_build=false" >> $GITHUB_OUTPUT
-          else
-            echo "should_build=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check tag for Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-        id: check-ubuntu
-        run: |
-          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
-          VERSION=$(node -p "require('./package.json').version")
-
-          OS="linux"
-          ARCH="x64"
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
-
-          if [[ "$USER_CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
-          else
-            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
-          fi
-
-          echo "Checking Linux tag: $TAG_NAME"
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
-            echo "should_build=false" >> $GITHUB_OUTPUT
-          else
-            echo "should_build=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check tag for Windows
-        if: matrix.os == 'windows-latest'
-        id: check-windows
-        run: |
-          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
-          VERSION=$(node -p "require('./package.json').version")
-
-          OS="win"
-          ARCH="x64"
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
-
-          if [[ "$USER_CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
-          else
-            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
-          fi
-
-          echo "Checking Windows tag: $TAG_NAME"
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
-            echo "should_build=false" >> $GITHUB_OUTPUT
-          else
-            echo "should_build=true" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
-
   release:
-    needs: [validate, check-tag]
-    runs-on: ${{ matrix.os }}
-    if: |
-      (matrix.os == 'macos-latest' && needs.check-tag.outputs.should-build-macos == 'true') ||
-      (matrix.os == 'ubuntu-latest' && needs.check-tag.outputs.should-build-ubuntu == 'true') ||
-      (matrix.os == 'windows-latest' && needs.check-tag.outputs.should-build-windows == 'true')
+    needs: validate
 
     permissions:
       id-token: write  # required for OIDC
@@ -187,18 +88,70 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
+      - name: Check if tag already exists
+        run: |
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          VERSION=$(node -p "require('./package.json').version")
+
+          # Determine OS and architecture for channel naming
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            OS="linux"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "aarch64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            OS="osx"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            OS="win"
+            ARCH="x64"
+          fi
+
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          # Tag naming logic
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+          else
+            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
+          fi
+
+          echo "Checking for existing tag: $TAG_NAME"
+
+          # Check if tag exists on GitHub
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
+            echo "Tag $TAG_NAME already exists, skipping build for this platform"
+            echo "DONE=true" >> $GITHUB_ENV
+          else
+            echo "Tag $TAG_NAME does not exist, proceeding with build"
+            echo "DONE=false" >> $GITHUB_ENV
+          fi
+        shell: bash
+
       - name: Setup .NET
+        if: env.DONE != 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.x
 
       - name: Install Velopack CLI
+        if: env.DONE != 'true'
         run: dotnet tool install -g vpk
 
       - name: Install Dependencies
+        if: env.DONE != 'true'
         run: npm ci
 
       - name: Setup platform variables
+        if: env.DONE != 'true'
         id: platform
         run: |
           USER_CHANNEL="${{ needs.validate.outputs.channel }}"
@@ -240,7 +193,7 @@ jobs:
         shell: bash
 
       - name: Install Apple certificates and notary profile
-        if: runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
+        if: env.DONE != 'true' && runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
         env:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
           MAC_CERTS_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
@@ -269,6 +222,7 @@ jobs:
           xcrun notarytool store-credentials --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" --keychain "$KEYCHAIN_PATH" velopack-profile
 
       - name: Download previous Velopack releases
+        if: env.DONE != 'true'
         run: |
           echo "Downloading previous releases for channel: $FULL_CHANNEL"
 
@@ -284,6 +238,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Build with Velopack
+        if: env.DONE != 'true'
         run: |
           echo "Building for channel: $FULL_CHANNEL"
 
@@ -299,6 +254,7 @@ jobs:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
 
       - name: Upload Velopack releases
+        if: env.DONE != 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version")
 
@@ -336,6 +292,7 @@ jobs:
         run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
 
       - name: Upload GitHub Release Assets
+        if: env.DONE != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: releases-${{ runner.os }}-${{ runner.arch }}
