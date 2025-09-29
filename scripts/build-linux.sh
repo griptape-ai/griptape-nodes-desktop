@@ -21,6 +21,7 @@ fi
 
 APP_DIR="$PACKAGED_DIR"
 MAIN_EXE="griptape-nodes-desktop"
+ICON_PATH="generated/icons/icon.png"
 
 echo "Building for runtime: $RUNTIME"
 echo "Packaged directory: $PACKAGED_DIR"
@@ -32,6 +33,7 @@ vpk pack \
     --packVersion "$(node -p "require('./package.json').version")" \
     --packDir "$APP_DIR" \
     --mainExe "$MAIN_EXE" \
+    --icon "$ICON_PATH" \
     --outputDir "releases" \
     --runtime "$RUNTIME" \
     --channel "$CHANNEL"

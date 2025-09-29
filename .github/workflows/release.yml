@@ -7,6 +7,14 @@ on:
         description: 'Release channel (stable, beta, dev, etc.) - defaults to branch name'
         required: false
         type: string
+      destination:
+        description: 'Distribution destination'
+        required: true
+        type: choice
+        options:
+          - github
+          - s3
+        default: github
 
 jobs:
   validate:
@@ -101,6 +109,14 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
       - name: Install Dependencies
         run: npm ci
 
@@ -133,6 +149,18 @@ jobs:
           # create notarytool profile
           xcrun notarytool store-credentials --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" velopack-profile
 
+      - name: Download previous Velopack releases
+        run: |
+          if [ "${{ inputs.destination }}" == "github" ]; then
+            vpk download github --repoUrl https://github.com/${{ github.repository }}
+          else
+            vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
       - name: Build with Velopack
         run: |
           CHANNEL="${{ needs.validate.outputs.channel }}"
@@ -147,15 +175,28 @@ jobs:
         env:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
 
-      - name: Publish to S3
+      - name: Upload Velopack releases
         run: |
+          VERSION=$(node -p "require('./package.json').version")
           CHANNEL="${{ needs.validate.outputs.channel }}"
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            ./scripts/publish-linux.sh "$CHANNEL"
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            ./scripts/publish-osx.sh "$CHANNEL"
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            powershell -ExecutionPolicy Bypass -File ./scripts/publish-windows.ps1 -Channel "$CHANNEL"
+
+          if [[ "$CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION}"
+          else
+            TAG_NAME="v${VERSION}-${CHANNEL}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${CHANNEL})"
+          fi
+
+          if [ "${{ inputs.destination }}" == "github" ]; then
+            vpk upload github \
+              --repoUrl https://github.com/${{ github.repository }} \
+              --publish \
+              --releaseName "$RELEASE_NAME" \
+              --tag "$TAG_NAME" \
+              --token ${{ secrets.GITHUB_TOKEN }}
+          else
+            vpk upload s3 --bucket griptape-nodes-desktop-updates --region us-west-2
           fi
         shell: bash
         env:
