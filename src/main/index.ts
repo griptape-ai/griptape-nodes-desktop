@@ -1,6 +1,11 @@
+import { UpdateManager, VelopackApp } from 'velopack';
+
+// Velopack builder needs to be the first thing to run in the main process.
+// In some cases, it might quit/restart the process to perform tasks.
+VelopackApp.build().run();
+
 import path from 'node:path';
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron';
-import started from 'electron-squirrel-startup';
 import { getPythonVersion } from '../common/config/versions';
 import { CustomAuthService } from '../common/services/auth/custom';
 import { HttpAuthService } from '../common/services/auth/http';
@@ -15,6 +20,11 @@ import { PythonService } from '../common/services/python/python-service';
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 
+// replace me
+const updateUrl = "C:\\Source\\velopack\\samples\\NodeJSElectron\\releases";
+
+
+
 // Build info injected at compile time
 declare const __BUILD_INFO__: {
   version: string;
@@ -24,11 +34,6 @@ declare const __BUILD_INFO__: {
   buildDate: string;
   buildId: string;
 };
-
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (started) {
-  app.quit();
-}
 
 app.setAppUserModelId("ai.griptape.GriptapeNodes")
 
@@ -307,6 +312,33 @@ const setupIPC = () => {
   // Store reference to main window for sending events
   BrowserWindow.getAllWindows().forEach(window => {
     if (!mainWindow) mainWindow = window;
+  });
+
+  ipcMain.handle("velopack:get-version", () => {
+    try {
+      const updateManager = new UpdateManager(updateUrl);
+      return updateManager.getCurrentVersion();
+    } catch (e) {
+      return `Not Installed (${e})`;
+    }
+  });
+
+  ipcMain.handle("velopack:check-for-update", async () => {
+    const updateManager = new UpdateManager(updateUrl);
+    return await updateManager.checkForUpdatesAsync();
+  });
+
+  ipcMain.handle("velopack:download-update", async (_, updateInfo) => {
+    const updateManager = new UpdateManager(updateUrl);
+    await updateManager.downloadUpdateAsync(updateInfo);
+    return true;
+  });
+
+  ipcMain.handle("velopack:apply-update", async (_, updateInfo) => {
+    const updateManager = new UpdateManager(updateUrl);
+    await updateManager.waitExitThenApplyUpdate(updateInfo);
+    app.quit();
+    return true;
   });
 
   ipcMain.on('get-preload-path', (e) => {

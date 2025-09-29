@@ -48,14 +48,6 @@ const config: ForgeConfig = {
   },
   rebuildConfig: {},
   makers: [
-    // Maker for Windows
-    new MakerSquirrel(arch => ({
-      name: "GriptapeNodes",
-      loadingGif: './public/loading.gif',
-      iconUrl: 'https://griptape-nodes-desktop-public.s3.us-west-2.amazonaws.com/icon.ico',
-      setupIcon: 'generated/icons/icon_installer_windows.ico',
-      remoteReleases: `https://griptape-nodes-desktop-updates.s3.amazonaws.com/win32/${arch}`
-    })),
     // Maker for Mac
     new MakerDMG({
       name: "Griptape Nodes Installer",
