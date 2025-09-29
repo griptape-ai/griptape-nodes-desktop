@@ -179,6 +179,7 @@ jobs:
           else
             vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
           fi
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
