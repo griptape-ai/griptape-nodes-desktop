@@ -27,7 +27,7 @@ echo "Building for runtime: $RUNTIME"
 echo "Packaged directory: $PACKAGED_DIR"
 echo "App directory: $APP_DIR"
 
-# Create Velopack package (portable zip only, no pkg)
+# Create Velopack package (skip installer package, only create portable bundle)
 VPK_ARGS=(
     --packId "ai.griptape.GriptapeNodes"
     --packVersion "$(node -p "require('./package.json').version")"
@@ -37,7 +37,7 @@ VPK_ARGS=(
     --outputDir "Releases"
     --runtime "$RUNTIME"
     --channel "$CHANNEL"
-    --noPkg
+    --noInst
 )
 
 # Add code signing arguments if running in GitHub Actions with certificates
