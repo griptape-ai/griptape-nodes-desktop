@@ -51,29 +51,9 @@ jobs:
           # Set outputs
           echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
 
-          # Create tag name
-          VERSION=$(jq -r '.version' package.json)
-          if [[ "$CHANNEL" == "stable" ]]; then
-            tag_name="v${VERSION}"
-          else
-            tag_name="v${VERSION}-${CHANNEL}"
-          fi
-
-          echo "Checking for existing tag: $tag_name"
-
-          # Check if tag already exists
-          if git tag -l | grep -q "^${tag_name}$"; then
-            echo "Error: Tag $tag_name already exists"
-            exit 1
-          fi
-
-          # Check if GitHub release already exists
-          if gh release view "$tag_name" &>/dev/null; then
-            echo "Error: Release $tag_name already exists on GitHub"
-            exit 1
-          fi
-
-          echo "Tag $tag_name is available"
+          # Note: Tag validation will be done per-platform during upload step
+          # since we now have platform-specific channels and tags
+          echo "Channel validation passed"
           echo "should_proceed=true" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -163,13 +143,41 @@ jobs:
 
       - name: Build with Velopack
         run: |
-          CHANNEL="${{ needs.validate.outputs.channel }}"
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+
+          # Determine OS and architecture for channel naming
           if [ "$RUNNER_OS" == "Linux" ]; then
-            ./scripts/build-linux.sh "$CHANNEL"
+            OS="linux"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "aarch64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
           elif [ "$RUNNER_OS" == "macOS" ]; then
-            ./scripts/build-osx.sh "$CHANNEL"
+            OS="osx"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
           elif [ "$RUNNER_OS" == "Windows" ]; then
-            powershell -ExecutionPolicy Bypass -File ./scripts/build-windows.ps1 -Channel "$CHANNEL"
+            OS="win"
+            # Windows runners are typically x64, but we should detect properly
+            ARCH="x64"
+          fi
+
+          # Construct full channel name: {os}-{arch}-{channel}
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+          echo "Building for channel: $FULL_CHANNEL"
+
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            ./scripts/build-linux.sh "$FULL_CHANNEL"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            ./scripts/build-osx.sh "$FULL_CHANNEL"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            powershell -ExecutionPolicy Bypass -File ./scripts/build-windows.ps1 -Channel "$FULL_CHANNEL"
           fi
         shell: bash
         env:
@@ -178,15 +186,45 @@ jobs:
       - name: Upload Velopack releases
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          CHANNEL="${{ needs.validate.outputs.channel }}"
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
 
-          if [[ "$CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}"
-            RELEASE_NAME="Griptape Nodes Desktop ${VERSION}"
-          else
-            TAG_NAME="v${VERSION}-${CHANNEL}"
-            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${CHANNEL})"
+          # Determine OS and architecture (same logic as build step)
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            OS="linux"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "aarch64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            OS="osx"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            OS="win"
+            ARCH="x64"
           fi
+
+          # Construct full channel name: {os}-{arch}-{channel}
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          # Tag and release naming
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${OS}-${ARCH})"
+          else
+            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${FULL_CHANNEL})"
+          fi
+
+          echo "Uploading for channel: $FULL_CHANNEL"
+          echo "Tag: $TAG_NAME"
+          echo "Release name: $RELEASE_NAME"
 
           if [ "${{ inputs.destination }}" == "github" ]; then
             vpk upload github \
