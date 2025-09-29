@@ -33,7 +33,7 @@ vpk pack `
     --packDir "$AppDir" `
     --mainExe "$MainExe" `
     --icon "$IconPath" `
-    --outputDir "releases" `
+    --outputDir "Releases" `
     --runtime "$Runtime" `
     --channel "$Channel"
 

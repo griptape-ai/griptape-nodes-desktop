@@ -34,7 +34,7 @@ vpk pack \
     --packDir "$APP_DIR" \
     --mainExe "$MAIN_EXE" \
     --icon "$ICON_PATH" \
-    --outputDir "releases" \
+    --outputDir "Releases" \
     --runtime "$RUNTIME" \
     --channel "$CHANNEL"
 
