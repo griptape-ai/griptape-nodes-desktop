@@ -96,23 +96,78 @@ if [[ -f "$ZIP_FILE" ]]; then
     EXTRACTED_APP=$(find "$TEMP_DIR" -name "*.app" -type d | head -1)
 
     if [[ -n "$EXTRACTED_APP" ]]; then
-        # Create DMG with custom volume icon
-        echo "Creating DMG with custom installer icon..."
+        # Create DMG with custom volume icon and Applications symlink
+        echo "Creating DMG with drag-to-Applications installer..."
+
+        # Create DMG source folder with app and Applications symlink
+        DMG_SOURCE="$TEMP_DIR/dmg_source"
+        mkdir -p "$DMG_SOURCE"
+        cp -R "$EXTRACTED_APP" "$DMG_SOURCE/"
+        ln -s /Applications "$DMG_SOURCE/Applications"
 
         # First create a temporary read-write DMG
         TEMP_DMG="$TEMP_DIR/temp.dmg"
-        hdiutil create -volname "Griptape Nodes" -srcfolder "$EXTRACTED_APP" -ov -format UDRW "$TEMP_DMG"
+        hdiutil create -volname "Griptape Nodes" -srcfolder "$DMG_SOURCE" -ov -format UDRW "$TEMP_DMG"
 
-        # Mount the DMG to a specific location
-        MOUNT_DIR="$TEMP_DIR/mount"
-        mkdir -p "$MOUNT_DIR"
-        hdiutil attach -readwrite -noverify -noautoopen -mountpoint "$MOUNT_DIR" "$TEMP_DMG"
+        # Mount the DMG (let it mount to /Volumes so Finder can see it)
+        MOUNT_DIR="/Volumes/Griptape Nodes"
+        hdiutil attach -readwrite -noverify "$TEMP_DMG"
 
         # Copy custom volume icon
         cp "generated/icons/icon_installer_mac.icns" "$MOUNT_DIR/.VolumeIcon.icns"
 
         # Set custom icon flag on the volume
         SetFile -a C "$MOUNT_DIR"
+
+        # Configure DMG window appearance with AppleScript
+        echo "Configuring DMG window appearance..."
+
+        # Store .DS_Store settings directly
+        echo '#!/usr/bin/osascript
+tell application "Finder"
+    set theDisk to disk "Griptape Nodes"
+    open theDisk
+
+    tell container window of theDisk
+        set current view to icon view
+        set toolbar visible to false
+        set statusbar visible to false
+        set the bounds to {400, 100, 900, 450}
+    end tell
+
+    set opts to icon view options of container window of theDisk
+    set arrangement of opts to not arranged
+    set icon size of opts to 128
+    set shows icon preview of opts to true
+    set shows item info of opts to false
+    set text size of opts to 12
+
+    -- Wait longer for Finder to be ready
+    delay 1
+
+    -- Position items using container window reference
+    set position of item "ai.griptape.GriptapeNodes.app" of container window of theDisk to {140, 140}
+    set position of item "Applications" of container window of theDisk to {330, 140}
+
+    -- Update and leave window open for .DS_Store to write
+    update theDisk without registering applications
+
+    -- Ensure .DS_Store is written before we close
+    delay 1
+
+    close every window
+end tell
+' > "$TEMP_DIR/set_icon_positions.scpt"
+
+        chmod +x "$TEMP_DIR/set_icon_positions.scpt"
+        "$TEMP_DIR/set_icon_positions.scpt" || echo "Warning: AppleScript configuration may have failed"
+
+        # Give extra time for .DS_Store to be written to disk
+        echo "Waiting for .DS_Store to be written..."
+        sleep 3
+
+        # Sync to ensure all writes are flushed
+        sync
 
         # Unmount
         hdiutil detach "$MOUNT_DIR"
