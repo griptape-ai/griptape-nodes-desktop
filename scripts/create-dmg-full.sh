@@ -23,8 +23,9 @@ if [[ -f "$ZIP_FILE" ]]; then
     echo "Creating DMG from portable zip..."
 
     # Create temporary directory and extract zip
+    # Use ditto instead of unzip to preserve extended attributes (including code signatures)
     mkdir -p "$TEMP_DIR"
-    unzip -q "$ZIP_FILE" -d "$TEMP_DIR"
+    ditto -x -k "$ZIP_FILE" "$TEMP_DIR"
 
     # Find the extracted app (it should be the .app file in temp dir)
     EXTRACTED_APP=$(find "$TEMP_DIR" -name "*.app" -type d | head -1)
