@@ -99,21 +99,25 @@ if [[ -f "$ZIP_FILE" ]]; then
         # Create DMG with custom volume icon and Applications symlink
         echo "Creating DMG with drag-to-Applications installer..."
 
-        # Use unique volume name to prevent conflicts (especially in CI)
-        TEMP_VOLUME_NAME="GriptapeNodes-build-$$"
+        # Volume name for the DMG
         FINAL_VOLUME_NAME="Griptape Nodes"
 
         # Clean up any existing mounts that might interfere
-        if [ -d "/Volumes/$TEMP_VOLUME_NAME" ]; then
+        if [ -d "/Volumes/$FINAL_VOLUME_NAME" ]; then
             echo "Unmounting existing volume..."
-            hdiutil detach "/Volumes/$TEMP_VOLUME_NAME" -force 2>/dev/null || true
+            hdiutil detach "/Volumes/$FINAL_VOLUME_NAME" -force 2>/dev/null || true
         fi
 
         # Create DMG source folder with app and Applications symlink
         DMG_SOURCE="$TEMP_DIR/dmg_source"
         mkdir -p "$DMG_SOURCE"
-        # Use ditto instead of cp to preserve code signing attributes
+        # Use ditto to preserve ALL attributes including code signing (no flags = preserve everything)
         ditto "$EXTRACTED_APP" "$DMG_SOURCE/$(basename "$EXTRACTED_APP")"
+
+        # Verify signature after ditto
+        echo "Verifying signature after ditto copy..."
+        codesign --verify --deep --strict "$DMG_SOURCE"/*.app 2>&1 && echo "✓ Signature OK after ditto" || echo "✗ Signature broken after ditto"
+
         ln -s /Applications "$DMG_SOURCE/Applications"
 
         # Sync filesystem and wait for any file handles to close
@@ -124,12 +128,16 @@ if [[ -f "$ZIP_FILE" ]]; then
         TEMP_DMG="$TEMP_DIR/temp.dmg"
         rm -f "$TEMP_DMG"
 
-        # Create a temporary read-write DMG with unique name
-        hdiutil create -volname "$TEMP_VOLUME_NAME" -srcfolder "$DMG_SOURCE" -ov -format UDRW "$TEMP_DMG"
+        # Create a temporary read-write DMG with final volume name
+        hdiutil create -volname "$FINAL_VOLUME_NAME" -srcfolder "$DMG_SOURCE" -ov -format UDRW "$TEMP_DMG"
 
-        # Mount the DMG
-        MOUNT_DIR="/Volumes/$TEMP_VOLUME_NAME"
+        # Mount the DMG (using final volume name)
+        MOUNT_DIR="/Volumes/$FINAL_VOLUME_NAME"
         hdiutil attach -readwrite -noverify "$TEMP_DMG"
+
+        # Verify signature after mounting
+        echo "Verifying signature in mounted DMG..."
+        codesign --verify --deep --strict "$MOUNT_DIR"/*.app 2>&1 && echo "✓ Signature OK in DMG" || echo "✗ Signature broken in DMG"
 
         # Copy custom volume icon
         cp "generated/icons/icon_installer_mac.icns" "$MOUNT_DIR/.VolumeIcon.icns"
@@ -150,7 +158,7 @@ if [[ -f "$ZIP_FILE" ]]; then
 
             echo '#!/usr/bin/osascript
 tell application "Finder"
-    set theDisk to disk "'$TEMP_VOLUME_NAME'"
+    set theDisk to disk "'$FINAL_VOLUME_NAME'"
     open theDisk
 
     tell container window of theDisk
@@ -200,11 +208,6 @@ end tell
 
         # Unmount
         hdiutil detach "$MOUNT_DIR"
-
-        # Remount to rename volume to final name
-        hdiutil attach -readwrite -noverify "$TEMP_DMG"
-        diskutil rename "$MOUNT_DIR" "$FINAL_VOLUME_NAME"
-        hdiutil detach "/Volumes/$FINAL_VOLUME_NAME"
 
         # Convert to compressed read-only DMG
         hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG_FILE" -imagekey zlib-level=9
