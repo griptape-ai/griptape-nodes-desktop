@@ -255,6 +255,7 @@ jobs:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
           APPLE_IDENTITY: ${{ secrets.APPLE_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Retrieve notarization logs on failure
