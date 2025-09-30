@@ -196,6 +196,7 @@ jobs:
         shell: bash
 
       - name: Install Apple certificates and notary profile
+        id: install_certs
         if: env.DONE != 'true' && runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
         env:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
@@ -348,7 +349,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Clean up keychain
-        if: runner.os == 'macOS' && always()
+        if: runner.os == 'macOS' && always() && steps.install_certs.outcome == 'success'
         run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
 
       - name: Upload GitHub Release Assets
