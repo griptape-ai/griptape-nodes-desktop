@@ -102,7 +102,8 @@ if [[ -f "$ZIP_FILE" ]]; then
         # Create DMG source folder with app and Applications symlink
         DMG_SOURCE="$TEMP_DIR/dmg_source"
         mkdir -p "$DMG_SOURCE"
-        cp -R "$EXTRACTED_APP" "$DMG_SOURCE/"
+        # Use ditto instead of cp to preserve code signing attributes
+        ditto "$EXTRACTED_APP" "$DMG_SOURCE/$(basename "$EXTRACTED_APP")"
         ln -s /Applications "$DMG_SOURCE/Applications"
 
         # First create a temporary read-write DMG
@@ -177,6 +178,13 @@ end tell
         rm "$TEMP_DMG"
 
         echo "DMG created: $DMG_FILE"
+
+        # Verify code signature is intact in the DMG
+        echo "Verifying code signature in DMG..."
+        VERIFY_MOUNT="/tmp/verify_dmg_$$"
+        hdiutil attach "$DMG_FILE" -readonly -mountpoint "$VERIFY_MOUNT" -nobrowse
+        codesign --verify --deep --strict "$VERIFY_MOUNT"/*.app && echo "✓ Code signature verified" || echo "⚠ Warning: Code signature verification failed"
+        hdiutil detach "$VERIFY_MOUNT"
 
         # Clean up temporary files
         rm -rf "$TEMP_DIR"
