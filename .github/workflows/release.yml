@@ -264,7 +264,7 @@ jobs:
           xcrun notarytool history --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
 
           echo "Fetching detailed log for most recent submission..."
-          SUBMISSION_ID=$(xcrun notarytool history --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null | grep -A 1 "status: Invalid" | grep "id:" | head -1 | awk '{print $2}')
+          SUBMISSION_ID=$(xcrun notarytool history --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null | grep -B 2 "status: Invalid" | grep "id:" | head -1 | awk '{print $2}')
 
           if [ -n "$SUBMISSION_ID" ]; then
             echo "Retrieving log for submission: $SUBMISSION_ID"
