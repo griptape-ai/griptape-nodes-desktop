@@ -283,6 +283,13 @@ jobs:
           fi
         shell: bash
 
+      - name: Create DMG (macOS only)
+        if: env.DONE != 'true' && runner.os == 'macOS'
+        run: |
+          echo "Creating DMG for channel: $FULL_CHANNEL"
+          ./scripts/create-dmg.sh "$FULL_CHANNEL"
+        shell: bash
+
       - name: Upload Velopack releases
         if: env.DONE != 'true'
         run: |
