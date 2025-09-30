@@ -15,7 +15,7 @@ echo "Creating DMG for macOS (channel: $CHANNEL)..."
 
 # Get version and file paths
 VERSION=$(node -p "require('./package.json').version")
-ZIP_FILE="Releases/ai.griptape.GriptapeNodes-$CHANNEL-Portable.zip"
+ZIP_FILE="Releases/ai.griptape.nodes.desktop-$CHANNEL-Portable.zip"
 DMG_FILE="Releases/GriptapeNodes-$VERSION-$CHANNEL.dmg"
 TEMP_DIR="Releases/temp_dmg"
 

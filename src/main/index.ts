@@ -30,7 +30,7 @@ declare const __BUILD_INFO__: {
   buildId: string;
 };
 
-app.setAppUserModelId("ai.griptape.GriptapeNodes")
+app.setAppUserModelId("ai.griptape.nodes.desktop")
 
 logger.info('app.isPackaged:', app.isPackaged);
 logger.info('__dirname:', __dirname);

@@ -28,9 +28,10 @@ Write-Host "App directory: $AppDir"
 
 # Create Velopack package
 vpk pack `
-    --packId "ai.griptape.GriptapeNodes" `
+    --packId "ai.griptape.nodes.desktop" `
     --packVersion (node -p "require('./package.json').version") `
     --packDir "$AppDir" `
+    --packTitle "Griptape Nodes" `
     --mainExe "$MainExe" `
     --icon "$IconPath" `
     --outputDir "Releases" `

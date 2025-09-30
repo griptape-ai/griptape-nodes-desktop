@@ -29,9 +29,10 @@ echo "App directory: $APP_DIR"
 
 # Create Velopack package
 vpk pack \
-    --packId "ai.griptape.GriptapeNodes" \
+    --packId "ai.griptape.nodes.desktop" \
     --packVersion "$(node -p "require('./package.json').version")" \
     --packDir "$APP_DIR" \
+    --packTitle "Griptape Nodes" \
     --mainExe "$MAIN_EXE" \
     --icon "$ICON_PATH" \
     --outputDir "Releases" \

@@ -29,9 +29,10 @@ echo "App directory: $APP_DIR"
 
 # Create Velopack package (skip installer package, only create portable bundle)
 VPK_ARGS=(
-    --packId "ai.griptape.GriptapeNodes"
+    --packId "ai.griptape.nodes.desktop"
     --packVersion "$(node -p "require('./package.json').version")"
     --packDir "$APP_DIR"
+    --packTitle "Griptape Nodes"
     --mainExe "$MAIN_EXE"
     --icon "$ICON_PATH"
     --outputDir "Releases"
