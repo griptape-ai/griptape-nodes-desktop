@@ -99,6 +99,16 @@ if [[ -f "$ZIP_FILE" ]]; then
         # Create DMG with custom volume icon and Applications symlink
         echo "Creating DMG with drag-to-Applications installer..."
 
+        # Use unique volume name to prevent conflicts (especially in CI)
+        TEMP_VOLUME_NAME="GriptapeNodes-build-$$"
+        FINAL_VOLUME_NAME="Griptape Nodes"
+
+        # Clean up any existing mounts that might interfere
+        if [ -d "/Volumes/$TEMP_VOLUME_NAME" ]; then
+            echo "Unmounting existing volume..."
+            hdiutil detach "/Volumes/$TEMP_VOLUME_NAME" -force 2>/dev/null || true
+        fi
+
         # Create DMG source folder with app and Applications symlink
         DMG_SOURCE="$TEMP_DIR/dmg_source"
         mkdir -p "$DMG_SOURCE"
@@ -106,12 +116,19 @@ if [[ -f "$ZIP_FILE" ]]; then
         ditto "$EXTRACTED_APP" "$DMG_SOURCE/$(basename "$EXTRACTED_APP")"
         ln -s /Applications "$DMG_SOURCE/Applications"
 
-        # First create a temporary read-write DMG
-        TEMP_DMG="$TEMP_DIR/temp.dmg"
-        hdiutil create -volname "Griptape Nodes" -srcfolder "$DMG_SOURCE" -ov -format UDRW "$TEMP_DMG"
+        # Sync filesystem and wait for any file handles to close
+        sync
+        sleep 1
 
-        # Mount the DMG (let it mount to /Volumes so Finder can see it)
-        MOUNT_DIR="/Volumes/Griptape Nodes"
+        # Clean up any existing temp DMG
+        TEMP_DMG="$TEMP_DIR/temp.dmg"
+        rm -f "$TEMP_DMG"
+
+        # Create a temporary read-write DMG with unique name
+        hdiutil create -volname "$TEMP_VOLUME_NAME" -srcfolder "$DMG_SOURCE" -ov -format UDRW "$TEMP_DMG"
+
+        # Mount the DMG
+        MOUNT_DIR="/Volumes/$TEMP_VOLUME_NAME"
         hdiutil attach -readwrite -noverify "$TEMP_DMG"
 
         # Copy custom volume icon
@@ -120,13 +137,20 @@ if [[ -f "$ZIP_FILE" ]]; then
         # Set custom icon flag on the volume
         SetFile -a C "$MOUNT_DIR"
 
-        # Configure DMG window appearance with AppleScript
-        echo "Configuring DMG window appearance..."
+        # Configure DMG window appearance using template .DS_Store
+        DS_STORE_TEMPLATE="scripts/dmg_template/.DS_Store"
 
-        # Store .DS_Store settings directly
-        echo '#!/usr/bin/osascript
+        if [[ -f "$DS_STORE_TEMPLATE" ]]; then
+            echo "Using template .DS_Store for DMG appearance..."
+            cp "$DS_STORE_TEMPLATE" "$MOUNT_DIR/.DS_Store"
+        else
+            # Template doesn't exist - generate it with AppleScript
+            echo "Template .DS_Store not found. Generating with AppleScript..."
+            echo "This will be saved for future builds (including CI)."
+
+            echo '#!/usr/bin/osascript
 tell application "Finder"
-    set theDisk to disk "Griptape Nodes"
+    set theDisk to disk "'$TEMP_VOLUME_NAME'"
     open theDisk
 
     tell container window of theDisk
@@ -143,38 +167,47 @@ tell application "Finder"
     set shows item info of opts to false
     set text size of opts to 12
 
-    -- Wait longer for Finder to be ready
-    delay 1
+    delay 2
 
-    -- Position items using container window reference
     set position of item "ai.griptape.GriptapeNodes.app" of container window of theDisk to {140, 140}
     set position of item "Applications" of container window of theDisk to {330, 140}
 
-    -- Update and leave window open for .DS_Store to write
     update theDisk without registering applications
-
-    -- Ensure .DS_Store is written before we close
-    delay 1
+    delay 2
 
     close every window
 end tell
 ' > "$TEMP_DIR/set_icon_positions.scpt"
 
-        chmod +x "$TEMP_DIR/set_icon_positions.scpt"
-        "$TEMP_DIR/set_icon_positions.scpt" || echo "Warning: AppleScript configuration may have failed"
+            chmod +x "$TEMP_DIR/set_icon_positions.scpt"
+            "$TEMP_DIR/set_icon_positions.scpt" && echo "✓ AppleScript completed" || echo "⚠ Warning: AppleScript failed"
 
-        # Give extra time for .DS_Store to be written to disk
-        echo "Waiting for .DS_Store to be written..."
-        sleep 3
+            sync
+            sleep 2
+
+            # Save the generated .DS_Store as template for future builds
+            if [[ -f "$MOUNT_DIR/.DS_Store" ]]; then
+                mkdir -p "scripts/dmg_template"
+                cp "$MOUNT_DIR/.DS_Store" "$DS_STORE_TEMPLATE"
+                echo "✓ Template .DS_Store saved to $DS_STORE_TEMPLATE"
+                echo "  This will be used for all future builds (including CI)"
+            fi
+        fi
 
         # Sync to ensure all writes are flushed
         sync
+        sleep 1
 
         # Unmount
         hdiutil detach "$MOUNT_DIR"
 
+        # Remount to rename volume to final name
+        hdiutil attach -readwrite -noverify "$TEMP_DMG"
+        diskutil rename "$MOUNT_DIR" "$FINAL_VOLUME_NAME"
+        hdiutil detach "/Volumes/$FINAL_VOLUME_NAME"
+
         # Convert to compressed read-only DMG
-        hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG_FILE"
+        hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG_FILE" -imagekey zlib-level=9
         rm "$TEMP_DMG"
 
         echo "DMG created: $DMG_FILE"

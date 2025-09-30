@@ -3,6 +3,7 @@ dist
 out
 releases
 .DS_Store
+!scripts/dmg_template/.DS_Store
 .eslintcache
 .webpack
 *.log*
