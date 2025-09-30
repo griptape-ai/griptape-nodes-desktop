@@ -23,6 +23,19 @@ const config: ForgeConfig = {
     //     schemes: ['gtn']
     //   }
     // ],
+    // Only enable code signing and notarization in GitHub Actions CI/CD environment
+    ...(process.env.GITHUB_ACTIONS && {
+      osxSign: {
+        identity: process.env.APPLE_IDENTITY,
+        entitlements: 'entitlements.entitlements',
+        'hardened-runtime': true, // Required for Developer ID Application certificates
+      } as any,
+      osxNotarize: {
+        appleId: process.env.APPLE_ID as string,
+        appleIdPassword: process.env.APPLE_PASSWORD as string,
+        teamId: process.env.APPLE_TEAM_ID as string,
+      },
+    }),
   },
   rebuildConfig: {},
   makers: [
