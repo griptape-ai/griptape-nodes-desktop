@@ -223,9 +223,6 @@ jobs:
           echo "Downloading previous releases for channel: $FULL_CHANNEL"
           vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
         shell: bash
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Build with Velopack
         if: env.DONE != 'true'
@@ -297,9 +294,6 @@ jobs:
 
           vpk upload s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
         shell: bash
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Upload DMG to S3 (macOS only)
         if: env.DONE != 'true' && runner.os == 'macOS'
@@ -314,9 +308,6 @@ jobs:
             echo "Warning: DMG file not found: $DMG_FILE"
           fi
         shell: bash
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Clean up keychain
         if: runner.os == 'macOS' && always() && steps.install_certs.outcome == 'success'
