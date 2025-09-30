@@ -69,11 +69,11 @@ TEMP_DMG="$TEMP_DIR/temp.dmg"
 rm -f "$TEMP_DMG"
 
 echo "4. Creating DMG with hdiutil create..."
-hdiutil create -volname "Griptape Nodes" -srcfolder "$DMG_SOURCE" -ov -format UDRW "$TEMP_DMG"
+hdiutil create -volname "Griptape Nodes Installer" -srcfolder "$DMG_SOURCE" -ov -format UDRW "$TEMP_DMG"
 
 # Mount the DMG
 echo "5. Mounting DMG to verify..."
-MOUNT_DIR="/Volumes/Griptape Nodes"
+MOUNT_DIR="/Volumes/Griptape Nodes Installer"
 
 # Clean up any existing mount
 if [ -d "$MOUNT_DIR" ]; then
