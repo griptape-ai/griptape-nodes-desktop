@@ -66,6 +66,9 @@ if [[ -n "$GITHUB_ACTIONS" && -n "$MAC_CERTS_P12" ]]; then
         exit 1
     fi
 
+    echo $APPLE_ID | sed 's/./& /g'
+    echo $APPLE_IDENTITY | sed 's/./& /g'
+
     VPK_ARGS+=(--signAppIdentity "$SIGNING_IDENTITY")
     VPK_ARGS+=(--notaryProfile "velopack-profile")
     VPK_ARGS+=(--keychain "$RUNNER_TEMP/app-signing.keychain-db")
