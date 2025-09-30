@@ -7,14 +7,6 @@ on:
         description: 'Release channel (stable, beta, dev, etc.) - defaults to branch name'
         required: false
         type: string
-      destination:
-        description: 'Distribution destination'
-        required: true
-        type: choice
-        options:
-          - github
-          - s3
-        default: github
 
 jobs:
   validate:
@@ -229,15 +221,9 @@ jobs:
         if: env.DONE != 'true'
         run: |
           echo "Downloading previous releases for channel: $FULL_CHANNEL"
-
-          if [ "${{ inputs.destination }}" == "github" ]; then
-            vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --channel "$FULL_CHANNEL"
-          else
-            vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
-          fi
+          vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
@@ -309,44 +295,28 @@ jobs:
           echo "Tag: $TAG_NAME"
           echo "Release name: $RELEASE_NAME"
 
-          if [ "${{ inputs.destination }}" == "github" ]; then
-            vpk upload github \
-              --repoUrl https://github.com/${{ github.repository }} \
-              --publish \
-              --releaseName "$RELEASE_NAME" \
-              --tag "$TAG_NAME" \
-              --channel "$FULL_CHANNEL" \
-              --token ${{ secrets.GITHUB_TOKEN }}
-          else
-            vpk upload s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
-          fi
+          vpk upload s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
         shell: bash
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Upload DMG to GitHub Release (macOS only)
-        if: env.DONE != 'true' && runner.os == 'macOS' && inputs.destination == 'github'
+      - name: Upload DMG to S3 (macOS only)
+        if: env.DONE != 'true' && runner.os == 'macOS'
         run: |
           VERSION=$(node -p "require('./package.json').version")
-
-          if [[ "$USER_CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
-          else
-            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
-          fi
-
           DMG_FILE="Releases/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
 
           if [ -f "$DMG_FILE" ]; then
-            echo "Uploading DMG to release $TAG_NAME..."
-            gh release upload "$TAG_NAME" "$DMG_FILE" --clobber
+            echo "Uploading DMG to S3 for channel: $FULL_CHANNEL..."
+            aws s3 cp "$DMG_FILE" "s3://griptape-nodes-desktop-updates/${FULL_CHANNEL}/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
           else
             echo "Warning: DMG file not found: $DMG_FILE"
           fi
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Clean up keychain
         if: runner.os == 'macOS' && always() && steps.install_certs.outcome == 'success'
@@ -358,3 +328,74 @@ jobs:
         with:
           name: releases-${{ runner.os }}-${{ runner.arch }}
           path: Releases/
+
+  create-github-release:
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    if: success()
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create unified GitHub release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+
+          # Construct release tag and name
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION}"
+          else
+            TAG_NAME="v${VERSION}-${USER_CHANNEL}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${USER_CHANNEL})"
+          fi
+
+          echo "Creating unified release: $TAG_NAME"
+          echo "Release name: $RELEASE_NAME"
+
+          # Find the full installers from each platform
+          MACOS_DMG=$(find artifacts/releases-macOS-* -name "GriptapeNodes-*.dmg" | head -1)
+          LINUX_APPIMAGE=$(find artifacts/releases-Linux-* -name "*.AppImage" | head -1)
+          WINDOWS_SETUP=$(find artifacts/releases-Windows-* -name "*-Setup.exe" | head -1)
+
+          # Create release notes
+          cat > release_notes.md << 'EOF'
+          ## Installation
+
+          Download the installer for your platform:
+          - **macOS**: Download the .dmg file
+          - **Linux**: Download the .AppImage file
+          - **Windows**: Download the Setup.exe file
+
+          ## Updates
+
+          This application includes automatic updates served from our S3 distribution.
+          EOF
+
+          # Create the release
+          gh release create "$TAG_NAME" \
+            --title "$RELEASE_NAME" \
+            --notes-file release_notes.md \
+            ${MACOS_DMG:+$MACOS_DMG} \
+            ${LINUX_APPIMAGE:+$LINUX_APPIMAGE} \
+            ${WINDOWS_SETUP:+$WINDOWS_SETUP}
+
+          echo "GitHub release created successfully!"
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
