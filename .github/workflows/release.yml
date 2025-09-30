@@ -257,6 +257,29 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
+      - name: Retrieve notarization logs on failure
+        if: failure() && runner.os == 'macOS' && env.DONE != 'true'
+        run: |
+          echo "Retrieving notarization history..."
+          xcrun notarytool history --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+
+          echo "Fetching detailed log for most recent submission..."
+          SUBMISSION_ID=$(xcrun notarytool history --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null | grep -A 1 "status: Invalid" | grep "id:" | head -1 | awk '{print $2}')
+
+          if [ -n "$SUBMISSION_ID" ]; then
+            echo "Retrieving log for submission: $SUBMISSION_ID"
+            xcrun notarytool log "$SUBMISSION_ID" --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" notarization_log.json || true
+
+            if [ -f notarization_log.json ]; then
+              echo "=== Notarization Log ==="
+              cat notarization_log.json
+              echo "======================="
+            fi
+          else
+            echo "Could not find submission ID"
+          fi
+        shell: bash
+
       - name: Upload Velopack releases
         if: env.DONE != 'true'
         run: |
