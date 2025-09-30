@@ -81,8 +81,8 @@ vpk pack --verbose "${VPK_ARGS[@]}"
 
 # Create DMG from the portable zip
 VERSION=$(node -p "require('./package.json').version")
-ZIP_FILE="Releases/GriptapeNodes-$VERSION-$RUNTIME.zip"
-DMG_FILE="Releases/GriptapeNodes-$VERSION-$RUNTIME.dmg"
+ZIP_FILE="Releases/ai.griptape.GriptapeNodes-$CHANNEL-Portable.zip"
+DMG_FILE="Releases/GriptapeNodes-$VERSION-$CHANNEL.dmg"
 TEMP_DIR="Releases/temp_dmg"
 
 if [[ -f "$ZIP_FILE" ]]; then
@@ -96,8 +96,31 @@ if [[ -f "$ZIP_FILE" ]]; then
     EXTRACTED_APP=$(find "$TEMP_DIR" -name "*.app" -type d | head -1)
 
     if [[ -n "$EXTRACTED_APP" ]]; then
-        # Create DMG with the app
-        hdiutil create -volname "Griptape Nodes" -srcfolder "$EXTRACTED_APP" -ov -format UDZO "$DMG_FILE"
+        # Create DMG with custom volume icon
+        echo "Creating DMG with custom installer icon..."
+
+        # First create a temporary read-write DMG
+        TEMP_DMG="$TEMP_DIR/temp.dmg"
+        hdiutil create -volname "Griptape Nodes" -srcfolder "$EXTRACTED_APP" -ov -format UDRW "$TEMP_DMG"
+
+        # Mount the DMG to a specific location
+        MOUNT_DIR="$TEMP_DIR/mount"
+        mkdir -p "$MOUNT_DIR"
+        hdiutil attach -readwrite -noverify -noautoopen -mountpoint "$MOUNT_DIR" "$TEMP_DMG"
+
+        # Copy custom volume icon
+        cp "generated/icons/icon_installer_mac.icns" "$MOUNT_DIR/.VolumeIcon.icns"
+
+        # Set custom icon flag on the volume
+        SetFile -a C "$MOUNT_DIR"
+
+        # Unmount
+        hdiutil detach "$MOUNT_DIR"
+
+        # Convert to compressed read-only DMG
+        hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG_FILE"
+        rm "$TEMP_DMG"
+
         echo "DMG created: $DMG_FILE"
 
         # Clean up temporary files
