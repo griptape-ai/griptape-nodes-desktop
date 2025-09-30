@@ -315,6 +315,29 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
+      - name: Upload DMG to GitHub Release (macOS only)
+        if: env.DONE != 'true' && runner.os == 'macOS' && inputs.destination == 'github'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+          else
+            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
+          fi
+
+          DMG_FILE="Releases/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
+
+          if [ -f "$DMG_FILE" ]; then
+            echo "Uploading DMG to release $TAG_NAME..."
+            gh release upload "$TAG_NAME" "$DMG_FILE" --clobber
+          else
+            echo "Warning: DMG file not found: $DMG_FILE"
+          fi
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Clean up keychain
         if: runner.os == 'macOS' && always()
         run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
