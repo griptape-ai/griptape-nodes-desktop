@@ -1,14 +1,17 @@
 #!/bin/bash
 set -e
 
-# MINIMAL DMG creation script
-# Purpose: Debug code signing preservation through DMG creation
-# NO icons, NO .DS_Store, NO window customization
+# DMG creation script
+# Creates a macOS DMG installer from the portable zip with:
+# - Applications folder symlink for drag-to-install
+# - Custom volume icon
+# - .DS_Store template for window appearance
+# - Code signature verification at each step
 
 # Accept channel as argument, default to stable
 CHANNEL=${1:-stable}
 
-echo "Creating MINIMAL DMG for macOS (channel: $CHANNEL)..."
+echo "Creating DMG for macOS (channel: $CHANNEL)..."
 
 # Get version and file paths
 VERSION=$(node -p "require('./package.json').version")
@@ -79,8 +82,30 @@ fi
 
 hdiutil attach -readwrite -noverify "$TEMP_DMG"
 
+# Customize DMG appearance
+echo "6. Customizing DMG appearance..."
+
+# Copy custom volume icon
+if [[ -f "generated/icons/icon_installer_mac.icns" ]]; then
+    cp "generated/icons/icon_installer_mac.icns" "$MOUNT_DIR/.VolumeIcon.icns"
+    # Set custom icon flag on the volume
+    SetFile -a C "$MOUNT_DIR"
+    echo "✓ Volume icon set"
+else
+    echo "⚠ Warning: Volume icon not found at generated/icons/icon_installer_mac.icns"
+fi
+
+# Copy .DS_Store template for window appearance
+DS_STORE_TEMPLATE="scripts/dmg_template/.DS_Store"
+if [[ -f "$DS_STORE_TEMPLATE" ]]; then
+    cp "$DS_STORE_TEMPLATE" "$MOUNT_DIR/.DS_Store"
+    echo "✓ .DS_Store template applied"
+else
+    echo "⚠ Warning: .DS_Store template not found at $DS_STORE_TEMPLATE"
+fi
+
 # Verify signature in mounted DMG
-echo "6. Verifying signature in mounted DMG..."
+echo "7. Verifying signature in mounted DMG..."
 codesign --verify --deep --strict "$MOUNT_DIR"/*.app 2>&1 && echo "✓ Signature OK in mounted DMG" || echo "✗ Signature BROKEN in mounted DMG"
 
 # Unmount
@@ -89,7 +114,7 @@ sleep 1
 hdiutil detach "$MOUNT_DIR"
 
 # Convert to compressed read-only DMG
-echo "7. Converting to final compressed DMG..."
+echo "8. Converting to final compressed DMG..."
 rm -f "$DMG_FILE"
 hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG_FILE" -imagekey zlib-level=9
 rm "$TEMP_DMG"
@@ -97,7 +122,7 @@ rm "$TEMP_DMG"
 echo "DMG created: $DMG_FILE"
 
 # Final verification
-echo "8. Final signature verification in compressed DMG..."
+echo "9. Final signature verification in compressed DMG..."
 VERIFY_MOUNT="/tmp/verify_dmg_$$"
 hdiutil attach "$DMG_FILE" -readonly -mountpoint "$VERIFY_MOUNT" -nobrowse
 codesign --verify --deep --strict "$VERIFY_MOUNT"/*.app 2>&1 && echo "✓ FINAL signature OK" || echo "✗ FINAL signature BROKEN"
