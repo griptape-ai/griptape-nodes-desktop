@@ -3,27 +3,17 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      tag_prefix:
-        description: 'Tag prefix (e.g., "beta1", "rc1", "test") - defaults to "v"'
+      channel:
+        description: 'Release channel (stable, beta, dev, etc.) - defaults to branch name'
         required: false
         type: string
-        default: v
-      draft:
-        description: 'Create as draft release'
-        required: false
-        type: boolean
-        default: true
-      prerelease:
-        description: 'Mark as prerelease'
-        required: false
-        type: boolean
-        default: true
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     outputs:
       should_proceed: ${{ steps.check.outputs.should_proceed }}
+      channel: ${{ steps.check.outputs.channel }}
 
     steps:
       - name: Checkout Repository
@@ -35,33 +25,36 @@ jobs:
         id: check
         shell: bash
         run: |
-          # Validate release configuration
-          if [[ "${{ inputs.tag_prefix }}" != "v" && "${{ inputs.draft }}" != "true" && "${{ inputs.prerelease }}" != "true" ]]; then
-            echo "Error: Non-production releases (tag_prefix != 'v') must be either draft or prerelease"
+          # Determine channel from input or branch name
+          CURRENT_BRANCH="${{ github.ref_name }}"
+
+          if [[ -n "${{ inputs.channel }}" ]]; then
+            CHANNEL="${{ inputs.channel }}"
+          elif [[ "$CURRENT_BRANCH" == "main" ]]; then
+            CHANNEL="stable"
+          else
+            # Sanitize branch name for use as channel (replace / with -)
+            CHANNEL=$(echo "$CURRENT_BRANCH" | sed 's/\//-/g')
+          fi
+
+          echo "Current branch: $CURRENT_BRANCH"
+          echo "Channel: $CHANNEL"
+
+          # Validate: channel must be "stable" if and only if branch is "main"
+          if [[ "$CURRENT_BRANCH" == "main" && "$CHANNEL" != "stable" ]]; then
+            echo "ERROR: Branch 'main' requires channel to be 'stable', but got '$CHANNEL'"
+            exit 1
+          elif [[ "$CURRENT_BRANCH" != "main" && "$CHANNEL" == "stable" ]]; then
+            echo "ERROR: Channel 'stable' can only be used from branch 'main', but current branch is '$CURRENT_BRANCH'"
             exit 1
           fi
 
-          if [[ "${{ inputs.tag_prefix }}" == "v" && ("${{ inputs.draft }}" == "true" || "${{ inputs.prerelease }}" == "true") ]]; then
-            echo "Error: Production releases (tag_prefix = 'v') cannot be marked as draft or prerelease"
-            exit 1
-          fi
+          # Set outputs
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
 
-          tag_name="${{ inputs.tag_prefix }}$(jq -r '.version' package.json)"
-          echo "Checking for existing tag: $tag_name"
-
-          # Check if tag already exists
-          if git tag -l | grep -q "^${tag_name}$"; then
-            echo "Error: Tag $tag_name already exists"
-            exit 1
-          fi
-
-          # Check if GitHub release already exists
-          if gh release view "$tag_name" &>/dev/null; then
-            echo "Error: Release $tag_name already exists on GitHub"
-            exit 1
-          fi
-
-          echo "Tag $tag_name is available"
+          # Note: Tag validation will be done per-platform during upload step
+          # since we now have platform-specific channels and tags
+          echo "Channel validation passed"
           echo "should_proceed=true" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -84,8 +77,56 @@ jobs:
         with:
           lfs: true
 
+      - name: Check if tag already exists
+        run: |
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          VERSION=$(jq -r .version package.json)
+
+          # Determine OS and architecture for channel naming
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            OS="linux"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "aarch64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            OS="osx"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            OS="win"
+            ARCH="x64"
+          fi
+
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          # Tag naming logic
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+          else
+            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
+          fi
+
+          echo "Checking for existing tag: $TAG_NAME"
+
+          # Check if tag exists on GitHub
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
+            echo "Tag $TAG_NAME already exists, skipping build for this platform"
+            echo "DONE=true" >> $GITHUB_ENV
+          else
+            echo "Tag $TAG_NAME does not exist, proceeding with build"
+            echo "DONE=false" >> $GITHUB_ENV
+          fi
+        shell: bash
+
       - name: Configure AWS creds via OIDC
-        if: inputs.tag_prefix == 'v'  # Only configure AWS for production releases
+        if: env.DONE != 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::246367841364:role/GriptapeNodesDesktopGithubActions
@@ -93,45 +134,268 @@ jobs:
           role-session-name: gha-${{ github.run_id }}
 
       - name: Setup Node.js
+        if: env.DONE != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
 
+      - name: Setup .NET
+        if: env.DONE != 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: Install Velopack CLI
+        if: env.DONE != 'true'
+        run: dotnet tool install -g vpk
+
       - name: Install Dependencies
+        if: env.DONE != 'true'
         run: npm ci
 
-      - name: Import Mac certificates
-        if: runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
+      - name: Setup platform variables
+        if: env.DONE != 'true'
+        id: platform
+        run: |
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+
+          # Determine OS and architecture for channel naming
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            OS="linux"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "aarch64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            OS="osx"
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="x64"
+            fi
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            OS="win"
+            ARCH="x64"
+          fi
+
+          # Construct full channel name: {os}-{arch}-{channel}
+          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          # Set environment variables for subsequent steps
+          echo "OS=$OS" >> $GITHUB_ENV
+          echo "ARCH=$ARCH" >> $GITHUB_ENV
+          echo "USER_CHANNEL=$USER_CHANNEL" >> $GITHUB_ENV
+          echo "FULL_CHANNEL=$FULL_CHANNEL" >> $GITHUB_ENV
+
+          echo "Platform: $OS-$ARCH"
+          echo "Channel: $USER_CHANNEL"
+          echo "Full channel: $FULL_CHANNEL"
+        shell: bash
+
+      - name: Install Apple certificates and notary profile
+        id: install_certs
+        if: env.DONE != 'true' && runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
         env:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
           MAC_CERTS_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # Create variables
+          # create variables for file paths
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          
-          # Import certificate from secrets
+
+          # import certificate from secrets
           echo -n "$MAC_CERTS_P12" | base64 --decode -o $CERTIFICATE_PATH
-          
-          # Create temporary keychain
+
+          # create temporary keychain
           security create-keychain -p "$MAC_CERTS_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$MAC_CERTS_PASSWORD" $KEYCHAIN_PATH
-          
-          # Import certificate to keychain
+
+          # import certificate to keychain
           security import $CERTIFICATE_PATH -P "$MAC_CERTS_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple: -k "$MAC_CERTS_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-      - name: Build and Publish
-        run: npm run publish
+          # create notarytool profile using keychain
+          xcrun notarytool store-credentials --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" --keychain "$KEYCHAIN_PATH" velopack-profile
+
+      - name: Download previous Velopack releases
+        if: env.DONE != 'true'
+        run: |
+          echo "Downloading previous releases for channel: $FULL_CHANNEL"
+          vpk download s3 --bucket griptape-nodes-desktop-releases --region us-west-2 --channel "$FULL_CHANNEL" --prefix "$USER_CHANNEL/"
+        shell: bash
+
+      - name: Build with Velopack
+        if: env.DONE != 'true'
+        run: |
+          echo "Building for channel: $FULL_CHANNEL"
+
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            ./scripts/build-linux.sh "$FULL_CHANNEL"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            ./scripts/build-osx.sh "$FULL_CHANNEL"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            powershell -ExecutionPolicy Bypass -File ./scripts/build-windows.ps1 -Channel "$FULL_CHANNEL"
+          fi
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
           APPLE_IDENTITY: ${{ secrets.APPLE_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          TAG_PREFIX: ${{ inputs.tag_prefix }}
-          DRAFT: ${{ inputs.draft }}
-          PRERELEASE: ${{ inputs.prerelease }}
+
+      - name: Retrieve notarization logs on failure
+        if: failure() && runner.os == 'macOS' && env.DONE != 'true'
+        run: |
+          echo "Retrieving notarization history..."
+          xcrun notarytool history --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+
+          echo "Fetching detailed log for most recent submission..."
+          SUBMISSION_ID=$(xcrun notarytool history --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null | grep -B 2 "status: Invalid" | grep "id:" | head -1 | awk '{print $2}')
+
+          if [ -n "$SUBMISSION_ID" ]; then
+            echo "Retrieving log for submission: $SUBMISSION_ID"
+            xcrun notarytool log "$SUBMISSION_ID" --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" notarization_log.json || true
+
+            if [ -f notarization_log.json ]; then
+              echo "=== Notarization Log ==="
+              cat notarization_log.json
+              echo "======================="
+            fi
+          else
+            echo "Could not find submission ID"
+          fi
+        shell: bash
+
+      - name: Create DMG (macOS only)
+        if: env.DONE != 'true' && runner.os == 'macOS'
+        run: |
+          echo "Creating DMG for channel: $FULL_CHANNEL"
+          ./scripts/create-dmg.sh "$FULL_CHANNEL"
+        shell: bash
+
+      - name: Upload Velopack releases
+        if: env.DONE != 'true'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+
+          # Tag and release naming
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${OS}-${ARCH})"
+          else
+            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${FULL_CHANNEL})"
+          fi
+
+          echo "Uploading for channel: $FULL_CHANNEL"
+          echo "Tag: $TAG_NAME"
+          echo "Release name: $RELEASE_NAME"
+
+          vpk upload s3 --bucket griptape-nodes-desktop-releases --region us-west-2 --channel "$FULL_CHANNEL" --prefix "$USER_CHANNEL/"
+        shell: bash
+
+      - name: Upload DMG to S3 (macOS only)
+        if: env.DONE != 'true' && runner.os == 'macOS'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          DMG_FILE="Releases/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
+
+          if [ -f "$DMG_FILE" ]; then
+            echo "Uploading DMG to S3 for channel: $FULL_CHANNEL..."
+            aws s3 cp "$DMG_FILE" "s3://griptape-nodes-desktop-releases/${USER_CHANNEL}/${FULL_CHANNEL}/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
+          else
+            echo "Warning: DMG file not found: $DMG_FILE"
+          fi
+        shell: bash
+
+      - name: Clean up keychain
+        if: runner.os == 'macOS' && always() && steps.install_certs.outcome == 'success'
+        run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+
+      - name: Upload GitHub Release Assets
+        if: env.DONE != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: releases-${{ runner.os }}-${{ runner.arch }}
+          path: Releases/
+
+  create-github-release:
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    if: success()
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create unified GitHub release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+
+          # Construct release tag and name
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            TAG_NAME="v${VERSION}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION}"
+          else
+            TAG_NAME="v${VERSION}-${USER_CHANNEL}"
+            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${USER_CHANNEL})"
+          fi
+
+          echo "Creating unified release: $TAG_NAME"
+          echo "Release name: $RELEASE_NAME"
+
+          # Find the full installers from each platform
+          MACOS_DMG=$(find artifacts/releases-macOS-* -name "GriptapeNodes-*.dmg" | head -1)
+          LINUX_APPIMAGE=$(find artifacts/releases-Linux-* -name "*.AppImage" | head -1)
+          WINDOWS_SETUP=$(find artifacts/releases-Windows-* -name "*-Setup.exe" | head -1)
+
+          # Create release notes
+          cat > release_notes.md << 'EOF'
+          ## Installation
+
+          Download the installer for your platform:
+          - **macOS**: Download the .dmg file
+          - **Linux**: Download the .AppImage file
+          - **Windows**: Download the Setup.exe file
+
+          ## Updates
+
+          This application includes automatic updates served from our S3 distribution.
+          EOF
+
+          # Create the release
+          gh release create "$TAG_NAME" \
+            --title "$RELEASE_NAME" \
+            --notes-file release_notes.md \
+            ${MACOS_DMG:+$MACOS_DMG} \
+            ${LINUX_APPIMAGE:+$LINUX_APPIMAGE} \
+            ${WINDOWS_SETUP:+$WINDOWS_SETUP}
+
+          echo "GitHub release created successfully!"
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

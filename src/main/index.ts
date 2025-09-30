@@ -1,19 +1,24 @@
+import { UpdateManager, VelopackApp } from 'velopack';
+
+// Velopack builder needs to be the first thing to run in the main process.
+// In some cases, it might quit/restart the process to perform tasks.
+VelopackApp.build().run();
+
 import path from 'node:path';
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron';
-import started from 'electron-squirrel-startup';
 import { getPythonVersion } from '../common/config/versions';
 import { CustomAuthService } from '../common/services/auth/custom';
 import { HttpAuthService } from '../common/services/auth/http';
 import { EngineService } from '../common/services/gtn/engine-service';
 import { EnvironmentInfoService } from '../common/services/environment-info';
 import { GtnService } from '../common/services/gtn/gtn-service';
-import { UpdateService } from '../common/services/update-service';
 import { UvService } from '../common/services/uv/uv-service';
 import { logger } from '@/main/utils/logger';
 import { PythonService } from '../common/services/python/python-service';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
+
 
 // Build info injected at compile time
 declare const __BUILD_INFO__: {
@@ -25,12 +30,7 @@ declare const __BUILD_INFO__: {
   buildId: string;
 };
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (started) {
-  app.quit();
-}
-
-app.setAppUserModelId("ai.griptape.GriptapeNodes")
+app.setAppUserModelId("ai.griptape.nodes.desktop")
 
 logger.info('app.isPackaged:', app.isPackaged);
 logger.info('__dirname:', __dirname);
@@ -74,7 +74,6 @@ const authService = new HttpAuthService();
 //   : new HttpAuthService();
 const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir, uvService, pythonService, authService);
 const engineService = new EngineService(userDataPath, gtnService);
-const updateService = new UpdateService();
 
 const createWindow = () => {
   // Create the browser window.
@@ -88,8 +87,8 @@ const createWindow = () => {
     frame: process.platform === 'darwin' ? false : true,
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
-      nodeIntegration: false,
-      contextIsolation: true,
+      nodeIntegration: true,
+      // contextIsolation: true,
     },
   });
 
@@ -182,14 +181,70 @@ if (!gotTheLock) {
   app.quit();
 }
 
+const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
+  const updateManager = new UpdateManager();
+  const updateInfo = await updateManager.checkForUpdatesAsync();
+
+  if (!updateInfo) {
+    logger.info('UpdateService: No updates available');
+    if (browserWindow) {
+      dialog.showMessageBox(browserWindow, {
+        type: 'info',
+        message: 'You\'re up to date',
+        detail: `Version ${updateManager.getCurrentVersion()}`
+      });
+    }
+    return;
+  }
+
+  logger.info('UpdateService: Update available', updateInfo.targetFullRelease.version);
+
+  const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
+    type: 'info',
+    buttons: ['Download and Install', 'Later'],
+    defaultId: 0,
+    title: 'Application Update Available',
+    message: `Version ${updateInfo.targetFullRelease.version} is available`,
+    detail: 'Would you like to download and install it now?'
+  });
+
+  if (response === 0) {
+    await downloadAndInstallUpdateWithDialog(updateInfo, browserWindow);
+  }
+};
+
+const downloadAndInstallUpdateWithDialog = async (updateInfo: any, browserWindow?: BrowserWindow) => {
+  const updateManager = new UpdateManager();
+
+  logger.info('UpdateService: Downloading update...');
+
+  await updateManager.downloadUpdatesAsync(updateInfo, (progress) => {
+    logger.info(`Download progress: ${progress}%`);
+  });
+
+  logger.info('UpdateService: Update downloaded, prompting for restart');
+
+  const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
+    type: 'info',
+    buttons: ['Restart Now', 'Later'],
+    defaultId: 0,
+    title: 'Update Downloaded',
+    message: 'The update has been downloaded.',
+    detail: 'The application will restart to apply the update.'
+  });
+
+  if (response === 0) {
+    updateManager.applyUpdatesAndRestart(updateInfo.targetFullRelease);
+  }
+};
+
 const createMenu = () => {
   const checkForUpdatesItem = {
     label: 'Check for Updates…',
-    click: () => {
+    click: async () => {
       const focusedWindow = BrowserWindow.getFocusedWindow();
-      updateService.checkForUpdates(focusedWindow || undefined);
-    },
-    enabled: updateService.isSupported()
+      await checkForUpdatesWithDialog(focusedWindow || undefined);
+    }
   };
 
   const template = [
@@ -309,6 +364,30 @@ const setupIPC = () => {
     if (!mainWindow) mainWindow = window;
   });
 
+  ipcMain.handle("velopack:get-version", () => {
+    const updateManager = new UpdateManager();
+    return updateManager.getCurrentVersion();
+  });
+
+  ipcMain.handle("velopack:check-for-update", async () => {
+    const updateManager = new UpdateManager();
+    return await updateManager.checkForUpdatesAsync();
+  });
+
+  ipcMain.handle("velopack:download-update", async (_, updateInfo) => {
+    const updateManager = new UpdateManager();
+    await updateManager.downloadUpdatesAsync(updateInfo, (progress) => {
+      console.log(`Download progress: ${progress}%`);
+    });
+    return true;
+  });
+
+  ipcMain.handle("velopack:apply-update", async (_, updateInfo) => {
+    const updateManager = new UpdateManager();
+    updateManager.applyUpdatesAndRestart(updateInfo.targetFullRelease);
+    return true;
+  });
+
   ipcMain.on('get-preload-path', (e) => {
     e.returnValue = MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY;
   });
@@ -423,20 +502,9 @@ const setupIPC = () => {
 
   // Update service handlers
   ipcMain.handle('update:check', async () => {
-    try {
-      const focusedWindow = BrowserWindow.getFocusedWindow();
-      await updateService.checkForUpdates(focusedWindow || undefined);
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  });
-
-  ipcMain.handle('update:is-supported', () => {
-    return updateService.isSupported();
+    const focusedWindow = BrowserWindow.getFocusedWindow();
+    await checkForUpdatesWithDialog(focusedWindow || undefined);
+    return { success: true };
   });
 };
 

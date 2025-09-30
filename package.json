@@ -1,14 +1,20 @@
 {
   "name": "griptape-nodes-desktop",
   "productName": "Griptape Nodes",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "description": "My Electron application description",
   "main": ".webpack/main",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish",
+    "pack:osx": "./scripts/build-osx.sh",
+    "pack:linux": "./scripts/build-linux.sh",
+    "pack:windows": "powershell -ExecutionPolicy Bypass -File ./scripts/build-windows.ps1",
+    "pack:windows:arm64": "powershell -ExecutionPolicy Bypass -File ./scripts/build-windows.ps1 -Architecture arm64",
+    "publish:osx": "./scripts/publish-osx.sh",
+    "publish:linux": "./scripts/publish-linux.sh",
+    "publish:windows": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-windows.ps1",
+    "publish:windows:arm64": "powershell -ExecutionPolicy Bypass -File ./scripts/publish-windows.ps1 -Architecture arm64",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --ext .ts,.tsx .",
     "generate-icons": "node scripts/generate-icons.js"
@@ -24,15 +30,12 @@
     "@electron-forge/maker-deb": "^7.8.3",
     "@electron-forge/maker-dmg": "^7.8.3",
     "@electron-forge/maker-rpm": "^7.8.3",
-    "@electron-forge/maker-squirrel": "^7.8.3",
     "@electron-forge/maker-zip": "^7.8.3",
     "@electron-forge/plugin-auto-unpack-natives": "^7.8.3",
     "@electron-forge/plugin-fuses": "^7.8.3",
     "@electron-forge/plugin-webpack": "^7.8.3",
     "@electron-forge/publisher-github": "^7.8.3",
-    "@electron-forge/publisher-s3": "^7.9.0",
     "@electron/fuses": "^1.8.0",
-    "@types/electron-squirrel-startup": "^1.0.2",
     "@types/react-window": "^1.8.8",
     "@vercel/webpack-asset-relocator-loader": "^1.10.0",
     "css-loader": "^6.11.0",
@@ -58,7 +61,6 @@
     "autoprefixer": "^10.4.21",
     "clsx": "^2.1.1",
     "electron-log": "^5.4.3",
-    "electron-squirrel-startup": "^1.0.1",
     "electron-store": "^10.1.0",
     "express": "^5.1.0",
     "extract-zip": "^2.0.1",
@@ -71,6 +73,6 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
-    "update-electron-app": "^3.1.1"
+    "velopack": "^0.0.89"
   }
 }
