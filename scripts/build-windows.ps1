@@ -20,7 +20,7 @@ if ($Architecture -eq "arm64") {
 
 $AppDir = $PackagedDir
 $MainExe = "griptape-nodes-desktop.exe"
-$IconPath = "generated\icons\icon.ico"
+$IconPath = "generated\icons\icon_installer_windows.ico"
 
 Write-Host "Building for runtime: $Runtime"
 Write-Host "Packaged directory: $PackagedDir"
