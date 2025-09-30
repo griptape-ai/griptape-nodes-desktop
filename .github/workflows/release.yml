@@ -221,7 +221,7 @@ jobs:
         if: env.DONE != 'true'
         run: |
           echo "Downloading previous releases for channel: $FULL_CHANNEL"
-          vpk download s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
+          vpk download s3 --bucket griptape-nodes-desktop-releases --region us-west-2 --channel "$FULL_CHANNEL"
         shell: bash
 
       - name: Build with Velopack
@@ -292,7 +292,7 @@ jobs:
           echo "Tag: $TAG_NAME"
           echo "Release name: $RELEASE_NAME"
 
-          vpk upload s3 --bucket griptape-nodes-desktop-updates --region us-west-2 --channel "$FULL_CHANNEL"
+          vpk upload s3 --bucket griptape-nodes-desktop-releases --region us-west-2 --channel "$FULL_CHANNEL"
         shell: bash
 
       - name: Upload DMG to S3 (macOS only)
@@ -303,7 +303,7 @@ jobs:
 
           if [ -f "$DMG_FILE" ]; then
             echo "Uploading DMG to S3 for channel: $FULL_CHANNEL..."
-            aws s3 cp "$DMG_FILE" "s3://griptape-nodes-desktop-updates/${FULL_CHANNEL}/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
+            aws s3 cp "$DMG_FILE" "s3://griptape-nodes-desktop-releases/${FULL_CHANNEL}/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
           else
             echo "Warning: DMG file not found: $DMG_FILE"
           fi
