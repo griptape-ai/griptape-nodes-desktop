@@ -125,7 +125,6 @@ if [[ -f "$ZIP_FILE" ]]; then
 
         # Clean up temporary files
         rm -rf "$TEMP_DIR"
-        rm -f "$ZIP_FILE"  # Remove the zip since we now have the DMG
     else
         echo "Error: Could not find extracted app in $TEMP_DIR"
         exit 1
