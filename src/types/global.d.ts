@@ -115,6 +115,10 @@ declare global {
       isDevelopment: () => Promise<boolean>;
       openExternal: (url: string) => Promise<void>;
     };
+    updateAPI: {
+      checkForUpdates: () => Promise<{ success: boolean }>;
+      isSupported: () => Promise<boolean>;
+    };
   }
 }
 

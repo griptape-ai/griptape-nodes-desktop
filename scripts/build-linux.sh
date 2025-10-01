@@ -6,6 +6,9 @@ CHANNEL=${1:-stable}
 
 echo "Building for Linux (channel: $CHANNEL)..."
 
+# Set VELOPACK_CHANNEL for webpack DefinePlugin
+export VELOPACK_CHANNEL="$CHANNEL"
+
 # Build with electron-forge first
 npm run package
 

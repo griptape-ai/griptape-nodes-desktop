@@ -13,6 +13,7 @@ export const plugins: NonNullable<Configuration["plugins"]> = [
   }),
   new DefinePlugin({
     __BUILD_INFO__: JSON.stringify(buildInfo),
+    __VELOPACK_CHANNEL__: JSON.stringify(process.env.VELOPACK_CHANNEL),
   }),
 ];
 

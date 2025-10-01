@@ -7,6 +7,9 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "Building for Windows ($Architecture, channel: $Channel)..."
 
+# Set VELOPACK_CHANNEL for webpack DefinePlugin
+$env:VELOPACK_CHANNEL = $Channel
+
 # Build with electron-forge first
 npm run package
 

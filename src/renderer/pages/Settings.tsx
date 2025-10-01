@@ -15,10 +15,16 @@ const Settings: React.FC = () => {
   const [workspaceDir, setWorkspaceDir] = useState<string>('');
   const [updatingWorkspace, setUpdatingWorkspace] = useState(false);
   const [loadingWorkspace, setLoadingWorkspace] = useState(true);
+  const [currentVersion, setCurrentVersion] = useState<string>('');
+  const [currentChannel, setCurrentChannel] = useState<string>('');
+  const [availableChannels, setAvailableChannels] = useState<string[]>([]);
+  const [updatesSupported, setUpdatesSupported] = useState<boolean>(false);
+  const [checkingForUpdates, setCheckingForUpdates] = useState(false);
 
   useEffect(() => {
     loadEnvironmentInfo();
     loadWorkspaceDirectory();
+    loadUpdateInfo();
     window.griptapeAPI.refreshConfig();
 
     const handleWorkspaceChanged = (event: any, directory: string) => {
@@ -98,6 +104,44 @@ const Settings: React.FC = () => {
       alert('Failed to update workspace directory');
     } finally {
       setUpdatingWorkspace(false);
+    }
+  };
+
+  const loadUpdateInfo = async () => {
+    try {
+      const [version, channel, channels, supported] = await Promise.all([
+        window.velopackApi.getVersion(),
+        window.velopackApi.getChannel(),
+        window.velopackApi.getAvailableChannels(),
+        window.updateAPI.isSupported()
+      ]);
+      setCurrentVersion(version);
+      setCurrentChannel(channel);
+      setAvailableChannels(channels);
+      setUpdatesSupported(supported);
+    } catch (err) {
+      console.error('Failed to load update info:', err);
+    }
+  };
+
+  const handleChannelChange = async (newChannel: string) => {
+    try {
+      await window.velopackApi.setChannel(newChannel);
+      setCurrentChannel(newChannel);
+    } catch (err) {
+      console.error('Failed to change channel:', err);
+      alert('Failed to change update channel');
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setCheckingForUpdates(true);
+    try {
+      await window.updateAPI.checkForUpdates();
+    } catch (err) {
+      console.error('Failed to check for updates:', err);
+    } finally {
+      setCheckingForUpdates(false);
     }
   };
 
@@ -351,6 +395,64 @@ const Settings: React.FC = () => {
             Environment information not yet collected. Click Refresh to collect it now.
           </p>
         )}
+      </div>
+
+      {/* Release Channel Section */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Release Channel</h2>
+        {!updatesSupported && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4 mb-4">
+            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-500">
+              Release channel switching and updates are not available in development mode.
+            </p>
+          </div>
+        )}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Current Version</p>
+              <p className="text-sm text-muted-foreground">
+                {currentVersion || 'Loading...'}
+              </p>
+            </div>
+            <button
+              onClick={handleCheckForUpdates}
+              disabled={!updatesSupported || checkingForUpdates}
+              className={cn(
+                "px-4 py-2 text-sm rounded-md",
+                "bg-primary text-primary-foreground",
+                "hover:bg-primary/90 transition-colors",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
+              {checkingForUpdates ? 'Checking...' : 'Check for Updates'}
+            </button>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium mb-2">Release Channel</p>
+            <select
+              value={currentChannel}
+              onChange={(e) => handleChannelChange(e.target.value)}
+              disabled={!updatesSupported}
+              className={cn(
+                "w-full px-3 py-2 text-sm rounded-md",
+                "bg-background border border-input",
+                "focus:outline-none focus:ring-2 focus:ring-primary",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
+              {availableChannels.map((channel) => (
+                <option key={channel} value={channel}>
+                  {channel.charAt(0).toUpperCase() + channel.slice(1)}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Changing the channel will affect which updates you receive
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

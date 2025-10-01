@@ -9,6 +9,9 @@ interface VelopackBridgeApi {
   checkForUpdates: () => Promise<UpdateInfo>,
   downloadUpdates: (updateInfo: UpdateInfo) => Promise<boolean>,
   applyUpdates: (updateInfo: UpdateInfo) => Promise<boolean>,
+  getChannel: () => Promise<string>,
+  setChannel: (channel: string) => Promise<boolean>,
+  getAvailableChannels: () => Promise<string[]>,
 }
 
 declare global {
@@ -21,7 +24,10 @@ const velopackApi: VelopackBridgeApi = {
   getVersion: () => ipcRenderer.invoke("velopack:get-version"),
   checkForUpdates: () => ipcRenderer.invoke("velopack:check-for-update"),
   downloadUpdates: (updateInfo: UpdateInfo) => ipcRenderer.invoke("velopack:download-update", updateInfo),
-  applyUpdates: (updateInfo: UpdateInfo) => ipcRenderer.invoke("velopack:apply-update", updateInfo)
+  applyUpdates: (updateInfo: UpdateInfo) => ipcRenderer.invoke("velopack:apply-update", updateInfo),
+  getChannel: () => ipcRenderer.invoke("velopack:get-channel"),
+  setChannel: (channel: string) => ipcRenderer.invoke("velopack:set-channel", channel),
+  getAvailableChannels: () => ipcRenderer.invoke("velopack:get-available-channels")
 };
 
 contextBridge.exposeInMainWorld("velopackApi", velopackApi);

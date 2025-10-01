@@ -15,6 +15,7 @@ import { GtnService } from '../common/services/gtn/gtn-service';
 import { UvService } from '../common/services/uv/uv-service';
 import { logger } from '@/main/utils/logger';
 import { PythonService } from '../common/services/python/python-service';
+import { UpdateService } from '../common/services/update/update-service';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -29,6 +30,8 @@ declare const __BUILD_INFO__: {
   buildDate: string;
   buildId: string;
 };
+
+declare const __VELOPACK_CHANNEL__: string | undefined;
 
 app.setAppUserModelId("ai.griptape.nodes.desktop")
 
@@ -74,6 +77,8 @@ const authService = new HttpAuthService();
 //   : new HttpAuthService();
 const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir, uvService, pythonService, authService);
 const engineService = new EngineService(userDataPath, gtnService);
+const isDevelopment = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const updateService = new UpdateService(isDevelopment);
 
 const createWindow = () => {
   // Create the browser window.
@@ -182,7 +187,19 @@ if (!gotTheLock) {
 }
 
 const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
-  const updateManager = new UpdateManager();
+  if (!updateService.isUpdateSupported()) {
+    logger.info('UpdateService: Updates not supported in development mode');
+    if (browserWindow) {
+      dialog.showMessageBox(browserWindow, {
+        type: 'info',
+        message: 'Updates not available',
+        detail: 'Updates are not available in development mode.'
+      });
+    }
+    return;
+  }
+
+  const updateManager = updateService.getUpdateManager();
   const updateInfo = await updateManager.checkForUpdatesAsync();
 
   if (!updateInfo) {
@@ -191,7 +208,7 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
       dialog.showMessageBox(browserWindow, {
         type: 'info',
         message: 'You\'re up to date',
-        detail: `Version ${updateManager.getCurrentVersion()}`
+        detail: `Version ${updateService.getCurrentVersion()}`
       });
     }
     return;
@@ -214,7 +231,7 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
 };
 
 const downloadAndInstallUpdateWithDialog = async (updateInfo: any, browserWindow?: BrowserWindow) => {
-  const updateManager = new UpdateManager();
+  const updateManager = updateService.getUpdateManager();
 
   logger.info('UpdateService: Downloading update...');
 
@@ -365,17 +382,22 @@ const setupIPC = () => {
   });
 
   ipcMain.handle("velopack:get-version", () => {
-    const updateManager = new UpdateManager();
-    return updateManager.getCurrentVersion();
+    return updateService.getCurrentVersion();
   });
 
   ipcMain.handle("velopack:check-for-update", async () => {
-    const updateManager = new UpdateManager();
+    if (!updateService.isUpdateSupported()) {
+      return null;
+    }
+    const updateManager = updateService.getUpdateManager();
     return await updateManager.checkForUpdatesAsync();
   });
 
   ipcMain.handle("velopack:download-update", async (_, updateInfo) => {
-    const updateManager = new UpdateManager();
+    if (!updateService.isUpdateSupported()) {
+      throw new Error('Updates not supported in development mode');
+    }
+    const updateManager = updateService.getUpdateManager();
     await updateManager.downloadUpdatesAsync(updateInfo, (progress) => {
       console.log(`Download progress: ${progress}%`);
     });
@@ -383,9 +405,28 @@ const setupIPC = () => {
   });
 
   ipcMain.handle("velopack:apply-update", async (_, updateInfo) => {
-    const updateManager = new UpdateManager();
+    if (!updateService.isUpdateSupported()) {
+      throw new Error('Updates not supported in development mode');
+    }
+    const updateManager = updateService.getUpdateManager();
     updateManager.applyUpdatesAndRestart(updateInfo.targetFullRelease);
     return true;
+  });
+
+  ipcMain.handle("velopack:get-channel", () => {
+    return updateService.getChannel();
+  });
+
+  ipcMain.handle("velopack:set-channel", (_, channel: string) => {
+    if (!updateService.isUpdateSupported()) {
+      throw new Error('Cannot set channel in development mode');
+    }
+    updateService.setChannel(channel);
+    return true;
+  });
+
+  ipcMain.handle("velopack:get-available-channels", () => {
+    return updateService.getAvailableChannels();
   });
 
   ipcMain.on('get-preload-path', (e) => {
@@ -505,6 +546,10 @@ const setupIPC = () => {
     const focusedWindow = BrowserWindow.getFocusedWindow();
     await checkForUpdatesWithDialog(focusedWindow || undefined);
     return { success: true };
+  });
+
+  ipcMain.handle('update:is-supported', () => {
+    return updateService.isUpdateSupported();
   });
 };
 
