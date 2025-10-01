@@ -1,6 +1,7 @@
 import { UpdateManager } from 'velopack';
 import Store from 'electron-store';
 import { logger } from '@/main/utils/logger';
+import { FakeUpdateManager } from './fake-update-manager';
 
 interface UpdateStoreData {
   selectedChannel?: string;
@@ -9,7 +10,7 @@ interface UpdateStoreData {
 declare const __VELOPACK_CHANNEL__: string | undefined;
 
 export class UpdateService {
-  private updateManager: UpdateManager;
+  private updateManager: UpdateManager | FakeUpdateManager;
   private store: any;
   private isPackaged: boolean;
   private buildChannel: string | null;
@@ -18,7 +19,7 @@ export class UpdateService {
   constructor(isPackaged: boolean) {
     this.isPackaged = isPackaged;
     this.store = new Store<UpdateStoreData>({
-      name: 'update-config',
+      name: isPackaged ? 'update-config' : 'update-config-dev',
       defaults: {}
     });
 
@@ -29,7 +30,13 @@ export class UpdateService {
     this.updateManager = this.createUpdateManager();
   }
 
-  private createUpdateManager(): UpdateManager {
+  private createUpdateManager(): UpdateManager | FakeUpdateManager {
+    // In development mode, use FakeUpdateManager
+    if (!this.isPackaged) {
+      logger.info('UpdateService: Using FakeUpdateManager for development mode');
+      return new FakeUpdateManager();
+    }
+
     // Get the selected channel (or use build channel as default)
     const channel = this.getChannel();
     const logicalChannel = channel ? this.extractLogicalChannelName(channel) : null;
@@ -51,18 +58,22 @@ export class UpdateService {
   }
 
   /**
-   * Check if updates are supported (only in packaged apps)
+   * Check if updates are supported (only in packaged apps, but true in dev for testing UI)
    */
   isUpdateSupported(): boolean {
-    return this.isPackaged;
+    return true; // Return true to allow testing UI in development mode
   }
 
   /**
    * Get the current channel
    */
   getChannel(): string | null {
-    // Return stored channel, or build channel, or default to stable
+    // Return stored channel, or build channel, or default
     const storedChannel = this.store.get('selectedChannel');
+    if (!this.isPackaged) {
+      // In dev mode, return fake channel
+      return storedChannel || 'darwin-arm64-stable';
+    }
     return storedChannel || this.buildChannel || 'stable';
   }
 
@@ -72,8 +83,10 @@ export class UpdateService {
   setChannel(channel: string): void {
     this.store.set('selectedChannel', channel);
 
-    // Recreate the update manager with the new channel
-    this.updateManager = this.createUpdateManager();
+    // Recreate the update manager with the new channel (only in packaged mode)
+    if (this.isPackaged) {
+      this.updateManager = this.createUpdateManager();
+    }
     logger.info(`UpdateService: Channel changed to: ${channel}`);
   }
 
@@ -90,6 +103,11 @@ export class UpdateService {
    * Get available channels
    */
   getAvailableChannels(): string[] {
+    // In dev mode, return fake channels for testing
+    if (!this.isPackaged) {
+      return ['darwin-arm64-stable', 'darwin-arm64-beta', 'darwin-arm64-alpha'];
+    }
+
     const channels = new Set<string>();
 
     // Add build channel if it exists
@@ -117,7 +135,7 @@ export class UpdateService {
   /**
    * Get the update manager instance (for checking/downloading updates)
    */
-  getUpdateManager(): UpdateManager {
+  getUpdateManager(): UpdateManager | FakeUpdateManager {
     return this.updateManager;
   }
 }

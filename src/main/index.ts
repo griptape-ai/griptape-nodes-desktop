@@ -17,7 +17,6 @@ import { logger } from '@/main/utils/logger';
 import { isPackaged } from '@/main/utils/is-packaged';
 import { PythonService } from '../common/services/python/python-service';
 import { UpdateService } from '../common/services/update/update-service';
-import { DummyUpdateService } from '../common/services/update/dummy-update-service';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -80,9 +79,7 @@ const authService = new HttpAuthService();
 //   : new HttpAuthService();
 const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir, uvService, pythonService, authService);
 const engineService = new EngineService(userDataPath, gtnService);
-const updateService: UpdateService | DummyUpdateService = isPackaged()
-  ? new UpdateService(isPackaged())
-  : new DummyUpdateService();
+const updateService = new UpdateService(isPackaged());
 
 const createWindow = () => {
   // Create the browser window.
