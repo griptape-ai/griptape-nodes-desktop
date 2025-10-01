@@ -38,7 +38,6 @@ contextBridge.exposeInMainWorld('electron', {
 
 // Expose APIs to renderer process
 contextBridge.exposeInMainWorld('pythonAPI', {
-  getPythonInfo: () => ipcRenderer.invoke('get-python-info'),
   getEnvironmentInfo: () => ipcRenderer.invoke('get-environment-info')
 });
 
@@ -90,7 +89,6 @@ contextBridge.exposeInMainWorld('updateAPI', {
 contextBridge.exposeInMainWorld('electronAPI', {
   getEnvVar: (key: string) => ipcRenderer.invoke('get-env-var', key),
   isPackaged: () => ipcRenderer.invoke('is-packaged'),
-  checkAuthCompletion: () => ipcRenderer.invoke('check-auth-completion'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 });
 
