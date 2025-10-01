@@ -63,7 +63,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h3 className="text-lg font-semibold mb-3">Engine Status</h3>
           <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ const Dashboard: React.FC = () => {
             Manage from the Engine tab
           </p>
         </div>
-        
+
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h3 className="text-lg font-semibold mb-3">Visual Editor</h3>
           <button
@@ -99,19 +99,19 @@ const Dashboard: React.FC = () => {
             <p className="text-xs text-muted-foreground">Launch the workflow editor</p>
           )}
         </div>
-        
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h3 className="text-lg font-semibold mb-3">Workspace</h3>
-          <div className="flex items-start gap-2 mb-3">
-            <FolderOpen className="w-5 h-5 text-muted-foreground mt-0.5" />
-            <p className="text-sm font-mono text-muted-foreground break-all">
-              {loadingWorkspace ? 'Loading...' : (workspaceDir || 'Not configured')}
-            </p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Manage from the Settings tab
+      </div>
+
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h3 className="text-lg font-semibold mb-3">Workspace</h3>
+        <div className="flex items-start gap-2 mb-3">
+          <FolderOpen className="w-5 h-5 text-muted-foreground mt-0.5" />
+          <p className="text-sm font-mono text-muted-foreground break-all">
+            {loadingWorkspace ? 'Loading...' : (workspaceDir || 'Not configured')}
           </p>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Manage from the Settings tab
+        </p>
       </div>
     </div>
   );
