@@ -443,6 +443,10 @@ const setupIPC = () => {
     return updateService.getAvailableChannels();
   });
 
+  ipcMain.handle("velopack:get-logical-channel-name", (_, channel: string) => {
+    return updateService.getLogicalChannelName(channel);
+  });
+
   ipcMain.on('get-preload-path', (e) => {
     e.returnValue = MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY;
   });

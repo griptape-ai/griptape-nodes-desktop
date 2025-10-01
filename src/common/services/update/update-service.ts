@@ -13,7 +13,7 @@ export class UpdateService {
   private store: any;
   private isPackaged: boolean;
   private buildChannel: string | null;
-  private updateUrl = 'https://griptape-nodes-desktop-releases.s3.amazonaws.com';
+  private baseUpdateUrl = 'https://griptape-nodes-desktop-releases.s3.us-west-2.amazonaws.com';
 
   constructor(isPackaged: boolean) {
     this.isPackaged = isPackaged;
@@ -30,24 +30,24 @@ export class UpdateService {
   }
 
   private createUpdateManager(): UpdateManager {
-    try {
-      // Get the selected channel (or use build channel as default)
-      const channel = this.getChannel();
+    // Get the selected channel (or use build channel as default)
+    const channel = this.getChannel();
+    const logicalChannel = this.extractLogicalChannelName(channel);
 
-      // Create UpdateManager with URL and options
-      const options = {
-        AllowVersionDowngrade: false,
-        MaximumDeltasBeforeFallback: 10,
-        ...(channel && channel !== 'development' ? { ExplicitChannel: channel } : {})
-      };
+    // Build the update URL with the logical channel name in the path
+    const updateUrl = channel && channel !== 'development'
+      ? `${this.baseUpdateUrl}/${logicalChannel}`
+      : this.baseUpdateUrl;
 
-      logger.info(`UpdateService: Configured with channel: ${channel}`);
-      return new UpdateManager(this.updateUrl, options);
-    } catch (error) {
-      logger.error('UpdateService: Failed to configure update manager', error);
-      // Return a basic UpdateManager without options
-      return new UpdateManager(this.updateUrl);
-    }
+    // Create UpdateManager with URL and options
+    const options = {
+      AllowVersionDowngrade: false,
+      MaximumDeltasBeforeFallback: 10,
+      ...(channel && channel !== 'development' ? { ExplicitChannel: channel } : {})
+    };
+
+    logger.info(`UpdateService: Configured with channel: ${channel}, URL: ${updateUrl}`);
+    return new UpdateManager(updateUrl, options);
   }
 
   /**
@@ -86,6 +86,15 @@ export class UpdateService {
   }
 
   /**
+   * Extract logical channel name by removing OS/arch prefixes
+   */
+  private extractLogicalChannelName(channel: string): string {
+    // Remove common OS/arch prefixes (e.g., "win-x64-", "linux-x64-", "darwin-arm64-", etc.)
+    const prefixPattern = /^(win|linux|darwin|osx)-(x64|arm64|x86)-/;
+    return channel.replace(prefixPattern, '');
+  }
+
+  /**
    * Get available channels
    */
   getAvailableChannels(): string[] {
@@ -101,6 +110,13 @@ export class UpdateService {
     }
 
     return Array.from(channels);
+  }
+
+  /**
+   * Get the logical (display) name for a channel
+   */
+  getLogicalChannelName(channel: string): string {
+    return this.extractLogicalChannelName(channel);
   }
 
   /**

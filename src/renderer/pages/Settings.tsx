@@ -18,6 +18,7 @@ const Settings: React.FC = () => {
   const [currentVersion, setCurrentVersion] = useState<string>('');
   const [currentChannel, setCurrentChannel] = useState<string>('');
   const [availableChannels, setAvailableChannels] = useState<string[]>([]);
+  const [channelDisplayNames, setChannelDisplayNames] = useState<Map<string, string>>(new Map());
   const [updatesSupported, setUpdatesSupported] = useState<boolean>(false);
   const [checkingForUpdates, setCheckingForUpdates] = useState(false);
   const [versionError, setVersionError] = useState<boolean>(false);
@@ -144,8 +145,24 @@ const Settings: React.FC = () => {
       }
 
       if (channelsResult.status === 'fulfilled') {
-        setAvailableChannels(channelsResult.value);
+        const channels = channelsResult.value;
+        setAvailableChannels(channels);
         setChannelsError(false);
+
+        // Load logical display names for each channel
+        const displayNames = new Map<string, string>();
+        await Promise.all(
+          channels.map(async (channel) => {
+            try {
+              const logicalName = await window.velopackApi.getLogicalChannelName(channel);
+              displayNames.set(channel, logicalName);
+            } catch (err) {
+              console.error(`Failed to get logical name for channel ${channel}:`, err);
+              displayNames.set(channel, channel);
+            }
+          })
+        );
+        setChannelDisplayNames(displayNames);
       } else {
         console.error('Failed to get available channels:', channelsResult.reason);
         setChannelsError(true);
@@ -485,11 +502,15 @@ const Settings: React.FC = () => {
               )}
             >
               {availableChannels.length > 0 ? (
-                availableChannels.map((channel) => (
-                  <option key={channel} value={channel}>
-                    {channel.charAt(0).toUpperCase() + channel.slice(1)}
-                  </option>
-                ))
+                availableChannels.map((channel) => {
+                  const displayName = channelDisplayNames.get(channel) || channel;
+                  const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                  return (
+                    <option key={channel} value={channel}>
+                      {formattedName}
+                    </option>
+                  );
+                })
               ) : (
                 <option value="">No channels available</option>
               )}

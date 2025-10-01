@@ -12,6 +12,7 @@ interface VelopackBridgeApi {
   getChannel: () => Promise<string>,
   setChannel: (channel: string) => Promise<boolean>,
   getAvailableChannels: () => Promise<string[]>,
+  getLogicalChannelName: (channel: string) => Promise<string>,
 }
 
 declare global {
@@ -27,7 +28,8 @@ const velopackApi: VelopackBridgeApi = {
   applyUpdates: (updateInfo: UpdateInfo) => ipcRenderer.invoke("velopack:apply-update", updateInfo),
   getChannel: () => ipcRenderer.invoke("velopack:get-channel"),
   setChannel: (channel: string) => ipcRenderer.invoke("velopack:set-channel", channel),
-  getAvailableChannels: () => ipcRenderer.invoke("velopack:get-available-channels")
+  getAvailableChannels: () => ipcRenderer.invoke("velopack:get-available-channels"),
+  getLogicalChannelName: (channel: string) => ipcRenderer.invoke("velopack:get-logical-channel-name", channel)
 };
 
 contextBridge.exposeInMainWorld("velopackApi", velopackApi);
