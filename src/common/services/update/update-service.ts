@@ -32,10 +32,10 @@ export class UpdateService {
   private createUpdateManager(): UpdateManager {
     // Get the selected channel (or use build channel as default)
     const channel = this.getChannel();
-    const logicalChannel = this.extractLogicalChannelName(channel);
+    const logicalChannel = channel ? this.extractLogicalChannelName(channel) : null;
 
     // Build the update URL with the logical channel name in the path
-    const updateUrl = channel && channel !== 'development'
+    const updateUrl = channel
       ? `${this.baseUpdateUrl}/${logicalChannel}`
       : this.baseUpdateUrl;
 
@@ -43,7 +43,7 @@ export class UpdateService {
     const options = {
       AllowVersionDowngrade: false,
       MaximumDeltasBeforeFallback: 10,
-      ...(channel && channel !== 'development' ? { ExplicitChannel: channel } : {})
+      ...(channel ? { ExplicitChannel: channel } : {})
     };
 
     logger.info(`UpdateService: Configured with channel: ${channel}, URL: ${updateUrl}`);
@@ -60,9 +60,9 @@ export class UpdateService {
   /**
    * Get the current channel
    */
-  getChannel(): string {
+  getChannel(): string | null {
     if (!this.isPackaged) {
-      return 'development';
+      return null;
     }
 
     // Return stored channel, or build channel, or default to stable
@@ -99,13 +99,13 @@ export class UpdateService {
    */
   getAvailableChannels(): string[] {
     if (!this.isPackaged) {
-      return ['development'];
+      return [];
     }
 
-    const channels = new Set<string>(['stable']);
+    const channels = new Set<string>();
 
-    // Add build channel if it exists and is not 'stable'
-    if (this.buildChannel && this.buildChannel !== 'stable') {
+    // Add build channel if it exists
+    if (this.buildChannel) {
       channels.add(this.buildChannel);
     }
 
