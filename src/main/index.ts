@@ -216,14 +216,14 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
       return;
     }
 
-    logger.info('UpdateService: Update available', updateInfo.targetFullRelease.version);
+    logger.info('UpdateService: Update available', updateInfo.TargetFullRelease.Version);
 
     const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
       type: 'info',
       buttons: ['Download and Install', 'Later'],
       defaultId: 0,
       title: 'Application Update Available',
-      message: `Version ${updateInfo.targetFullRelease.version} is available`,
+      message: `Version ${updateInfo.TargetFullRelease.Version} is available`,
       detail: 'Would you like to download and install it now?'
     });
 
@@ -247,7 +247,7 @@ const downloadAndInstallUpdateWithDialog = async (updateInfo: any, browserWindow
 
   logger.info('UpdateService: Downloading update...');
 
-  await updateManager.downloadUpdatesAsync(updateInfo, (progress) => {
+  await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
     logger.info(`Download progress: ${progress}%`);
   });
 
@@ -263,7 +263,8 @@ const downloadAndInstallUpdateWithDialog = async (updateInfo: any, browserWindow
   });
 
   if (response === 0) {
-    updateManager.applyUpdatesAndRestart(updateInfo.targetFullRelease);
+    updateManager.waitExitThenApplyUpdate(updateInfo);
+    app.quit();
   }
 };
 
@@ -410,7 +411,7 @@ const setupIPC = () => {
       throw new Error('Updates not supported in development mode');
     }
     const updateManager = updateService.getUpdateManager();
-    await updateManager.downloadUpdatesAsync(updateInfo, (progress) => {
+    await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
       console.log(`Download progress: ${progress}%`);
     });
     return true;
@@ -421,7 +422,8 @@ const setupIPC = () => {
       throw new Error('Updates not supported in development mode');
     }
     const updateManager = updateService.getUpdateManager();
-    updateManager.applyUpdatesAndRestart(updateInfo.targetFullRelease);
+    updateManager.waitExitThenApplyUpdate(updateInfo);
+    app.quit();
     return true;
   });
 

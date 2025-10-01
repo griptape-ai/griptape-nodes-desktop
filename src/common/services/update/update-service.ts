@@ -17,7 +17,6 @@ export class UpdateService {
 
   constructor(isPackaged: boolean) {
     this.isPackaged = isPackaged;
-    this.updateManager = new UpdateManager();
     this.store = new Store<UpdateStoreData>({
       name: 'update-config',
       defaults: {}
@@ -26,25 +25,28 @@ export class UpdateService {
     // Get the build-time channel (will be undefined when not packaged)
     this.buildChannel = typeof __VELOPACK_CHANNEL__ !== 'undefined' ? __VELOPACK_CHANNEL__ : null;
 
-    // Configure update manager only for packaged apps
-    if (this.isPackaged) {
-      this.configureUpdateManager();
-    }
+    // Create update manager with proper configuration
+    this.updateManager = this.createUpdateManager();
   }
 
-  private configureUpdateManager(): void {
+  private createUpdateManager(): UpdateManager {
     try {
-      // Set the update source URL
-      this.updateManager.setUrlOrPath(this.updateUrl);
-
       // Get the selected channel (or use build channel as default)
       const channel = this.getChannel();
-      if (channel && channel !== 'development') {
-        this.updateManager.setExplicitChannel(channel);
-        logger.info(`UpdateService: Configured with channel: ${channel}`);
-      }
+
+      // Create UpdateManager with URL and options
+      const options = {
+        AllowVersionDowngrade: false,
+        MaximumDeltasBeforeFallback: 10,
+        ...(channel && channel !== 'development' ? { ExplicitChannel: channel } : {})
+      };
+
+      logger.info(`UpdateService: Configured with channel: ${channel}`);
+      return new UpdateManager(this.updateUrl, options);
     } catch (error) {
       logger.error('UpdateService: Failed to configure update manager', error);
+      // Return a basic UpdateManager without options
+      return new UpdateManager(this.updateUrl);
     }
   }
 
@@ -78,8 +80,8 @@ export class UpdateService {
 
     this.store.set('selectedChannel', channel);
 
-    // Reconfigure the update manager with the new channel
-    this.updateManager.setExplicitChannel(channel);
+    // Recreate the update manager with the new channel
+    this.updateManager = this.createUpdateManager();
     logger.info(`UpdateService: Channel changed to: ${channel}`);
   }
 
