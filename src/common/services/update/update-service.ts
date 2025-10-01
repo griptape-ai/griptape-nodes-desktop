@@ -13,7 +13,7 @@ export class UpdateService {
   private store: any;
   private isPackaged: boolean;
   private buildChannel: string | null;
-  private baseUpdateUrl = 'https://griptape-nodes-desktop-releases.s3.us-west-2.amazonaws.com';
+  private baseUpdateUrl = 'https://griptape-nodes-desktop-releases.s3.amazonaws.com';
 
   constructor(isPackaged: boolean) {
     this.isPackaged = isPackaged;
