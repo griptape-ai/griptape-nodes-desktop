@@ -112,7 +112,7 @@ declare global {
     };
     electronAPI?: {
       getEnvVar: (key: string) => Promise<string | null>;
-      isDevelopment: () => Promise<boolean>;
+      isPackaged: () => Promise<boolean>;
       openExternal: (url: string) => Promise<void>;
     };
     updateAPI: {

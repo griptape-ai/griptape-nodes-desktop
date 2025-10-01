@@ -46,9 +46,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // Check for dev environment bypass
       const devApiKey = await window.electronAPI?.getEnvVar('GT_CLOUD_API_KEY');
-      const isDevelopment = await window.electronAPI?.isDevelopment();
-      
-      if (isDevelopment && devApiKey) {
+      const isPackaged = await window.electronAPI?.isPackaged();
+
+      if (!isPackaged && devApiKey) {
         console.log('Dev mode detected with API key - bypassing OAuth');
         // Create mock user and tokens for development
         const mockUser = {
@@ -92,12 +92,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async () => {
     try {
       // Don't set isLoading to true during login - we want the login page to remain visible
-      
+
       // Check if we're in dev mode first
       const devApiKey = await window.electronAPI?.getEnvVar('GT_CLOUD_API_KEY');
-      const isDevelopment = await window.electronAPI?.isDevelopment();
-      
-      if (isDevelopment && devApiKey) {
+      const isPackaged = await window.electronAPI?.isPackaged();
+
+      if (!isPackaged && devApiKey) {
         // Dev mode bypass
         console.log('Using dev API key bypass');
         const mockUser = {

@@ -89,7 +89,7 @@ contextBridge.exposeInMainWorld('updateAPI', {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getEnvVar: (key: string) => ipcRenderer.invoke('get-env-var', key),
-  isDevelopment: () => ipcRenderer.invoke('is-development'),
+  isPackaged: () => ipcRenderer.invoke('is-packaged'),
   checkAuthCompletion: () => ipcRenderer.invoke('check-auth-completion'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 });

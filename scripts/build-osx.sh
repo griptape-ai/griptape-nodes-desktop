@@ -6,7 +6,8 @@ CHANNEL=${1:-stable}
 
 echo "Building for macOS (channel: $CHANNEL)..."
 
-# Set VELOPACK_CHANNEL for webpack DefinePlugin
+# Set environment variables for webpack
+export NODE_ENV=production
 export VELOPACK_CHANNEL="$CHANNEL"
 
 # Build with electron-forge first

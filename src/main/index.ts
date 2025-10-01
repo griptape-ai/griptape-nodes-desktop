@@ -39,7 +39,7 @@ logger.info('app.isPackaged:', app.isPackaged);
 logger.info('__dirname:', __dirname);
 
 // Set userData path for development
-if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+if (!app.isPackaged) {
   const devUserDataPath = path.join(app.getAppPath(), '_userdata');
   app.setPath('userData', devUserDataPath);
   logger.info('Development mode: userData set to', devUserDataPath);
@@ -63,7 +63,7 @@ const OAUTH_SCHEME = 'gtn';
 if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
   app.setAsDefaultProtocolClient(OAUTH_SCHEME);
 }
-if (process.env.NODE_ENV === 'development' && process.env.AUTH_SCHEME === 'custom') {
+if (!app.isPackaged && process.env.AUTH_SCHEME === 'custom') {
   throw new Error('Custom URL scheme authentication requires packaging. Custom URL schemes do not work in development mode on macOS and Windows. Please use AUTH_SCHEME=http for development or package the application.');
 }
 
@@ -77,8 +77,7 @@ const authService = new HttpAuthService();
 //   : new HttpAuthService();
 const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir, uvService, pythonService, authService);
 const engineService = new EngineService(userDataPath, gtnService);
-const isDevelopment = process.env.NODE_ENV === 'development' || !app.isPackaged;
-const updateService = new UpdateService(isDevelopment);
+const updateService = new UpdateService(app.isPackaged);
 
 const createWindow = () => {
   // Create the browser window.
@@ -101,7 +100,7 @@ const createWindow = () => {
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
   // Open the DevTools in development only
-  if (process.env.NODE_ENV === 'development') {
+  if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();
   }
 
@@ -486,9 +485,9 @@ const setupIPC = () => {
     return process.env[key] || null;
   });
 
-  // Handle development environment check
-  ipcMain.handle('is-development', () => {
-    return process.env.NODE_ENV === 'development' || !app.isPackaged;
+  // Handle packaged app check
+  ipcMain.handle('is-packaged', () => {
+    return app.isPackaged;
   });
 
   // Handle opening external links

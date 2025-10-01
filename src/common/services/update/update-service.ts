@@ -11,23 +11,23 @@ declare const __VELOPACK_CHANNEL__: string | undefined;
 export class UpdateService {
   private updateManager: UpdateManager;
   private store: any;
-  private isDevelopment: boolean;
+  private isPackaged: boolean;
   private buildChannel: string | null;
   private updateUrl = 'https://griptape-nodes-desktop-releases.s3.amazonaws.com';
 
-  constructor(isDevelopment: boolean) {
-    this.isDevelopment = isDevelopment;
+  constructor(isPackaged: boolean) {
+    this.isPackaged = isPackaged;
     this.updateManager = new UpdateManager();
     this.store = new Store<UpdateStoreData>({
       name: 'update-config',
       defaults: {}
     });
 
-    // Get the build-time channel (will be undefined in dev)
+    // Get the build-time channel (will be undefined when not packaged)
     this.buildChannel = typeof __VELOPACK_CHANNEL__ !== 'undefined' ? __VELOPACK_CHANNEL__ : null;
 
-    // Configure update manager if not in development
-    if (!this.isDevelopment) {
+    // Configure update manager only for packaged apps
+    if (this.isPackaged) {
       this.configureUpdateManager();
     }
   }
@@ -49,17 +49,17 @@ export class UpdateService {
   }
 
   /**
-   * Check if updates are supported (false in development)
+   * Check if updates are supported (only in packaged apps)
    */
   isUpdateSupported(): boolean {
-    return !this.isDevelopment;
+    return this.isPackaged;
   }
 
   /**
    * Get the current channel
    */
   getChannel(): string {
-    if (this.isDevelopment) {
+    if (!this.isPackaged) {
       return 'development';
     }
 
@@ -72,8 +72,8 @@ export class UpdateService {
    * Set a new channel
    */
   setChannel(channel: string): void {
-    if (this.isDevelopment) {
-      throw new Error('Cannot set channel in development mode');
+    if (!this.isPackaged) {
+      throw new Error('Cannot set channel in unpackaged app');
     }
 
     this.store.set('selectedChannel', channel);
@@ -87,7 +87,7 @@ export class UpdateService {
    * Get available channels
    */
   getAvailableChannels(): string[] {
-    if (this.isDevelopment) {
+    if (!this.isPackaged) {
       return ['development'];
     }
 
@@ -105,7 +105,7 @@ export class UpdateService {
    * Get the current version
    */
   getCurrentVersion(): string {
-    if (this.isDevelopment) {
+    if (!this.isPackaged) {
       return 'dev';
     }
     return this.updateManager.getCurrentVersion();
@@ -115,8 +115,8 @@ export class UpdateService {
    * Get the update manager instance (for checking/downloading updates)
    */
   getUpdateManager(): UpdateManager {
-    if (this.isDevelopment) {
-      throw new Error('Update manager not available in development mode');
+    if (!this.isPackaged) {
+      throw new Error('Update manager not available in unpackaged app');
     }
     return this.updateManager;
   }
