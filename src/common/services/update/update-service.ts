@@ -41,9 +41,9 @@ export class UpdateService {
 
     // Create UpdateManager with URL and options
     const options = {
-      AllowVersionDowngrade: false,
+      ExplicitChannel: channel,
+      AllowVersionDowngrade: true,
       MaximumDeltasBeforeFallback: 10,
-      ...(channel ? { ExplicitChannel: channel } : {})
     };
 
     logger.info(`UpdateService: Configured with channel: ${channel}, URL: ${updateUrl}`);
@@ -61,10 +61,6 @@ export class UpdateService {
    * Get the current channel
    */
   getChannel(): string | null {
-    if (!this.isPackaged) {
-      return null;
-    }
-
     // Return stored channel, or build channel, or default to stable
     const storedChannel = this.store.get('selectedChannel');
     return storedChannel || this.buildChannel || 'stable';
@@ -74,10 +70,6 @@ export class UpdateService {
    * Set a new channel
    */
   setChannel(channel: string): void {
-    if (!this.isPackaged) {
-      throw new Error('Cannot set channel in unpackaged app');
-    }
-
     this.store.set('selectedChannel', channel);
 
     // Recreate the update manager with the new channel
@@ -98,10 +90,6 @@ export class UpdateService {
    * Get available channels
    */
   getAvailableChannels(): string[] {
-    if (!this.isPackaged) {
-      return [];
-    }
-
     const channels = new Set<string>();
 
     // Add build channel if it exists
@@ -123,9 +111,6 @@ export class UpdateService {
    * Get the current version
    */
   getCurrentVersion(): string {
-    if (!this.isPackaged) {
-      return 'dev';
-    }
     return this.updateManager.getCurrentVersion();
   }
 
@@ -133,9 +118,6 @@ export class UpdateService {
    * Get the update manager instance (for checking/downloading updates)
    */
   getUpdateManager(): UpdateManager {
-    if (!this.isPackaged) {
-      throw new Error('Update manager not available in unpackaged app');
-    }
     return this.updateManager;
   }
 }
