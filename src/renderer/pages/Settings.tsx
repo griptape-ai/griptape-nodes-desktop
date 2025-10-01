@@ -15,10 +15,20 @@ const Settings: React.FC = () => {
   const [workspaceDir, setWorkspaceDir] = useState<string>('');
   const [updatingWorkspace, setUpdatingWorkspace] = useState(false);
   const [loadingWorkspace, setLoadingWorkspace] = useState(true);
+  const [currentVersion, setCurrentVersion] = useState<string>('');
+  const [currentChannel, setCurrentChannel] = useState<string>('');
+  const [availableChannels, setAvailableChannels] = useState<string[]>([]);
+  const [channelDisplayNames, setChannelDisplayNames] = useState<Map<string, string>>(new Map());
+  const [updatesSupported, setUpdatesSupported] = useState<boolean>(false);
+  const [checkingForUpdates, setCheckingForUpdates] = useState(false);
+  const [versionError, setVersionError] = useState<boolean>(false);
+  const [channelError, setChannelError] = useState<boolean>(false);
+  const [channelsError, setChannelsError] = useState<boolean>(false);
 
   useEffect(() => {
     loadEnvironmentInfo();
     loadWorkspaceDirectory();
+    loadUpdateInfo();
     window.griptapeAPI.refreshConfig();
 
     const handleWorkspaceChanged = (event: any, directory: string) => {
@@ -98,6 +108,88 @@ const Settings: React.FC = () => {
       alert('Failed to update workspace directory');
     } finally {
       setUpdatingWorkspace(false);
+    }
+  };
+
+  const loadUpdateInfo = async () => {
+    try {
+      const results = await Promise.allSettled([
+        window.velopackApi.getVersion(),
+        window.velopackApi.getChannel(),
+        window.velopackApi.getAvailableChannels(),
+        window.updateAPI.isSupported()
+      ]);
+
+      const [versionResult, channelResult, channelsResult, supportedResult] = results;
+
+      if (supportedResult.status === 'fulfilled') {
+        setUpdatesSupported(supportedResult.value);
+      } else {
+        console.error('Failed to check if updates are supported:', supportedResult.reason);
+      }
+
+      if (versionResult.status === 'fulfilled') {
+        setCurrentVersion(versionResult.value);
+        setVersionError(false);
+      } else {
+        console.error('Failed to get version:', versionResult.reason);
+        setVersionError(true);
+      }
+
+      if (channelResult.status === 'fulfilled') {
+        setCurrentChannel(channelResult.value);
+        setChannelError(false);
+      } else {
+        console.error('Failed to get channel:', channelResult.reason);
+        setChannelError(true);
+      }
+
+      if (channelsResult.status === 'fulfilled') {
+        const channels = channelsResult.value;
+        setAvailableChannels(channels);
+        setChannelsError(false);
+
+        // Load logical display names for each channel
+        const displayNames = new Map<string, string>();
+        await Promise.all(
+          channels.map(async (channel) => {
+            try {
+              const logicalName = await window.velopackApi.getLogicalChannelName(channel);
+              displayNames.set(channel, logicalName);
+            } catch (err) {
+              console.error(`Failed to get logical name for channel ${channel}:`, err);
+              displayNames.set(channel, channel);
+            }
+          })
+        );
+        setChannelDisplayNames(displayNames);
+      } else {
+        console.error('Failed to get available channels:', channelsResult.reason);
+        setChannelsError(true);
+      }
+    } catch (err) {
+      console.error('Failed to load update info:', err);
+    }
+  };
+
+  const handleChannelChange = async (newChannel: string) => {
+    try {
+      await window.velopackApi.setChannel(newChannel);
+      setCurrentChannel(newChannel);
+    } catch (err) {
+      console.error('Failed to change channel:', err);
+      alert('Failed to change update channel');
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setCheckingForUpdates(true);
+    try {
+      await window.updateAPI.checkForUpdates();
+    } catch (err) {
+      console.error('Failed to check for updates:', err);
+    } finally {
+      setCheckingForUpdates(false);
     }
   };
 
@@ -351,6 +443,83 @@ const Settings: React.FC = () => {
             Environment information not yet collected. Click Refresh to collect it now.
           </p>
         )}
+      </div>
+
+      {/* Release Channel Section */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Release Channel</h2>
+        {!updatesSupported && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4 mb-4">
+            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-500">
+              Release channel switching and updates are not available in development mode.
+            </p>
+          </div>
+        )}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Current Version</p>
+              <p className={cn(
+                "text-sm",
+                versionError ? "text-destructive" : "text-muted-foreground"
+              )}>
+                {versionError ? 'Failed to load version' : (currentVersion || 'Loading...')}
+              </p>
+            </div>
+            <button
+              onClick={handleCheckForUpdates}
+              disabled={!updatesSupported || checkingForUpdates}
+              className={cn(
+                "px-4 py-2 text-sm rounded-md",
+                "bg-primary text-primary-foreground",
+                "hover:bg-primary/90 transition-colors",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
+              {checkingForUpdates ? 'Checking...' : 'Check for Updates'}
+            </button>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium mb-2">Release Channel</p>
+            {channelsError && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mb-2">
+                <p className="text-xs text-destructive">
+                  Failed to load available channels
+                </p>
+              </div>
+            )}
+            <select
+              value={currentChannel}
+              onChange={(e) => handleChannelChange(e.target.value)}
+              disabled={!updatesSupported || channelError || channelsError}
+              className={cn(
+                "w-full px-3 py-2 text-sm rounded-md",
+                "bg-background border",
+                channelError || channelsError ? "border-destructive" : "border-input",
+                "focus:outline-none focus:ring-2 focus:ring-primary",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
+              {availableChannels.length > 0 ? (
+                availableChannels.map((channel) => {
+                  const displayName = channelDisplayNames.get(channel) || channel;
+                  const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                  return (
+                    <option key={channel} value={channel}>
+                      {formattedName}
+                    </option>
+                  );
+                })
+              ) : (
+                <option value="">No channels available</option>
+              )}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Changing the channel will affect which updates you receive
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

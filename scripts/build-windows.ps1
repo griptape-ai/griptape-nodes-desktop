@@ -7,6 +7,10 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "Building for Windows ($Architecture, channel: $Channel)..."
 
+# Set environment variables for webpack
+$env:NODE_ENV = "production"
+$env:VELOPACK_CHANNEL = $Channel
+
 # Build with electron-forge first
 npm run package
 

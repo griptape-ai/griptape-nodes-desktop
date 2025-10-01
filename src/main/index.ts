@@ -14,7 +14,9 @@ import { EnvironmentInfoService } from '../common/services/environment-info';
 import { GtnService } from '../common/services/gtn/gtn-service';
 import { UvService } from '../common/services/uv/uv-service';
 import { logger } from '@/main/utils/logger';
+import { isPackaged } from '@/main/utils/is-packaged';
 import { PythonService } from '../common/services/python/python-service';
+import { UpdateService } from '../common/services/update/update-service';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -30,13 +32,16 @@ declare const __BUILD_INFO__: {
   buildId: string;
 };
 
+declare const __VELOPACK_CHANNEL__: string | undefined;
+
 app.setAppUserModelId("ai.griptape.nodes.desktop")
 
 logger.info('app.isPackaged:', app.isPackaged);
+logger.info('isPackaged():', isPackaged());
 logger.info('__dirname:', __dirname);
 
 // Set userData path for development
-if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+if (!isPackaged()) {
   const devUserDataPath = path.join(app.getAppPath(), '_userdata');
   app.setPath('userData', devUserDataPath);
   logger.info('Development mode: userData set to', devUserDataPath);
@@ -60,7 +65,7 @@ const OAUTH_SCHEME = 'gtn';
 if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
   app.setAsDefaultProtocolClient(OAUTH_SCHEME);
 }
-if (process.env.NODE_ENV === 'development' && process.env.AUTH_SCHEME === 'custom') {
+if (!isPackaged() && process.env.AUTH_SCHEME === 'custom') {
   throw new Error('Custom URL scheme authentication requires packaging. Custom URL schemes do not work in development mode on macOS and Windows. Please use AUTH_SCHEME=http for development or package the application.');
 }
 
@@ -74,6 +79,7 @@ const authService = new HttpAuthService();
 //   : new HttpAuthService();
 const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir, uvService, pythonService, authService);
 const engineService = new EngineService(userDataPath, gtnService);
+const updateService = new UpdateService(isPackaged());
 
 const createWindow = () => {
   // Create the browser window.
@@ -96,7 +102,7 @@ const createWindow = () => {
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
   // Open the DevTools in development only
-  if (process.env.NODE_ENV === 'development') {
+  if (!isPackaged()) {
     mainWindow.webContents.openDevTools();
   }
 
@@ -182,47 +188,84 @@ if (!gotTheLock) {
 }
 
 const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
-  const updateManager = new UpdateManager();
-  const updateInfo = await updateManager.checkForUpdatesAsync();
-
-  if (!updateInfo) {
-    logger.info('UpdateService: No updates available');
+  if (!updateService.isUpdateSupported()) {
+    logger.info('UpdateService: Updates not supported in development mode');
     if (browserWindow) {
       dialog.showMessageBox(browserWindow, {
         type: 'info',
-        message: 'You\'re up to date',
-        detail: `Version ${updateManager.getCurrentVersion()}`
+        message: 'Updates not available',
+        detail: 'Updates are not available in development mode.'
       });
     }
     return;
   }
 
-  logger.info('UpdateService: Update available', updateInfo.targetFullRelease.version);
+  try {
+    const updateManager = updateService.getUpdateManager();
+    const updateInfo = await updateManager.checkForUpdatesAsync();
 
-  const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
-    type: 'info',
-    buttons: ['Download and Install', 'Later'],
-    defaultId: 0,
-    title: 'Application Update Available',
-    message: `Version ${updateInfo.targetFullRelease.version} is available`,
-    detail: 'Would you like to download and install it now?'
-  });
+    if (!updateInfo) {
+      logger.info('UpdateService: No updates available');
+      if (browserWindow) {
+        dialog.showMessageBox(browserWindow, {
+          type: 'info',
+          message: 'You\'re up to date',
+          detail: `Version ${updateService.getCurrentVersion()}`
+        });
+      }
+      return;
+    }
 
-  if (response === 0) {
-    await downloadAndInstallUpdateWithDialog(updateInfo, browserWindow);
+    logger.info('UpdateService: Update available', updateInfo.TargetFullRelease.Version);
+
+    const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
+      type: 'info',
+      buttons: ['Download and Install', 'Later'],
+      defaultId: 0,
+      title: 'Application Update Available',
+      message: `Version ${updateInfo.TargetFullRelease.Version} is available`,
+      detail: 'Would you like to download and install it now?'
+    });
+
+    if (response === 0) {
+      await downloadAndInstallUpdateWithDialog(updateInfo, browserWindow);
+    }
+  } catch (error) {
+    logger.error('UpdateService: Failed to check for updates', error);
+    if (browserWindow) {
+      dialog.showMessageBox(browserWindow, {
+        type: 'error',
+        message: 'Update Check Failed',
+        detail: `Failed to check for updates: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
   }
 };
 
 const downloadAndInstallUpdateWithDialog = async (updateInfo: any, browserWindow?: BrowserWindow) => {
-  const updateManager = new UpdateManager();
+  const updateManager = updateService.getUpdateManager();
 
   logger.info('UpdateService: Downloading update...');
 
-  await updateManager.downloadUpdatesAsync(updateInfo, (progress) => {
+  // Emit download start event
+  BrowserWindow.getAllWindows().forEach(window => {
+    window.webContents.send('update:download-started');
+  });
+
+  await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
     logger.info(`Download progress: ${progress}%`);
+    // Emit progress to all windows
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('update:download-progress', progress);
+    });
   });
 
   logger.info('UpdateService: Update downloaded, prompting for restart');
+
+  // Emit download complete event
+  BrowserWindow.getAllWindows().forEach(window => {
+    window.webContents.send('update:download-complete');
+  });
 
   const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
     type: 'info',
@@ -234,7 +277,8 @@ const downloadAndInstallUpdateWithDialog = async (updateInfo: any, browserWindow
   });
 
   if (response === 0) {
-    updateManager.applyUpdatesAndRestart(updateInfo.targetFullRelease);
+    updateManager.waitExitThenApplyUpdate(updateInfo);
+    app.quit();
   }
 };
 
@@ -365,27 +409,72 @@ const setupIPC = () => {
   });
 
   ipcMain.handle("velopack:get-version", () => {
-    const updateManager = new UpdateManager();
-    return updateManager.getCurrentVersion();
+    return updateService.getCurrentVersion();
   });
 
   ipcMain.handle("velopack:check-for-update", async () => {
-    const updateManager = new UpdateManager();
+    if (!updateService.isUpdateSupported()) {
+      return null;
+    }
+    const updateManager = updateService.getUpdateManager();
     return await updateManager.checkForUpdatesAsync();
   });
 
   ipcMain.handle("velopack:download-update", async (_, updateInfo) => {
-    const updateManager = new UpdateManager();
-    await updateManager.downloadUpdatesAsync(updateInfo, (progress) => {
-      console.log(`Download progress: ${progress}%`);
+    if (!updateService.isUpdateSupported()) {
+      throw new Error('Updates not supported in development mode');
+    }
+    const updateManager = updateService.getUpdateManager();
+
+    // Emit download start event
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('update:download-started');
     });
+
+    await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
+      console.log(`Download progress: ${progress}%`);
+      // Emit progress to all windows
+      BrowserWindow.getAllWindows().forEach(window => {
+        window.webContents.send('update:download-progress', progress);
+      });
+    });
+
+    // Emit download complete event
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('update:download-complete');
+    });
+
     return true;
   });
 
   ipcMain.handle("velopack:apply-update", async (_, updateInfo) => {
-    const updateManager = new UpdateManager();
-    updateManager.applyUpdatesAndRestart(updateInfo.targetFullRelease);
+    if (!updateService.isUpdateSupported()) {
+      throw new Error('Updates not supported in development mode');
+    }
+    const updateManager = updateService.getUpdateManager();
+    updateManager.waitExitThenApplyUpdate(updateInfo);
+    app.quit();
     return true;
+  });
+
+  ipcMain.handle("velopack:get-channel", () => {
+    return updateService.getChannel();
+  });
+
+  ipcMain.handle("velopack:set-channel", (_, channel: string) => {
+    if (!updateService.isUpdateSupported()) {
+      throw new Error('Cannot set channel in development mode');
+    }
+    updateService.setChannel(channel);
+    return true;
+  });
+
+  ipcMain.handle("velopack:get-available-channels", () => {
+    return updateService.getAvailableChannels();
+  });
+
+  ipcMain.handle("velopack:get-logical-channel-name", (_, channel: string) => {
+    return updateService.getLogicalChannelName(channel);
   });
 
   ipcMain.on('get-preload-path', (e) => {
@@ -445,9 +534,9 @@ const setupIPC = () => {
     return process.env[key] || null;
   });
 
-  // Handle development environment check
-  ipcMain.handle('is-development', () => {
-    return process.env.NODE_ENV === 'development' || !app.isPackaged;
+  // Handle packaged app check
+  ipcMain.handle('is-packaged', () => {
+    return isPackaged();
   });
 
   // Handle opening external links
@@ -505,6 +594,10 @@ const setupIPC = () => {
     const focusedWindow = BrowserWindow.getFocusedWindow();
     await checkForUpdatesWithDialog(focusedWindow || undefined);
     return { success: true };
+  });
+
+  ipcMain.handle('update:is-supported', () => {
+    return updateService.isUpdateSupported();
   });
 };
 

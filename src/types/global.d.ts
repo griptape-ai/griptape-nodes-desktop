@@ -11,16 +11,6 @@ export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'initializing' | 
 declare global {
   interface Window {
     pythonAPI: {
-      getPythonInfo: () => Promise<{
-        success: boolean;
-        version?: string;
-        executable?: string;
-        versionOutput?: string;
-        pathOutput?: string;
-        griptapeNodesPath?: string;
-        griptapeNodesVersion?: string;
-        error?: string;
-      }>;
       getEnvironmentInfo: () => Promise<{
         success: boolean;
         data?: {
@@ -110,10 +100,20 @@ declare global {
       onWorkspaceChanged: (callback: (event: any, directory: string) => void) => void;
       removeWorkspaceChanged: (callback: (event: any, directory: string) => void) => void;
     };
-    electronAPI?: {
+    electronAPI: {
       getEnvVar: (key: string) => Promise<string | null>;
-      isDevelopment: () => Promise<boolean>;
+      isPackaged: () => Promise<boolean>;
       openExternal: (url: string) => Promise<void>;
+    };
+    updateAPI: {
+      checkForUpdates: () => Promise<{ success: boolean }>;
+      isSupported: () => Promise<boolean>;
+      onDownloadStarted: (callback: () => void) => void;
+      onDownloadProgress: (callback: (event: any, progress: number) => void) => void;
+      onDownloadComplete: (callback: () => void) => void;
+      removeDownloadStarted: (callback: () => void) => void;
+      removeDownloadProgress: (callback: (event: any, progress: number) => void) => void;
+      removeDownloadComplete: (callback: () => void) => void;
     };
   }
 }

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: 'Release channel (stable, beta, dev, etc.) - defaults to branch name'
+        description: 'Release channel (stable, beta, dev, etc.) - defaults to stable for main and branch name otherwise'
         required: false
         type: string
 

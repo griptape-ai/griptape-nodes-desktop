@@ -9,6 +9,10 @@ interface VelopackBridgeApi {
   checkForUpdates: () => Promise<UpdateInfo>,
   downloadUpdates: (updateInfo: UpdateInfo) => Promise<boolean>,
   applyUpdates: (updateInfo: UpdateInfo) => Promise<boolean>,
+  getChannel: () => Promise<string>,
+  setChannel: (channel: string) => Promise<boolean>,
+  getAvailableChannels: () => Promise<string[]>,
+  getLogicalChannelName: (channel: string) => Promise<string>,
 }
 
 declare global {
@@ -21,7 +25,11 @@ const velopackApi: VelopackBridgeApi = {
   getVersion: () => ipcRenderer.invoke("velopack:get-version"),
   checkForUpdates: () => ipcRenderer.invoke("velopack:check-for-update"),
   downloadUpdates: (updateInfo: UpdateInfo) => ipcRenderer.invoke("velopack:download-update", updateInfo),
-  applyUpdates: (updateInfo: UpdateInfo) => ipcRenderer.invoke("velopack:apply-update", updateInfo)
+  applyUpdates: (updateInfo: UpdateInfo) => ipcRenderer.invoke("velopack:apply-update", updateInfo),
+  getChannel: () => ipcRenderer.invoke("velopack:get-channel"),
+  setChannel: (channel: string) => ipcRenderer.invoke("velopack:set-channel", channel),
+  getAvailableChannels: () => ipcRenderer.invoke("velopack:get-available-channels"),
+  getLogicalChannelName: (channel: string) => ipcRenderer.invoke("velopack:get-logical-channel-name", channel)
 };
 
 contextBridge.exposeInMainWorld("velopackApi", velopackApi);
@@ -32,7 +40,6 @@ contextBridge.exposeInMainWorld('electron', {
 
 // Expose APIs to renderer process
 contextBridge.exposeInMainWorld('pythonAPI', {
-  getPythonInfo: () => ipcRenderer.invoke('get-python-info'),
   getEnvironmentInfo: () => ipcRenderer.invoke('get-environment-info')
 });
 
@@ -78,13 +85,30 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
 
 contextBridge.exposeInMainWorld('updateAPI', {
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
-  isSupported: () => ipcRenderer.invoke('update:is-supported')
+  isSupported: () => ipcRenderer.invoke('update:is-supported'),
+  onDownloadStarted: (callback: () => void) => {
+    ipcRenderer.on('update:download-started', callback);
+  },
+  onDownloadProgress: (callback: (event: any, progress: number) => void) => {
+    ipcRenderer.on('update:download-progress', callback);
+  },
+  onDownloadComplete: (callback: () => void) => {
+    ipcRenderer.on('update:download-complete', callback);
+  },
+  removeDownloadStarted: (callback: () => void) => {
+    ipcRenderer.removeListener('update:download-started', callback);
+  },
+  removeDownloadProgress: (callback: (event: any, progress: number) => void) => {
+    ipcRenderer.removeListener('update:download-progress', callback);
+  },
+  removeDownloadComplete: (callback: () => void) => {
+    ipcRenderer.removeListener('update:download-complete', callback);
+  }
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getEnvVar: (key: string) => ipcRenderer.invoke('get-env-var', key),
-  isDevelopment: () => ipcRenderer.invoke('is-development'),
-  checkAuthCompletion: () => ipcRenderer.invoke('check-auth-completion'),
+  isPackaged: () => ipcRenderer.invoke('is-packaged'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 });
 
