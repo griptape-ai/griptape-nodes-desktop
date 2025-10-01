@@ -118,4 +118,47 @@ declare global {
   }
 }
 
+// Webview tag declarations for Electron
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      webview: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        src?: string;
+        partition?: string;
+        nodeintegration?: string;
+        disablewebsecurity?: string;
+        allowpopups?: string;
+        preload?: string;
+      };
+    }
+  }
+
+  interface HTMLWebViewElement extends HTMLElement {
+    src: string;
+    partition: string;
+    getWebContents(): Electron.WebContents;
+    executeJavaScript(code: string): Promise<any>;
+    addEventListener<K extends keyof HTMLElementEventMap>(
+      type: K,
+      listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
+      options?: boolean | AddEventListenerOptions
+    ): void;
+    addEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions
+    ): void;
+    removeEventListener<K extends keyof HTMLElementEventMap>(
+      type: K,
+      listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
+      options?: boolean | EventListenerOptions
+    ): void;
+    removeEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | EventListenerOptions
+    ): void;
+  }
+}
+
 export { };
