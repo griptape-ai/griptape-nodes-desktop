@@ -1,7 +1,7 @@
 node_modules
 dist
 out
-releases
+Releases
 .DS_Store
 !scripts/dmg_template/.DS_Store
 .eslintcache
