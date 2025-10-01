@@ -85,7 +85,25 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
 
 contextBridge.exposeInMainWorld('updateAPI', {
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
-  isSupported: () => ipcRenderer.invoke('update:is-supported')
+  isSupported: () => ipcRenderer.invoke('update:is-supported'),
+  onDownloadStarted: (callback: () => void) => {
+    ipcRenderer.on('update:download-started', callback);
+  },
+  onDownloadProgress: (callback: (event: any, progress: number) => void) => {
+    ipcRenderer.on('update:download-progress', callback);
+  },
+  onDownloadComplete: (callback: () => void) => {
+    ipcRenderer.on('update:download-complete', callback);
+  },
+  removeDownloadStarted: (callback: () => void) => {
+    ipcRenderer.removeListener('update:download-started', callback);
+  },
+  removeDownloadProgress: (callback: (event: any, progress: number) => void) => {
+    ipcRenderer.removeListener('update:download-progress', callback);
+  },
+  removeDownloadComplete: (callback: () => void) => {
+    ipcRenderer.removeListener('update:download-complete', callback);
+  }
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {

@@ -108,6 +108,12 @@ declare global {
     updateAPI: {
       checkForUpdates: () => Promise<{ success: boolean }>;
       isSupported: () => Promise<boolean>;
+      onDownloadStarted: (callback: () => void) => void;
+      onDownloadProgress: (callback: (event: any, progress: number) => void) => void;
+      onDownloadComplete: (callback: () => void) => void;
+      removeDownloadStarted: (callback: () => void) => void;
+      removeDownloadProgress: (callback: (event: any, progress: number) => void) => void;
+      removeDownloadComplete: (callback: () => void) => void;
     };
   }
 }

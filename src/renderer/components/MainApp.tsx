@@ -4,6 +4,7 @@ import Dashboard from '../pages/Dashboard';
 import Engine from '../pages/Engine';
 import Settings from '../pages/Settings';
 import { Sidebar } from './Sidebar';
+import UpdateProgressNotification from './UpdateProgressNotification';
 import headerLogoSrc from '../../assets/griptape_nodes_header_logo.svg';
 
 const MainApp: React.FC = () => {
@@ -47,6 +48,9 @@ const MainApp: React.FC = () => {
             {renderContent()}
           </main>
         </div>
+
+        {/* Update Progress Notification */}
+        <UpdateProgressNotification />
       </div>
     </EngineProvider>
   );

@@ -250,11 +250,25 @@ const downloadAndInstallUpdateWithDialog = async (updateInfo: any, browserWindow
 
   logger.info('UpdateService: Downloading update...');
 
+  // Emit download start event
+  BrowserWindow.getAllWindows().forEach(window => {
+    window.webContents.send('update:download-started');
+  });
+
   await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
     logger.info(`Download progress: ${progress}%`);
+    // Emit progress to all windows
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('update:download-progress', progress);
+    });
   });
 
   logger.info('UpdateService: Update downloaded, prompting for restart');
+
+  // Emit download complete event
+  BrowserWindow.getAllWindows().forEach(window => {
+    window.webContents.send('update:download-complete');
+  });
 
   const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
     type: 'info',
@@ -414,9 +428,25 @@ const setupIPC = () => {
       throw new Error('Updates not supported in development mode');
     }
     const updateManager = updateService.getUpdateManager();
+
+    // Emit download start event
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('update:download-started');
+    });
+
     await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
       console.log(`Download progress: ${progress}%`);
+      // Emit progress to all windows
+      BrowserWindow.getAllWindows().forEach(window => {
+        window.webContents.send('update:download-progress', progress);
+      });
     });
+
+    // Emit download complete event
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('update:download-complete');
+    });
+
     return true;
   });
 
