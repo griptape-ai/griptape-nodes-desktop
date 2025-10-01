@@ -21,6 +21,7 @@ plugins.push(
 )
 
 export const rendererConfig: Configuration = {
+  mode: process.env.NODE_ENV as any,
   module: {
     rules,
   },

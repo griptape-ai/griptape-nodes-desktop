@@ -20,6 +20,9 @@ const Settings: React.FC = () => {
   const [availableChannels, setAvailableChannels] = useState<string[]>([]);
   const [updatesSupported, setUpdatesSupported] = useState<boolean>(false);
   const [checkingForUpdates, setCheckingForUpdates] = useState(false);
+  const [versionError, setVersionError] = useState<boolean>(false);
+  const [channelError, setChannelError] = useState<boolean>(false);
+  const [channelsError, setChannelsError] = useState<boolean>(false);
 
   useEffect(() => {
     loadEnvironmentInfo();
@@ -109,16 +112,44 @@ const Settings: React.FC = () => {
 
   const loadUpdateInfo = async () => {
     try {
-      const [version, channel, channels, supported] = await Promise.all([
+      const results = await Promise.allSettled([
         window.velopackApi.getVersion(),
         window.velopackApi.getChannel(),
         window.velopackApi.getAvailableChannels(),
         window.updateAPI.isSupported()
       ]);
-      setCurrentVersion(version);
-      setCurrentChannel(channel);
-      setAvailableChannels(channels);
-      setUpdatesSupported(supported);
+
+      const [versionResult, channelResult, channelsResult, supportedResult] = results;
+
+      if (supportedResult.status === 'fulfilled') {
+        setUpdatesSupported(supportedResult.value);
+      } else {
+        console.error('Failed to check if updates are supported:', supportedResult.reason);
+      }
+
+      if (versionResult.status === 'fulfilled') {
+        setCurrentVersion(versionResult.value);
+        setVersionError(false);
+      } else {
+        console.error('Failed to get version:', versionResult.reason);
+        setVersionError(true);
+      }
+
+      if (channelResult.status === 'fulfilled') {
+        setCurrentChannel(channelResult.value);
+        setChannelError(false);
+      } else {
+        console.error('Failed to get channel:', channelResult.reason);
+        setChannelError(true);
+      }
+
+      if (channelsResult.status === 'fulfilled') {
+        setAvailableChannels(channelsResult.value);
+        setChannelsError(false);
+      } else {
+        console.error('Failed to get available channels:', channelsResult.reason);
+        setChannelsError(true);
+      }
     } catch (err) {
       console.error('Failed to load update info:', err);
     }
@@ -411,8 +442,11 @@ const Settings: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Current Version</p>
-              <p className="text-sm text-muted-foreground">
-                {currentVersion || 'Loading...'}
+              <p className={cn(
+                "text-sm",
+                versionError ? "text-destructive" : "text-muted-foreground"
+              )}>
+                {versionError ? 'Failed to load version' : (currentVersion || 'Loading...')}
               </p>
             </div>
             <button
@@ -431,22 +465,34 @@ const Settings: React.FC = () => {
 
           <div>
             <p className="text-sm font-medium mb-2">Release Channel</p>
+            {channelsError && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mb-2">
+                <p className="text-xs text-destructive">
+                  Failed to load available channels
+                </p>
+              </div>
+            )}
             <select
               value={currentChannel}
               onChange={(e) => handleChannelChange(e.target.value)}
-              disabled={!updatesSupported}
+              disabled={!updatesSupported || channelError || channelsError}
               className={cn(
                 "w-full px-3 py-2 text-sm rounded-md",
-                "bg-background border border-input",
+                "bg-background border",
+                channelError || channelsError ? "border-destructive" : "border-input",
                 "focus:outline-none focus:ring-2 focus:ring-primary",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
             >
-              {availableChannels.map((channel) => (
-                <option key={channel} value={channel}>
-                  {channel.charAt(0).toUpperCase() + channel.slice(1)}
-                </option>
-              ))}
+              {availableChannels.length > 0 ? (
+                availableChannels.map((channel) => (
+                  <option key={channel} value={channel}>
+                    {channel.charAt(0).toUpperCase() + channel.slice(1)}
+                  </option>
+                ))
+              ) : (
+                <option value="">No channels available</option>
+              )}
             </select>
             <p className="text-xs text-muted-foreground mt-1">
               Changing the channel will affect which updates you receive

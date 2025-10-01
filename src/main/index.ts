@@ -14,6 +14,7 @@ import { EnvironmentInfoService } from '../common/services/environment-info';
 import { GtnService } from '../common/services/gtn/gtn-service';
 import { UvService } from '../common/services/uv/uv-service';
 import { logger } from '@/main/utils/logger';
+import { isPackaged } from '@/main/utils/is-packaged';
 import { PythonService } from '../common/services/python/python-service';
 import { UpdateService } from '../common/services/update/update-service';
 
@@ -36,10 +37,11 @@ declare const __VELOPACK_CHANNEL__: string | undefined;
 app.setAppUserModelId("ai.griptape.nodes.desktop")
 
 logger.info('app.isPackaged:', app.isPackaged);
+logger.info('isPackaged():', isPackaged());
 logger.info('__dirname:', __dirname);
 
 // Set userData path for development
-if (!app.isPackaged) {
+if (!isPackaged()) {
   const devUserDataPath = path.join(app.getAppPath(), '_userdata');
   app.setPath('userData', devUserDataPath);
   logger.info('Development mode: userData set to', devUserDataPath);
@@ -63,7 +65,7 @@ const OAUTH_SCHEME = 'gtn';
 if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
   app.setAsDefaultProtocolClient(OAUTH_SCHEME);
 }
-if (!app.isPackaged && process.env.AUTH_SCHEME === 'custom') {
+if (!isPackaged() && process.env.AUTH_SCHEME === 'custom') {
   throw new Error('Custom URL scheme authentication requires packaging. Custom URL schemes do not work in development mode on macOS and Windows. Please use AUTH_SCHEME=http for development or package the application.');
 }
 
@@ -77,7 +79,7 @@ const authService = new HttpAuthService();
 //   : new HttpAuthService();
 const gtnService = new GtnService(userDataPath, gtnDefaultWorkspaceDir, uvService, pythonService, authService);
 const engineService = new EngineService(userDataPath, gtnService);
-const updateService = new UpdateService(app.isPackaged);
+const updateService = new UpdateService(isPackaged());
 
 const createWindow = () => {
   // Create the browser window.
@@ -100,7 +102,7 @@ const createWindow = () => {
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
   // Open the DevTools in development only
-  if (!app.isPackaged) {
+  if (!isPackaged()) {
     mainWindow.webContents.openDevTools();
   }
 
@@ -198,34 +200,45 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
     return;
   }
 
-  const updateManager = updateService.getUpdateManager();
-  const updateInfo = await updateManager.checkForUpdatesAsync();
+  try {
+    const updateManager = updateService.getUpdateManager();
+    const updateInfo = await updateManager.checkForUpdatesAsync();
 
-  if (!updateInfo) {
-    logger.info('UpdateService: No updates available');
+    if (!updateInfo) {
+      logger.info('UpdateService: No updates available');
+      if (browserWindow) {
+        dialog.showMessageBox(browserWindow, {
+          type: 'info',
+          message: 'You\'re up to date',
+          detail: `Version ${updateService.getCurrentVersion()}`
+        });
+      }
+      return;
+    }
+
+    logger.info('UpdateService: Update available', updateInfo.targetFullRelease.version);
+
+    const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
+      type: 'info',
+      buttons: ['Download and Install', 'Later'],
+      defaultId: 0,
+      title: 'Application Update Available',
+      message: `Version ${updateInfo.targetFullRelease.version} is available`,
+      detail: 'Would you like to download and install it now?'
+    });
+
+    if (response === 0) {
+      await downloadAndInstallUpdateWithDialog(updateInfo, browserWindow);
+    }
+  } catch (error) {
+    logger.error('UpdateService: Failed to check for updates', error);
     if (browserWindow) {
       dialog.showMessageBox(browserWindow, {
-        type: 'info',
-        message: 'You\'re up to date',
-        detail: `Version ${updateService.getCurrentVersion()}`
+        type: 'error',
+        message: 'Update Check Failed',
+        detail: `Failed to check for updates: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     }
-    return;
-  }
-
-  logger.info('UpdateService: Update available', updateInfo.targetFullRelease.version);
-
-  const { response } = await dialog.showMessageBox(browserWindow || BrowserWindow.getAllWindows()[0], {
-    type: 'info',
-    buttons: ['Download and Install', 'Later'],
-    defaultId: 0,
-    title: 'Application Update Available',
-    message: `Version ${updateInfo.targetFullRelease.version} is available`,
-    detail: 'Would you like to download and install it now?'
-  });
-
-  if (response === 0) {
-    await downloadAndInstallUpdateWithDialog(updateInfo, browserWindow);
   }
 };
 
@@ -487,7 +500,7 @@ const setupIPC = () => {
 
   // Handle packaged app check
   ipcMain.handle('is-packaged', () => {
-    return app.isPackaged;
+    return isPackaged();
   });
 
   // Handle opening external links

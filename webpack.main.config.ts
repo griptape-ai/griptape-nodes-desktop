@@ -4,6 +4,7 @@ import type { Configuration } from 'webpack';
 import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin';
 
 export const mainConfig: Configuration = {
+  mode: process.env.NODE_ENV as any,
   entry: './src/main/index.ts',
   module: {
     rules: [
