@@ -525,6 +525,17 @@ const setupIPC = () => {
   ipcMain.handle('auth:check', async () => {
     const credentials = authService.getStoredCredentials();
     if (credentials) {
+      // Check if token is expired or missing expiration time
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (!credentials.expiresAt || currentTime >= credentials.expiresAt) {
+        // Token is expired or has no expiration time - return credentials anyway
+        // so the renderer can attempt to refresh using the refresh_token
+        logger.warn('auth:check - Token is expired or missing expiration time, returning credentials for refresh attempt');
+        return {
+          isAuthenticated: true,
+          ...credentials
+        };
+      }
       return {
         isAuthenticated: true,
         ...credentials
@@ -539,10 +550,20 @@ const setupIPC = () => {
   ipcMain.on('auth:check-sync', (event) => {
     const credentials = authService.getStoredCredentials();
     if (credentials) {
-      event.returnValue = {
-        isAuthenticated: true,
-        ...credentials
-      };
+      // Check if token is expired or missing expiration time
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (!credentials.expiresAt || currentTime >= credentials.expiresAt) {
+        // Token is expired or has no expiration time - don't return it
+        logger.warn('auth:check-sync - Token is expired or missing expiration time, treating as not authenticated');
+        event.returnValue = {
+          isAuthenticated: false
+        };
+      } else {
+        event.returnValue = {
+          isAuthenticated: true,
+          ...credentials
+        };
+      }
     } else {
       event.returnValue = {
         isAuthenticated: false
@@ -552,6 +573,11 @@ const setupIPC = () => {
 
   // Handle Auth Login
   ipcMain.handle('auth:login', () => authService.login());
+
+  // Handle Auth Token Refresh
+  ipcMain.handle('auth:refresh-token', async (event, refreshToken: string) => {
+    return await authService.refreshTokens(refreshToken);
+  });
 
   // Handle environment variable requests
   ipcMain.handle('get-env-var', (event, key: string) => {

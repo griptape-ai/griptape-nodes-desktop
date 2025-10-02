@@ -66,11 +66,13 @@ declare global {
       checkAuth: () => Promise<{
         isAuthenticated: boolean;
         apiKey?: string;
+        expiresAt?: number;
         tokens?: {
           access_token: string;
           id_token: string;
           token_type: string;
           expires_in: number;
+          refresh_token?: string;
         };
         user?: {
           sub: string;
@@ -78,6 +80,17 @@ declare global {
           email: string;
           email_verified: boolean;
         };
+      }>;
+      refreshToken: (refreshToken: string) => Promise<{
+        success: boolean;
+        tokens?: {
+          access_token: string;
+          id_token: string;
+          token_type: string;
+          expires_in: number;
+          refresh_token?: string;
+        };
+        error?: string;
       }>;
     };
     engineAPI: {

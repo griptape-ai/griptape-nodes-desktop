@@ -22,8 +22,8 @@ try {
     // Calculate expiration time
     const expiresAt = Math.floor(Date.now() / 1000) + (tokens.expires_in || 86400);
 
-    // Auth0 localStorage key format
-    const auth0Key = '@@auth0spajs@@::bK5Fijuoy90ftmcwVUZABA5THOZyzHnH::https://cloud.griptape.ai/api::openid profile email';
+    // Auth0 localStorage key format (must match scope in OAuth request)
+    const auth0Key = '@@auth0spajs@@::bK5Fijuoy90ftmcwVUZABA5THOZyzHnH::https://cloud.griptape.ai/api::openid profile email offline_access';
 
     // Auth0 cache entry format
     const auth0CacheEntry = {
@@ -31,7 +31,8 @@ try {
         client_id: 'bK5Fijuoy90ftmcwVUZABA5THOZyzHnH',
         access_token: tokens.access_token,
         id_token: tokens.id_token,
-        scope: 'openid profile email',
+        refresh_token: tokens.refresh_token,
+        scope: 'openid profile email offline_access',
         expires_in: tokens.expires_in || 86400,
         token_type: tokens.token_type || 'Bearer',
         decodedToken: {

@@ -12,6 +12,7 @@ interface AuthTokens {
   id_token: string;
   token_type: string;
   expires_in: number;
+  refresh_token?: string;
 }
 
 interface AuthContextValue {
@@ -75,12 +76,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Check stored auth from backend (electron-store)
       const result = await window.oauthAPI.checkAuth();
-      
+
       if (result.isAuthenticated && result.user && result.tokens) {
-        setTokens(result.tokens);
-        setUser(result.user);
-        setApiKey(result.apiKey);
-        setIsAuthenticated(true);
+        // Check if tokens are expired
+        const currentTime = Math.floor(Date.now() / 1000);
+        const expiresAt = result.expiresAt;
+
+        if (!expiresAt || currentTime >= expiresAt) {
+          // Tokens are expired or have no expiration time (legacy data), attempt to refresh if we have a refresh token
+          console.log('Stored tokens are expired or missing expiration time');
+
+          if (result.tokens.refresh_token) {
+            console.log('Attempting to refresh tokens using refresh_token...');
+            const refreshResult = await window.oauthAPI.refreshToken(result.tokens.refresh_token);
+
+            if (refreshResult.success && refreshResult.tokens) {
+              console.log('Token refresh successful');
+              setTokens(refreshResult.tokens);
+              setUser(result.user);
+              setApiKey(result.apiKey);
+              setIsAuthenticated(true);
+            } else {
+              // Refresh failed - refresh token is invalid/expired
+              console.log('Token refresh failed, requiring re-login:', refreshResult.error);
+              await window.oauthAPI.logout();
+              setIsAuthenticated(false);
+            }
+          } else {
+            // No refresh token available
+            console.log('No refresh token available, requiring re-login');
+            await window.oauthAPI.logout();
+            setIsAuthenticated(false);
+          }
+        } else {
+          // Tokens are still valid
+          setTokens(result.tokens);
+          setUser(result.user);
+          setApiKey(result.apiKey);
+          setIsAuthenticated(true);
+        }
       }
     } catch (error) {
       console.error('Error checking stored auth:', error);
