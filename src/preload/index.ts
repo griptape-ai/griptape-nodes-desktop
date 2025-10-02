@@ -35,7 +35,8 @@ const velopackApi: VelopackBridgeApi = {
 contextBridge.exposeInMainWorld("velopackApi", velopackApi);
 
 contextBridge.exposeInMainWorld('electron', {
-  getPreloadPath: () => ipcRenderer.sendSync('get-preload-path')
+  getPreloadPath: () => ipcRenderer.sendSync('get-preload-path'),
+  getWebviewPreloadPath: () => ipcRenderer.sendSync('get-webview-preload-path')
 });
 
 // Expose APIs to renderer process
@@ -46,7 +47,8 @@ contextBridge.exposeInMainWorld('pythonAPI', {
 contextBridge.exposeInMainWorld('oauthAPI', {
   login: () => ipcRenderer.invoke('auth:login'),
   logout: () => ipcRenderer.invoke('auth:logout'),
-  checkAuth: () => ipcRenderer.invoke('auth:check')
+  checkAuth: () => ipcRenderer.invoke('auth:check'),
+  refreshToken: (refreshToken: string) => ipcRenderer.invoke('auth:refresh-token', refreshToken)
 });
 
 contextBridge.exposeInMainWorld('engineAPI', {

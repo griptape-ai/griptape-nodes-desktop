@@ -12,6 +12,7 @@ interface AuthData {
   apiKey?: string;
   tokens?: any;
   user?: any;
+  expiresAt?: number;
 }
 
 interface HttpAuthServiceEvents {
@@ -149,6 +150,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     const apiKey = this.store.get('apiKey');
     const tokens = this.store.get('tokens');
     const user = this.store.get('user');
+    const expiresAt = this.store.get('expiresAt');
 
     // Only return if we have complete credentials
     if (!apiKey || !tokens || !user) return null;
@@ -156,7 +158,8 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     return {
       apiKey,
       tokens,
-      user
+      user,
+      expiresAt
     };
   }
 
@@ -167,6 +170,62 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     this.store.clear();
     if (apiKey) {
       this.store.set('apiKey', apiKey);
+    }
+  }
+
+  // Refresh access token using refresh token
+  async refreshTokens(refreshToken: string): Promise<{ success: boolean; tokens?: any; error?: string }> {
+    try {
+      logger.info('Attempting to refresh tokens...');
+
+      const response = await fetch('https://auth.cloud.griptape.ai/oauth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          grant_type: 'refresh_token',
+          client_id: 'bK5Fijuoy90ftmcwVUZABA5THOZyzHnH',
+          refresh_token: refreshToken,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        logger.error(`Token refresh failed: ${response.statusText} - ${error}`);
+        return {
+          success: false,
+          error: `Token refresh failed: ${response.statusText}`
+        };
+      }
+
+      const tokens = await response.json() as any;
+      if (!tokens?.access_token) {
+        return {
+          success: false,
+          error: 'Expected access_token in response'
+        };
+      }
+
+      // Calculate new expiration timestamp
+      const expiresAt = Math.floor(Date.now() / 1000) + (tokens.expires_in || 86400);
+
+      // Update stored tokens with new values
+      this.store.set('tokens', tokens);
+      this.store.set('expiresAt', expiresAt);
+
+      logger.info('Tokens refreshed successfully');
+
+      return {
+        success: true,
+        tokens
+      };
+    } catch (error) {
+      logger.error('Error refreshing tokens:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 
@@ -189,7 +248,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
         `audience=${encodeURIComponent('https://cloud.griptape.ai/api')}&` +
         `state=${state}&` +
-        `scope=openid%20profile%20email`;
+        `scope=openid%20profile%20email%20offline_access`;
       shell.openExternal(url);
 
       // Set timeout
@@ -211,6 +270,9 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       const tokens = await this.exchangeCodeForTokens(code);
       logger.info('Got tokens:', tokens);
 
+      // Calculate expiration timestamp
+      const expiresAt = Math.floor(Date.now() / 1000) + (tokens.expires_in || 86400);
+
       // Get user info
       const userInfo = await this.getUserInfo(tokens.access_token);
       logger.info('Got user info:', userInfo);
@@ -222,8 +284,9 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         this.store.set('apiKey', apiKey);
       }
 
-      // Store credentials
+      // Store credentials with expiration timestamp
       this.store.set('tokens', tokens);
+      this.store.set('expiresAt', expiresAt);
       this.store.set('user', userInfo);
 
       // Resolve the auth promise if it exists
@@ -242,7 +305,13 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     }
   }
 
-  private async exchangeCodeForTokens(code: string): Promise<{ access_token: string }> {
+  private async exchangeCodeForTokens(code: string): Promise<{
+    access_token: string;
+    id_token: string;
+    token_type: string;
+    expires_in: number;
+    refresh_token?: string;
+  }> {
     const response = await fetch('https://auth.cloud.griptape.ai/oauth/token', {
       method: 'POST',
       headers: {

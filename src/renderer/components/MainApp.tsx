@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { EngineProvider } from '../contexts/EngineContext';
 import Dashboard from '../pages/Dashboard';
 import Engine from '../pages/Engine';
+import Editor from '../pages/Editor';
 import Settings from '../pages/Settings';
 import { Sidebar } from './Sidebar';
+import { EditorWebview } from './EditorWebview';
 import UpdateProgressNotification from './UpdateProgressNotification';
 import headerLogoSrc from '../../assets/griptape_nodes_header_logo.svg';
 
@@ -14,13 +16,15 @@ const MainApp: React.FC = () => {
   const renderContent = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onPageChange={setCurrentPage} />;
       case 'engine':
         return <Engine />;
+      case 'editor':
+        return <Editor />;
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard />;
+        return <Dashboard onPageChange={setCurrentPage} />;
     }
   };
 
@@ -48,6 +52,9 @@ const MainApp: React.FC = () => {
             {renderContent()}
           </main>
         </div>
+
+        {/* Persistent Editor Webview - portalled to document.body, overlays when active */}
+        <EditorWebview isVisible={currentPage === 'editor'} />
 
         {/* Update Progress Notification */}
         <UpdateProgressNotification />

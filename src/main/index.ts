@@ -20,6 +20,7 @@ import { UpdateService } from '../common/services/update/update-service';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
+declare const WEBVIEW_PRELOAD_PRELOAD_WEBPACK_ENTRY: string;
 
 
 // Build info injected at compile time
@@ -94,6 +95,7 @@ const createWindow = () => {
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       nodeIntegration: true,
+      webviewTag: true,
       // contextIsolation: true,
     },
   });
@@ -481,6 +483,13 @@ const setupIPC = () => {
     e.returnValue = MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY;
   });
 
+  ipcMain.on('get-webview-preload-path', (e) => {
+    const preloadPath = WEBVIEW_PRELOAD_PRELOAD_WEBPACK_ENTRY;
+    // Ensure the path has the file:// protocol
+    const fileUrl = preloadPath.startsWith('file://') ? preloadPath : `file://${preloadPath}`;
+    e.returnValue = fileUrl;
+  });
+
   // Handle environment info requests (from persisted data)
   ipcMain.handle('get-environment-info', async () => {
     try {
@@ -516,6 +525,17 @@ const setupIPC = () => {
   ipcMain.handle('auth:check', async () => {
     const credentials = authService.getStoredCredentials();
     if (credentials) {
+      // Check if token is expired or missing expiration time
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (!credentials.expiresAt || currentTime >= credentials.expiresAt) {
+        // Token is expired or has no expiration time - return credentials anyway
+        // so the renderer can attempt to refresh using the refresh_token
+        logger.warn('auth:check - Token is expired or missing expiration time, returning credentials for refresh attempt');
+        return {
+          isAuthenticated: true,
+          ...credentials
+        };
+      }
       return {
         isAuthenticated: true,
         ...credentials
@@ -526,8 +546,38 @@ const setupIPC = () => {
     };
   });
 
+  // Synchronous auth check for webview preload
+  ipcMain.on('auth:check-sync', (event) => {
+    const credentials = authService.getStoredCredentials();
+    if (credentials) {
+      // Check if token is expired or missing expiration time
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (!credentials.expiresAt || currentTime >= credentials.expiresAt) {
+        // Token is expired or has no expiration time - don't return it
+        logger.warn('auth:check-sync - Token is expired or missing expiration time, treating as not authenticated');
+        event.returnValue = {
+          isAuthenticated: false
+        };
+      } else {
+        event.returnValue = {
+          isAuthenticated: true,
+          ...credentials
+        };
+      }
+    } else {
+      event.returnValue = {
+        isAuthenticated: false
+      };
+    }
+  });
+
   // Handle Auth Login
   ipcMain.handle('auth:login', () => authService.login());
+
+  // Handle Auth Token Refresh
+  ipcMain.handle('auth:refresh-token', async (event, refreshToken: string) => {
+    return await authService.refreshTokens(refreshToken);
+  });
 
   // Handle environment variable requests
   ipcMain.handle('get-env-var', (event, key: string) => {

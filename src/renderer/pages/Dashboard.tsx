@@ -1,10 +1,14 @@
-import { ExternalLink, FolderOpen } from 'lucide-react';
+import { FolderOpen } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useEngine } from '../contexts/EngineContext';
 import { cn } from '../utils/utils';
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons';
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onPageChange: (page: string) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
   const { status: engineStatus } = useEngine();
   const [workspaceDir, setWorkspaceDir] = useState<string>('');
   const [loadingWorkspace, setLoadingWorkspace] = useState(true);
@@ -81,7 +85,7 @@ const Dashboard: React.FC = () => {
           <h3 className="text-lg font-semibold mb-3">Visual Editor</h3>
           <button
             onClick={() => {
-              window.electronAPI?.openExternal('https://nodes.griptape.ai');
+              onPageChange('editor');
             }}
             disabled={engineStatus !== 'running'}
             className={cn(
@@ -90,7 +94,6 @@ const Dashboard: React.FC = () => {
               "disabled:opacity-50 disabled:cursor-not-allowed"
             )}
           >
-            <ExternalLink className="w-4 h-4" />
             Open Editor
           </button>
           {engineStatus !== 'running' ? (

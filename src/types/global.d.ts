@@ -66,11 +66,13 @@ declare global {
       checkAuth: () => Promise<{
         isAuthenticated: boolean;
         apiKey?: string;
+        expiresAt?: number;
         tokens?: {
           access_token: string;
           id_token: string;
           token_type: string;
           expires_in: number;
+          refresh_token?: string;
         };
         user?: {
           sub: string;
@@ -78,6 +80,17 @@ declare global {
           email: string;
           email_verified: boolean;
         };
+      }>;
+      refreshToken: (refreshToken: string) => Promise<{
+        success: boolean;
+        tokens?: {
+          access_token: string;
+          id_token: string;
+          token_type: string;
+          expires_in: number;
+          refresh_token?: string;
+        };
+        error?: string;
       }>;
     };
     engineAPI: {
@@ -105,6 +118,10 @@ declare global {
       isPackaged: () => Promise<boolean>;
       openExternal: (url: string) => Promise<void>;
     };
+    electron: {
+      getPreloadPath: () => string;
+      getWebviewPreloadPath: () => string;
+    };
     updateAPI: {
       checkForUpdates: () => Promise<{ success: boolean }>;
       isSupported: () => Promise<boolean>;
@@ -115,6 +132,49 @@ declare global {
       removeDownloadProgress: (callback: (event: any, progress: number) => void) => void;
       removeDownloadComplete: (callback: () => void) => void;
     };
+  }
+}
+
+// Webview tag declarations for Electron
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      webview: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        src?: string;
+        partition?: string;
+        nodeintegration?: string;
+        disablewebsecurity?: string;
+        allowpopups?: string;
+        preload?: string;
+      };
+    }
+  }
+
+  interface HTMLWebViewElement extends HTMLElement {
+    src: string;
+    partition: string;
+    getWebContents(): Electron.WebContents;
+    executeJavaScript(code: string): Promise<any>;
+    addEventListener<K extends keyof HTMLElementEventMap>(
+      type: K,
+      listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
+      options?: boolean | AddEventListenerOptions
+    ): void;
+    addEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions
+    ): void;
+    removeEventListener<K extends keyof HTMLElementEventMap>(
+      type: K,
+      listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
+      options?: boolean | EventListenerOptions
+    ): void;
+    removeEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | EventListenerOptions
+    ): void;
   }
 }
 
