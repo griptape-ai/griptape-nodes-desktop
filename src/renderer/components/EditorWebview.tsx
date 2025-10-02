@@ -8,68 +8,66 @@ interface EditorWebviewProps {
 export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [preloadPath, setPreloadPath] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const webviewRef = useRef<HTMLWebViewElement>(null);
+
+  // Check auth before doing anything else
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        console.log('Checking auth before creating webview...');
+        const authData = await window.oauthAPI.checkAuth();
+
+        if (!authData.isAuthenticated || !authData.tokens) {
+          console.error('Not authenticated, cannot load editor');
+          setError('Not authenticated. Please log in first.');
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        console.log('Auth confirmed, ready to create webview');
+        setAuthReady(true);
+        setIsCheckingAuth(false);
+      } catch (err) {
+        console.error('Failed to check auth:', err);
+        setError('Failed to verify authentication');
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Get the webview preload path only after auth is ready
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
+    try {
+      const path = window.electron.getWebviewPreloadPath();
+      console.log('Got webview preload path:', path);
+      setPreloadPath(path);
+    } catch (err) {
+      console.error('Failed to get webview preload path:', err);
+      setError('Failed to initialize editor');
+    }
+  }, [authReady]);
 
   useEffect(() => {
     const webview = webviewRef.current;
 
-    console.log('EditorWebview useEffect running, webview:', webview);
+    console.log('EditorWebview useEffect running, webview:', webview, 'preloadPath:', preloadPath);
 
-    if (!webview || hasInitialized) {
-      console.log('Skipping initialization - webview:', !!webview, 'hasInitialized:', hasInitialized);
+    if (!webview || hasInitialized || !preloadPath) {
+      console.log('Skipping initialization - webview:', !!webview, 'hasInitialized:', hasInitialized, 'preloadPath:', preloadPath);
       return;
     }
 
     const handleLoad = async () => {
-      try {
-        console.log('Editor webview loaded, injecting auth...');
-
-        // Get auth tokens from main process
-        const authData = await window.oauthAPI.checkAuth();
-
-        if (!authData.isAuthenticated || !authData.tokens) {
-          throw new Error('Not authenticated');
-        }
-
-        const { tokens, user } = authData;
-
-        console.log('Got auth tokens, expires_in:', tokens.expires_in);
-
-        // Calculate expiration time (current time + expires_in)
-        const expiresAt = Math.floor(Date.now() / 1000) + (tokens.expires_in || 86400);
-
-        // Auth0 localStorage key format
-        const auth0Key = '@@auth0spajs@@::bK5Fijuoy90ftmcwVUZABA5THOZyzHnH::https://cloud.griptape.ai/api::openid profile email';
-
-        // Auth0 cache entry format
-        const auth0CacheEntry = {
-          body: {
-            client_id: 'bK5Fijuoy90ftmcwVUZABA5THOZyzHnH',
-            access_token: tokens.access_token,
-            id_token: tokens.id_token,
-            scope: 'openid profile email',
-            expires_in: tokens.expires_in || 86400,
-            token_type: tokens.token_type || 'Bearer',
-            decodedToken: {
-              user: user
-            }
-          },
-          expiresAt
-        };
-
-        console.log('Injecting auth with expiresAt:', expiresAt, 'current time:', Math.floor(Date.now() / 1000));
-
-        // Inject into webview's localStorage
-        await webview.executeJavaScript(`
-          localStorage.setItem('${auth0Key}', ${JSON.stringify(JSON.stringify(auth0CacheEntry))});
-          console.log('✅ Auth injected into editor localStorage');
-        `);
-
-        console.log('Auth token injected into editor webview successfully');
-      } catch (err) {
-        console.error('Failed to inject auth into editor:', err);
-        setError(err instanceof Error ? err.message : 'Failed to authenticate editor');
-      }
+      console.log('Editor webview loaded successfully');
     };
 
     const handleLoadFail = (event: any) => {
@@ -131,35 +129,91 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       webview.removeEventListener('new-window', handleNewWindow);
       webview.removeEventListener('will-navigate', handleWillNavigate);
     };
-  }, [hasInitialized]);
+  }, [hasInitialized, preloadPath]);
 
-  const content = error ? (
-    <div
-      style={{
-        position: 'fixed',
-        top: '48px',
-        left: '256px',
-        right: 0,
-        bottom: 0,
-        display: isVisible ? 'flex' : 'none',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'var(--background)',
-        zIndex: 10
-      }}
-    >
-      <div className="text-center max-w-md">
-        <h2 className="text-xl font-semibold mb-2 text-destructive">Failed to Load Editor</h2>
-        <p className="text-muted-foreground mb-4">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-        >
-          Reload
-        </button>
+  // Show loading state while checking auth
+  if (isCheckingAuth) {
+    const content = (
+      <div
+        style={{
+          position: 'fixed',
+          top: '48px',
+          left: '256px',
+          right: 0,
+          bottom: 0,
+          display: isVisible ? 'flex' : 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--background)',
+          zIndex: 10
+        }}
+      >
+        <div className="text-center">
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
       </div>
-    </div>
-  ) : (
+    );
+    return ReactDOM.createPortal(content, document.body);
+  }
+
+  // Show error state
+  if (error) {
+    const content = (
+      <div
+        style={{
+          position: 'fixed',
+          top: '48px',
+          left: '256px',
+          right: 0,
+          bottom: 0,
+          display: isVisible ? 'flex' : 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--background)',
+          zIndex: 10
+        }}
+      >
+        <div className="text-center max-w-md">
+          <h2 className="text-xl font-semibold mb-2 text-destructive">Failed to Load Editor</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+    return ReactDOM.createPortal(content, document.body);
+  }
+
+  // Only render webview if auth is ready and we have preload path
+  if (!authReady || !preloadPath) {
+    const content = (
+      <div
+        style={{
+          position: 'fixed',
+          top: '48px',
+          left: '256px',
+          right: 0,
+          bottom: 0,
+          display: isVisible ? 'flex' : 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--background)',
+          zIndex: 10
+        }}
+      >
+        <div className="text-center">
+          <p className="text-muted-foreground">Initializing editor...</p>
+        </div>
+      </div>
+    );
+    return ReactDOM.createPortal(content, document.body);
+  }
+
+  const content = (
     <div
       style={{
         position: 'fixed',
@@ -179,6 +233,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
           border: 'none'
         }}
         partition="persist:editor"
+        preload={preloadPath || undefined}
       />
     </div>
   );

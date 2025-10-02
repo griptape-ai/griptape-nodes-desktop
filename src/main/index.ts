@@ -20,6 +20,7 @@ import { UpdateService } from '../common/services/update/update-service';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
+declare const WEBVIEW_PRELOAD_PRELOAD_WEBPACK_ENTRY: string;
 
 
 // Build info injected at compile time
@@ -482,6 +483,13 @@ const setupIPC = () => {
     e.returnValue = MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY;
   });
 
+  ipcMain.on('get-webview-preload-path', (e) => {
+    const preloadPath = WEBVIEW_PRELOAD_PRELOAD_WEBPACK_ENTRY;
+    // Ensure the path has the file:// protocol
+    const fileUrl = preloadPath.startsWith('file://') ? preloadPath : `file://${preloadPath}`;
+    e.returnValue = fileUrl;
+  });
+
   // Handle environment info requests (from persisted data)
   ipcMain.handle('get-environment-info', async () => {
     try {
@@ -525,6 +533,21 @@ const setupIPC = () => {
     return {
       isAuthenticated: false
     };
+  });
+
+  // Synchronous auth check for webview preload
+  ipcMain.on('auth:check-sync', (event) => {
+    const credentials = authService.getStoredCredentials();
+    if (credentials) {
+      event.returnValue = {
+        isAuthenticated: true,
+        ...credentials
+      };
+    } else {
+      event.returnValue = {
+        isAuthenticated: false
+      };
+    }
   });
 
   // Handle Auth Login

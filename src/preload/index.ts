@@ -35,7 +35,8 @@ const velopackApi: VelopackBridgeApi = {
 contextBridge.exposeInMainWorld("velopackApi", velopackApi);
 
 contextBridge.exposeInMainWorld('electron', {
-  getPreloadPath: () => ipcRenderer.sendSync('get-preload-path')
+  getPreloadPath: () => ipcRenderer.sendSync('get-preload-path'),
+  getWebviewPreloadPath: () => ipcRenderer.sendSync('get-webview-preload-path')
 });
 
 // Expose APIs to renderer process

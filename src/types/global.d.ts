@@ -105,6 +105,10 @@ declare global {
       isPackaged: () => Promise<boolean>;
       openExternal: (url: string) => Promise<void>;
     };
+    electron: {
+      getPreloadPath: () => string;
+      getWebviewPreloadPath: () => string;
+    };
     updateAPI: {
       checkForUpdates: () => Promise<{ success: boolean }>;
       isSupported: () => Promise<boolean>;

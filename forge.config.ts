@@ -58,6 +58,12 @@ const config: ForgeConfig = {
               js: './src/preload/index.ts',
             },
           },
+          {
+            name: 'webview_preload',
+            preload: {
+              js: './src/preload/webview-preload.ts',
+            },
+          },
         ],
       },
     }),
