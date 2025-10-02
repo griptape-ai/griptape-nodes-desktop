@@ -188,8 +188,9 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       return [];
     }
     let libraryPaths = await findFiles(dir, "griptape_nodes_library.json");
-    // Filter out advanced media lib for now, until we add library management.
-    libraryPaths = libraryPaths.filter(value => !value.includes("griptape_nodes_advanced_media_library"));
+    // Just return all of the libraries we find. If you wanted to exclude somthing,
+    // then you can filter it out of this list. Long term, we should have "real"
+    // library management.
     return libraryPaths
   }
 
