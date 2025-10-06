@@ -19,6 +19,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref }}
           lfs: true
 
       - name: Check for existing release
@@ -75,6 +76,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref }}
           lfs: true
 
       - name: Check if tag already exists
@@ -340,6 +342,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -389,6 +393,7 @@ jobs:
 
           # Create the release
           gh release create "$TAG_NAME" \
+            --target "${{ github.sha }}" \
             --title "$RELEASE_NAME" \
             --notes-file release_notes.md \
             ${MACOS_DMG:+$MACOS_DMG} \
