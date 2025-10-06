@@ -48,7 +48,10 @@ contextBridge.exposeInMainWorld('oauthAPI', {
   login: () => ipcRenderer.invoke('auth:login'),
   logout: () => ipcRenderer.invoke('auth:logout'),
   checkAuth: () => ipcRenderer.invoke('auth:check'),
-  refreshToken: (refreshToken: string) => ipcRenderer.invoke('auth:refresh-token', refreshToken)
+  refreshToken: (refreshToken: string) => ipcRenderer.invoke('auth:refresh-token', refreshToken),
+  willPromptForKeychain: () => ipcRenderer.invoke('auth:will-prompt-keychain'),
+  hasExistingEncryptedStore: () => ipcRenderer.invoke('auth:has-existing-encrypted-store'),
+  loadFromPersistentStore: () => ipcRenderer.invoke('auth:load-from-persistent-store')
 });
 
 contextBridge.exposeInMainWorld('engineAPI', {
@@ -74,6 +77,8 @@ contextBridge.exposeInMainWorld('engineAPI', {
 
 contextBridge.exposeInMainWorld('griptapeAPI', {
   getWorkspace: () => ipcRenderer.invoke('gtn:get-workspace'),
+  getDefaultWorkspace: () => ipcRenderer.invoke('gtn:get-default-workspace'),
+  setWorkspacePreference: (directory: string) => ipcRenderer.invoke('gtn:set-workspace-preference', directory),
   setWorkspace: (directory: string) => ipcRenderer.invoke('gtn:set-workspace', directory),
   selectDirectory: () => ipcRenderer.invoke('gtn:select-directory'),
   refreshConfig: () => ipcRenderer.invoke('gtn:refresh-config'),
@@ -112,5 +117,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getEnvVar: (key: string) => ipcRenderer.invoke('get-env-var', key),
   isPackaged: () => ipcRenderer.invoke('is-packaged'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  getPlatform: () => ipcRenderer.invoke('get-platform'),
+  restartApp: () => ipcRenderer.invoke('app:restart'),
+});
+
+contextBridge.exposeInMainWorld('onboardingAPI', {
+  isOnboardingComplete: () => ipcRenderer.invoke('onboarding:is-complete'),
+  isCredentialStorageEnabled: () => ipcRenderer.invoke('onboarding:is-credential-storage-enabled'),
+  setCredentialStoragePreference: (enabled: boolean) => ipcRenderer.invoke('onboarding:set-credential-storage-preference', enabled),
+  completeOnboarding: (credentialStorageEnabled: boolean) => ipcRenderer.invoke('onboarding:complete', credentialStorageEnabled),
+  resetOnboarding: () => ipcRenderer.invoke('onboarding:reset'),
+  enableCredentialStorage: () => ipcRenderer.invoke('onboarding:enable-credential-storage'),
+  testEncryption: () => ipcRenderer.invoke('onboarding:test-encryption'),
+  isKeychainVerificationSeen: () => ipcRenderer.invoke('onboarding:is-keychain-verification-seen'),
+  setKeychainVerificationSeen: (seen: boolean) => ipcRenderer.invoke('onboarding:set-keychain-verification-seen', seen),
+  isWorkspaceSetupComplete: () => ipcRenderer.invoke('onboarding:is-workspace-setup-complete'),
+  setWorkspaceSetupComplete: (complete: boolean) => ipcRenderer.invoke('onboarding:set-workspace-setup-complete', complete)
 });
 

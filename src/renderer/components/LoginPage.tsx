@@ -1,5 +1,5 @@
 import { ExternalLink } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../utils/utils';
 import headerLogoSrc from '../../assets/griptape_nodes_header_logo.svg';
@@ -9,13 +9,48 @@ const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const [browserOpened, setBrowserOpened] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rememberCredentials, setRememberCredentials] = useState(false);
+  const [platform, setPlatform] = useState<NodeJS.Platform | null>(null);
+
+  // Load saved credential storage preference and platform on mount
+  useEffect(() => {
+    const loadPreference = async () => {
+      try {
+        const enabled = await window.onboardingAPI.isCredentialStorageEnabled();
+        setRememberCredentials(enabled);
+
+        const platformValue = await window.electronAPI.getPlatform();
+        setPlatform(platformValue);
+      } catch (error) {
+        console.error('Failed to load credential storage preference:', error);
+      }
+    };
+    loadPreference();
+  }, []);
+
+  const handleCheckboxChange = async (checked: boolean) => {
+    setRememberCredentials(checked);
+    if (!checked) {
+      setError(null);
+    }
+    // Persist the preference immediately
+    try {
+      await window.onboardingAPI.setCredentialStoragePreference(checked);
+    } catch (error) {
+      console.error('Failed to save credential storage preference:', error);
+    }
+  };
 
   const handleLogin = async () => {
     try {
       setError(null);
       setBrowserOpened(true);
+
       await login();
+
       // The login promise will resolve when auth completes and automatically redirect
+      // Credentials are stored in-memory for now
+      // If user checked "remember credentials", they'll be persisted during onboarding
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Login failed');
       setBrowserOpened(false);
@@ -78,6 +113,27 @@ const LoginPage: React.FC = () => {
                 <ExternalLink className="w-5 h-5" />
                 Log In with Browser
               </button>
+
+              {/* Credential Storage Checkbox */}
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={rememberCredentials}
+                    onChange={(e) => handleCheckboxChange(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-800 text-sky-600 focus:ring-sky-500 focus:ring-offset-gray-900"
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                      Remember my credentials
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Securely stores your credentials.
+                      {platform === 'darwin' && ' On macOS, you\'ll be prompted to grant keychain access after login.'}
+                    </p>
+                  </div>
+                </label>
+              </div>
 
               {error && (
                 <div className="mt-6">

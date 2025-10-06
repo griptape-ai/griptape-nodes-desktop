@@ -72,7 +72,13 @@ const config: ForgeConfig = {
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,
-      [FuseV1Options.EnableCookieEncryption]: true,
+      // Cookie encryption is disabled to prevent keychain prompts on first launch.
+      // IMPORTANT: With this disabled, we MUST use in-memory partitions for all BrowserWindows
+      // and webviews (e.g., partition: 'memory-only' instead of partition: 'persist:name').
+      // In-memory partitions store cookies only in RAM and never write to disk, preventing
+      // accidental storage of sensitive data in plain text. We use electron-store with
+      // safeStorage for explicit credential encryption when the user opts in.
+      [FuseV1Options.EnableCookieEncryption]: false,
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
-import Store from 'electron-store';
+import { PersistentStore } from '../stores/persistent-store';
 
 interface OAuthTokens {
   access_token: string;
@@ -26,14 +26,10 @@ interface AuthData {
 }
 
 export class CustomAuthService {
-  private store: any;
+  private store: PersistentStore<AuthData>;
 
   constructor() {
-    // Initialize secure storage
-    this.store = new Store({
-      name: 'auth-storage',
-      encryptionKey: 'griptape-nodes-auth'
-    });
+    this.store = new PersistentStore<AuthData>('auth-storage', false);
   }
 
 

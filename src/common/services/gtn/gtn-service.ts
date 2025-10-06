@@ -80,13 +80,12 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     super();
     this.store = new Store({
       name: 'gtn-workspace',
-      defaults: {}
     });
 
     // Listen for store changes
-    this.store.onDidChange('workspaceDirectory', (newValue) => {
-      if (newValue) {
-        this.emit('workspace-changed', newValue);
+    this.store.onDidAnyChange((newValue: any, oldValue: any) => {
+      if (newValue?.workspaceDirectory !== oldValue?.workspaceDirectory && newValue?.workspaceDirectory) {
+        this.emit('workspace-changed', newValue.workspaceDirectory);
       }
     });
   }

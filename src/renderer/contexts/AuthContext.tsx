@@ -58,20 +58,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email: 'dev@griptape.ai',
           email_verified: true
         };
-        
+
         const mockTokens = {
           access_token: devApiKey,
           id_token: 'dev-id-token',
           token_type: 'Bearer',
           expires_in: 86400
         };
-        
+
         setUser(mockUser);
         setTokens(mockTokens);
         setApiKey(devApiKey);
         setIsAuthenticated(true);
         setIsLoading(false);
         return;
+      }
+
+      // Load from persistent store if credential storage was previously enabled
+      const credentialStorageEnabled = await window.onboardingAPI.isCredentialStorageEnabled();
+      if (credentialStorageEnabled) {
+        const hasEncryptedStore = await window.oauthAPI.hasExistingEncryptedStore();
+        if (hasEncryptedStore) {
+          await window.oauthAPI.loadFromPersistentStore();
+        }
       }
 
       // Check stored auth from backend (electron-store)

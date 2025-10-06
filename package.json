@@ -1,7 +1,7 @@
 {
   "name": "griptape-nodes-desktop",
   "productName": "Griptape Nodes",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "My Electron application description",
   "main": ".webpack/main",
   "scripts": {
@@ -61,7 +61,7 @@
     "autoprefixer": "^10.4.21",
     "clsx": "^2.1.1",
     "electron-log": "^5.4.3",
-    "electron-store": "^10.1.0",
+    "electron-store": "^11.0.2",
     "express": "^5.1.0",
     "extract-zip": "^2.0.1",
     "lucide-react": "^0.542.0",

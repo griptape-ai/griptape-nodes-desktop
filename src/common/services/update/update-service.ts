@@ -18,9 +18,8 @@ export class UpdateService {
 
   constructor(isPackaged: boolean) {
     this.isPackaged = isPackaged;
-    this.store = new Store<UpdateStoreData>({
+    this.store = new Store({
       name: isPackaged ? 'update-config' : 'update-config-dev',
-      defaults: {}
     });
 
     // Get the build-time channel (will be undefined when not packaged)
