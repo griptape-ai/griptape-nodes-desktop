@@ -10,13 +10,17 @@ const LoginPage: React.FC = () => {
   const [browserOpened, setBrowserOpened] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rememberCredentials, setRememberCredentials] = useState(false);
+  const [platform, setPlatform] = useState<NodeJS.Platform | null>(null);
 
-  // Load saved credential storage preference on mount
+  // Load saved credential storage preference and platform on mount
   useEffect(() => {
     const loadPreference = async () => {
       try {
         const enabled = await window.onboardingAPI.isCredentialStorageEnabled();
         setRememberCredentials(enabled);
+
+        const platformValue = await window.electronAPI.getPlatform();
+        setPlatform(platformValue);
       } catch (error) {
         console.error('Failed to load credential storage preference:', error);
       }
@@ -124,7 +128,8 @@ const LoginPage: React.FC = () => {
                       Remember my credentials
                     </span>
                     <p className="text-xs text-gray-500 mt-1">
-                      Securely stores your API key in the system keychain. On macOS, you'll be prompted to grant keychain access after login.
+                      Securely stores your credentials.
+                      {platform === 'darwin' && ' On macOS, you\'ll be prompted to grant keychain access after login.'}
                     </p>
                   </div>
                 </label>
