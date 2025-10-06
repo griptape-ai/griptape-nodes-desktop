@@ -30,6 +30,17 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
       // - No encrypted store exists yet (haven't done keychain flow)
       const needsKeychainStep = platform === 'darwin' && credentialStorageEnabled && !hasExistingStore;
 
+      // For non-macOS platforms, auto-enable credential storage if user opted in
+      // Windows/Linux don't need keychain permission, so we enable silently
+      if (platform !== 'darwin' && credentialStorageEnabled && !hasExistingStore) {
+        try {
+          await window.onboardingAPI.enableCredentialStorage();
+          console.log('Auto-enabled credential storage for non-macOS platform');
+        } catch (error) {
+          console.error('Failed to auto-enable credential storage:', error);
+        }
+      }
+
       // Check if workspace step is needed (first time only)
       const needsWorkspaceStep = !workspaceSetupComplete;
 
