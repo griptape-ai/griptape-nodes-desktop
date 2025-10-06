@@ -232,7 +232,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
           height: '100%',
           border: 'none'
         }}
-        partition="persist:editor"
+        partition="editor"
         preload={preloadPath || undefined}
       />
     </div>

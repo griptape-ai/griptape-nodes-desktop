@@ -1,4 +1,4 @@
-import { UpdateManager, VelopackApp } from 'velopack';
+import { VelopackApp } from 'velopack';
 
 // Velopack builder needs to be the first thing to run in the main process.
 // In some cases, it might quit/restart the process to perform tasks.
@@ -17,6 +17,7 @@ import { logger } from '@/main/utils/logger';
 import { isPackaged } from '@/main/utils/is-packaged';
 import { PythonService } from '../common/services/python/python-service';
 import { UpdateService } from '../common/services/update/update-service';
+import { OnboardingService } from '../common/services/onboarding-service';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -71,9 +72,12 @@ if (!isPackaged() && process.env.AUTH_SCHEME === 'custom') {
 }
 
 // Services
+const onboardingService = new OnboardingService();
 const uvService = new UvService(userDataPath);
 const environmentInfoService = new EnvironmentInfoService(userDataPath);
 const pythonService = new PythonService(userDataPath, uvService);
+
+// Initialize auth service without persistence - it will be enabled via enablePersistence() when needed
 const authService = new HttpAuthService();
 // const authService = (process.env.AUTH_SCHEME === 'custom')
 //   ? new CustomAuthService()
@@ -97,6 +101,7 @@ const createWindow = () => {
       nodeIntegration: true,
       webviewTag: true,
       // contextIsolation: true,
+      partition: 'main', // Non-persistent partition - no keychain prompt
     },
   });
 
@@ -132,6 +137,7 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
+  onboardingService.start();
   authService.start();
   uvService.start();
   pythonService.start();
@@ -518,11 +524,24 @@ const setupIPC = () => {
   ipcMain.handle('auth:logout', async () => {
     authService.clearCredentials();
 
+    // Reset credential storage preference
+    onboardingService.setCredentialStorageEnabled(false);
+
     return { success: true };
   });
 
   // Check if user is already authenticated
   ipcMain.handle('auth:check', async () => {
+    // Only return stored credentials if credential storage is enabled
+    const credentialStorageEnabled = onboardingService.isCredentialStorageEnabled();
+
+    if (!credentialStorageEnabled) {
+      logger.info('auth:check - Credential storage is disabled, not returning stored credentials');
+      return {
+        isAuthenticated: false
+      };
+    }
+
     const credentials = authService.getStoredCredentials();
     if (credentials) {
       // Check if token is expired or missing expiration time
@@ -594,6 +613,15 @@ const setupIPC = () => {
     await shell.openExternal(url);
   });
 
+  ipcMain.handle('get-platform', () => {
+    return process.platform;
+  });
+
+  ipcMain.handle('app:restart', () => {
+    app.relaunch();
+    app.quit();
+  });
+
   // Engine Service handlers
   ipcMain.handle('engine:get-status', () => {
     return engineService.getStatus();
@@ -618,6 +646,14 @@ const setupIPC = () => {
   ipcMain.handle('gtn:get-workspace', async () => {
     await gtnService.waitForReady();
     return gtnService.workspaceDirectory;
+  });
+
+  ipcMain.handle('gtn:get-default-workspace', () => {
+    return gtnDefaultWorkspaceDir;
+  });
+
+  ipcMain.handle('gtn:set-workspace-preference', (event, directory: string) => {
+    gtnService.workspaceDirectory = directory;
   });
 
   ipcMain.handle('gtn:set-workspace', async (event, directory: string) => {
@@ -648,6 +684,137 @@ const setupIPC = () => {
 
   ipcMain.handle('update:is-supported', () => {
     return updateService.isUpdateSupported();
+  });
+
+  // Onboarding service handlers
+  ipcMain.handle('onboarding:is-complete', () => {
+    return onboardingService.isOnboardingComplete();
+  });
+
+  ipcMain.handle('onboarding:is-credential-storage-enabled', () => {
+    return onboardingService.isCredentialStorageEnabled();
+  });
+
+  ipcMain.handle('onboarding:complete', async (event, credentialStorageEnabled: boolean) => {
+    // Just mark onboarding as complete
+    // Credential storage is now handled at login time, so we don't modify that setting here
+    onboardingService.setOnboardingComplete(true);
+
+    return { success: true };
+  });
+
+  ipcMain.handle('onboarding:reset', () => {
+    onboardingService.resetOnboarding();
+    return { success: true };
+  });
+
+  ipcMain.handle('onboarding:set-credential-storage-preference', (event, enabled: boolean) => {
+    onboardingService.setCredentialStorageEnabled(enabled);
+    return { success: true };
+  });
+
+  ipcMain.handle('onboarding:enable-credential-storage', () => {
+    authService.enablePersistence();
+    onboardingService.setCredentialStorageEnabled(true);
+    onboardingService.setKeychainAccessGranted(true);
+    return { success: true };
+  });
+
+  ipcMain.handle('auth:load-from-persistent-store', () => {
+    authService.loadFromPersistentStore();
+    return { success: true };
+  });
+
+  ipcMain.handle('onboarding:is-keychain-verification-seen', () => {
+    return onboardingService.isKeychainVerificationSeen();
+  });
+
+  ipcMain.handle('onboarding:set-keychain-verification-seen', (event, seen: boolean) => {
+    onboardingService.setKeychainVerificationSeen(seen);
+    return { success: true };
+  });
+
+  ipcMain.handle('onboarding:is-workspace-setup-complete', () => {
+    return onboardingService.isWorkspaceSetupComplete();
+  });
+
+  ipcMain.handle('onboarding:set-workspace-setup-complete', (event, complete: boolean) => {
+    onboardingService.setWorkspaceSetupComplete(complete);
+    return { success: true };
+  });
+
+  // Test encryption to trigger keychain prompt immediately
+  ipcMain.handle('onboarding:test-encryption', async () => {
+    try {
+      // Import safeStorage
+      const { safeStorage } = await import('electron');
+
+      // Check if encryption is available
+      if (!safeStorage.isEncryptionAvailable()) {
+        return {
+          success: false,
+          error: 'Encryption not available on this platform'
+        };
+      }
+
+      // Try to encrypt a test string - this will trigger the keychain prompt
+      const testString = 'test-encryption-access';
+      const encrypted = safeStorage.encryptString(testString);
+
+      // Try to decrypt to verify it worked
+      const decrypted = safeStorage.decryptString(encrypted);
+
+      if (decrypted !== testString) {
+        return {
+          success: false,
+          error: 'Encryption test failed: decrypted value does not match'
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Encryption test failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown encryption error'
+      };
+    }
+  });
+
+  // Auth service handlers for keychain detection
+  ipcMain.handle('auth:will-prompt-keychain', () => {
+    // NOTE: This is not ideal, but the best we can do with available APIs.
+    //
+    // What we'd ideally want: Direct query to macOS for "does this app have keychain permission?"
+    // Why that's not possible: No such API exists in Electron or macOS that doesn't potentially
+    // trigger the permission prompt itself.
+    //
+    // What we're doing instead: Inferring permission state from two passive signals:
+    // 1. Does the encrypted store file exist? (filesystem check only)
+    // 2. Have we successfully initialized the store before? (flag in non-encrypted store)
+    //
+    // This works well because:
+    // - If either signal is true, keychain access was definitely granted before
+    // - If both are false, we've never successfully accessed keychain (likely will prompt)
+    // - We never call any Electron APIs that might trigger the prompt during detection
+    //
+    // Edge case: User manually deletes store file AND we reset the flag → Will see explanation
+    // again, which is acceptable (better than skipping explanation when prompt will appear)
+
+    const hasExistingStore = authService.hasExistingEncryptedStore();
+    const hasAccessFlag = onboardingService.hasKeychainAccess();
+
+    logger.info('Keychain detection:', { hasExistingStore, hasAccessFlag });
+
+    // If store exists OR flag is set, we won't prompt (permission already granted)
+    const willPrompt = !hasExistingStore && !hasAccessFlag;
+
+    return willPrompt;
+  });
+
+  // Check if encrypted credentials store exists
+  ipcMain.handle('auth:has-existing-encrypted-store', () => {
+    return authService.hasExistingEncryptedStore();
   });
 };
 

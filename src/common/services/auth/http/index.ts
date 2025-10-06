@@ -1,9 +1,13 @@
 import { Server } from 'http';
 import { EventEmitter } from "node:events";
-import { BrowserWindow, shell } from 'electron';
-import Store from 'electron-store';
+import { BrowserWindow, shell, app } from 'electron';
 import express from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { logger } from '@/main/utils/logger';
+import { Store } from '../stores/base-store';
+import { InMemoryStore } from '../stores/in-memory-store';
+import { PersistentStore } from '../stores/persistent-store';
 
 const PORT = 5172;
 const REDIRECT_URI = `http://localhost:${PORT}/`;
@@ -24,26 +28,88 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   private server: Server | null = null;
   private authResolve: ((value: any) => void) | null = null;
   private authReject: ((reason?: any) => void) | null = null;
-  private store: any;  // Secure storage
+  private store: Store<AuthData>;
 
   constructor() {
     super();
-    this.store = new Store();
+    // Start with in-memory storage
+    this.store = new InMemoryStore<AuthData>();
+  }
+
+  // Check if encrypted store file already exists (indicates prior keychain access)
+  hasExistingEncryptedStore(): boolean {
+    try {
+      const storePath = path.join(app.getPath('userData'), 'auth-credentials.json');
+      return fs.existsSync(storePath);
+    } catch (error) {
+      logger.error('Failed to check for existing store:', error);
+      return false;
+    }
+  }
+
+  // Load credentials from existing persistent store (triggers keychain access on macOS)
+  // This should be called on app start if credential storage was previously enabled
+  loadFromPersistentStore(): void {
+    if (this.store instanceof PersistentStore) {
+      logger.info('HttpAuthService: Store already persistent');
+      return;
+    }
+
+    if (!this.hasExistingEncryptedStore()) {
+      logger.info('HttpAuthService: No existing encrypted store found');
+      return;
+    }
+
+    logger.info('HttpAuthService: Loading from persistent store');
+
+    // Replace in-memory store with persistent store
+    this.store = new PersistentStore<AuthData>('auth-credentials', true);
+
+    // Set up event listeners for the persistent store
+    (this.store as PersistentStore<AuthData>).on('change:apiKey', (apiKey: string) => {
+      this.emit('apiKey', apiKey);
+    });
+
+    // Propagate the initial state
+    const apiKey = this.store.get('apiKey');
+    if (apiKey && typeof apiKey === 'string') {
+      this.emit('apiKey', apiKey);
+    }
+  }
+
+  // Enable persistence and initialize encrypted store (triggers keychain access on macOS)
+  // This should be called after user opts in during onboarding
+  enablePersistence(): void {
+    if (this.store instanceof PersistentStore) {
+      logger.info('HttpAuthService: Store already persistent');
+      return;
+    }
+
+    logger.info('HttpAuthService: Enabling persistence');
+
+    // Convert in-memory store to persistent store
+    this.store = (this.store as InMemoryStore<AuthData>).toPersistent('auth-credentials', true);
+
+    // Set up event listeners for the persistent store
+    (this.store as PersistentStore<AuthData>).on('change:apiKey', (apiKey: string) => {
+      this.emit('apiKey', apiKey);
+    });
+
+    // Propagate the initial state
+    const apiKey = this.store.get('apiKey');
+    if (apiKey && typeof apiKey === 'string') {
+      this.emit('apiKey', apiKey);
+    }
   }
 
   // Start a local dev server in some kind of lifecycle hook.
   async start() {
-
-    // React to changes to api key.
-    this.store.onDidChange(
-      'apiKey',
-      (newValue: string, oldValue) => this.emit('apiKey', newValue),
-    );
-
-    // Propagate the initial state? Not sure if this is needed or not.
-    const apiKey = this.store.get('apiKey');
-    if (apiKey) {
-      this.emit('apiKey', apiKey);
+    // Propagate the initial state for in-memory store
+    if (this.store instanceof InMemoryStore) {
+      const apiKey = this.store.get('apiKey');
+      if (apiKey) {
+        this.emit('apiKey', apiKey);
+      }
     }
 
     if (this.server) {
@@ -135,14 +201,14 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     return new Promise(resolve => this.once('apiKey', apiKey => resolve(apiKey)))
   }
 
-  // Check if we have stored credentials\
+  // Check if we have stored credentials
   hasStoredCredentials(): boolean {
     const apiKey = this.store.get('apiKey');
     const tokens = this.store.get('tokens');
     const user = this.store.get('user');
 
     // Only return if we have complete credentials
-    return apiKey && tokens && user;
+    return !!(apiKey && tokens && user);
   }
 
   // Get stored credentials
@@ -163,13 +229,24 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     };
   }
 
-  // Clear stored credentials (but keep API key)
+  // Clear all credentials and delete encrypted store if it exists
   clearCredentials(): void {
-    // Keep the API key but clear user session
-    const apiKey = this.store.get('apiKey');
-    this.store.clear();
-    if (apiKey) {
-      this.store.set('apiKey', apiKey);
+    logger.info('HttpAuthService: Clearing credentials');
+
+    if (this.store instanceof PersistentStore) {
+      // Delete the encrypted store file and revert to in-memory storage
+      try {
+        (this.store as PersistentStore<AuthData>).deleteStore();
+        logger.info('HttpAuthService: Deleted encrypted store, reverting to in-memory storage');
+      } catch (error) {
+        logger.error('HttpAuthService: Failed to delete encrypted store:', error);
+      }
+
+      // Replace with fresh in-memory store
+      this.store = new InMemoryStore<AuthData>();
+    } else {
+      // Just clear in-memory store
+      this.store.clear();
     }
   }
 

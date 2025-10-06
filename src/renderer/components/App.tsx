@@ -1,25 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
-import LoadingSpinner from './LoadingSpinner';
 import LoginPage from './LoginPage';
 import MainApp from './MainApp';
+import OnboardingWizard from './onboarding/OnboardingWizard';
 
 const AppContent: React.FC = () => {
   const isElectron = typeof window.electronAPI !== 'undefined';
 
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(true);
+
+  // Reset wizard state when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setShowOnboardingWizard(true);
+    }
+  }, [isAuthenticated]);
 
   if (!isElectron) {
     return <p>NOT ELECTRON :p</p>
   }
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
   if (!isAuthenticated) {
     return <LoginPage />;
+  }
+
+  if (showOnboardingWizard) {
+    return <OnboardingWizard onOnboardingComplete={() => setShowOnboardingWizard(false)} />;
   }
 
   return <MainApp />;

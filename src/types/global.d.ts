@@ -81,6 +81,7 @@ declare global {
           email_verified: boolean;
         };
       }>;
+      hasExistingEncryptedStore: () => Promise<boolean>;
       refreshToken: (refreshToken: string) => Promise<{
         success: boolean;
         tokens?: {
@@ -92,6 +93,8 @@ declare global {
         };
         error?: string;
       }>;
+      willPromptForKeychain: () => Promise<boolean>;
+      loadFromPersistentStore: () => Promise<{ success: boolean }>;
     };
     engineAPI: {
       getStatus: () => Promise<EngineStatus>;
@@ -107,6 +110,8 @@ declare global {
     };
     griptapeAPI: {
       getWorkspace: () => Promise<string>;
+      getDefaultWorkspace: () => Promise<string>;
+      setWorkspacePreference: (directory: string) => Promise<void>;
       setWorkspace: (directory: string) => Promise<{ success: boolean; error?: string }>;
       selectDirectory: () => Promise<string | null>;
       refreshConfig: () => Promise<void>;
@@ -117,6 +122,8 @@ declare global {
       getEnvVar: (key: string) => Promise<string | null>;
       isPackaged: () => Promise<boolean>;
       openExternal: (url: string) => Promise<void>;
+      getPlatform: () => Promise<NodeJS.Platform>;
+      restartApp: () => Promise<void>;
     };
     electron: {
       getPreloadPath: () => string;
@@ -131,6 +138,19 @@ declare global {
       removeDownloadStarted: (callback: () => void) => void;
       removeDownloadProgress: (callback: (event: any, progress: number) => void) => void;
       removeDownloadComplete: (callback: () => void) => void;
+    };
+    onboardingAPI: {
+      isOnboardingComplete: () => Promise<boolean>;
+      isCredentialStorageEnabled: () => Promise<boolean>;
+      setCredentialStoragePreference: (enabled: boolean) => Promise<{ success: boolean }>;
+      completeOnboarding: (credentialStorageEnabled: boolean) => Promise<{ success: boolean }>;
+      resetOnboarding: () => Promise<{ success: boolean }>;
+      enableCredentialStorage: () => Promise<{ success: boolean }>;
+      testEncryption: () => Promise<{ success: boolean; error?: string }>;
+      isKeychainVerificationSeen: () => Promise<boolean>;
+      setKeychainVerificationSeen: (seen: boolean) => Promise<{ success: boolean }>;
+      isWorkspaceSetupComplete: () => Promise<boolean>;
+      setWorkspaceSetupComplete: (complete: boolean) => Promise<{ success: boolean }>;
     };
   }
 }
