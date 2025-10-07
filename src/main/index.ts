@@ -162,9 +162,29 @@ app.on('ready', async () => {
     });
   });
 
+  // Listen for API key changes and update GTN config + start engine
+  authService.on('apiKey', async (apiKey) => {
+    logger.info('API key received, updating GTN configuration and starting engine');
+    try {
+      await gtnService.updateApiKey(apiKey);
+      // Start engine if it's not already running
+      if (engineService.getStatus() === 'ready') {
+        await engineService.startEngine();
+      }
+    } catch (error) {
+      logger.error('Failed to update GTN with API key or start engine:', error);
+    }
+  });
+
   createWindow();
 
-  engineService.startEngine();
+  // Only start engine if we already have authentication
+  if (authService.hasStoredCredentials()) {
+    logger.info('User authenticated, starting engine');
+    engineService.startEngine();
+  } else {
+    logger.info('User not authenticated, engine will start after login');
+  }
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

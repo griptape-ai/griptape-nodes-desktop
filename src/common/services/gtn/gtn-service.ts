@@ -97,15 +97,34 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     await this.installGtn();
     await this.syncLibraries();
     await this.registerLibraries();
+    
+    // Check if we already have an API key (user is authenticated)
+    const credentials = this.authService.getStoredCredentials();
+    const existingApiKey = credentials?.apiKey || null;
+    
+    // Initialize with API key if available, otherwise initialize without it
     await this.initialize({
-      apiKey: await this.authService.waitForApiKey(),
+      apiKey: existingApiKey || undefined,
       workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
       storageBackend: 'local',
     });
 
     this.isReady = true;
     this.emit('ready');
-    logger.info("gtn service ready");
+    logger.info("gtn service ready", existingApiKey ? "(with API key)" : "(without API key - will update after auth)");
+  }
+
+  /**
+   * Update configuration with API key after authentication
+   */
+  async updateApiKey(apiKey: string): Promise<void> {
+    logger.info("gtn service: updating configuration with API key");
+    await this.initialize({
+      apiKey,
+      workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
+      storageBackend: 'local',
+    });
+    logger.info("gtn service: API key updated");
   }
 
   async waitForReady(): Promise<void> {
