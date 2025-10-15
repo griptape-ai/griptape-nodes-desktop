@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setUser(result.user)
               setApiKey(result.apiKey)
               setIsAuthenticated(true)
-              
+
               // Report usage metrics when token refresh is successful
               reportUsageMetrics()
             } else {
@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(result.user)
           setApiKey(result.apiKey)
           setIsAuthenticated(true)
-          
+
           // Report usage metrics when authentication is successful
           reportUsageMetrics()
         }
@@ -197,7 +197,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setApiKey(result.apiKey || null)
         setIsAuthenticated(true)
         // Storage is handled by the backend (electron-store)
-        
+
         // Report usage metrics when login is successful
         reportUsageMetrics()
       } else {

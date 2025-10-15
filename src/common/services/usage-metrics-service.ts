@@ -25,9 +25,9 @@ export class UsageMetricsService {
   }
 
   private async reportUsage(accessToken: string, deviceId: string): Promise<void> {
-    const payload: UsageReportPayload = { 
-      type: 'nodes_desktop_app_launched', 
-      deviceId 
+    const payload: UsageReportPayload = {
+      type: 'nodes_desktop_app_launched',
+      deviceId
     }
 
     logger.info('UsageMetricsService: Reporting app launch to API')
@@ -43,7 +43,9 @@ export class UsageMetricsService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(`Usage report failed: ${response.status} ${response.statusText} - ${errorText}`)
+      throw new Error(
+        `Usage report failed: ${response.status} ${response.statusText} - ${errorText}`
+      )
     }
 
     logger.info('UsageMetricsService: Successfully reported app launch')

@@ -36,13 +36,13 @@ export class DeviceIdService {
     // Generate new device ID
     const deviceId = this.generateUuid()
     const generatedAt = new Date().toISOString()
-    
+
     // Store it
     this.store.set('deviceId', deviceId)
     this.store.set('generatedAt', generatedAt)
-    
+
     logger.info('DeviceIdService: Generated new device ID')
-    
+
     this.cachedDeviceId = deviceId
     return deviceId
   }
