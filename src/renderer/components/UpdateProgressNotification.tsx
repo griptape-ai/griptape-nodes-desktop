@@ -64,7 +64,7 @@ const UpdateProgressNotification: React.FC = () => {
             </div>
             {progress === 100 && (
               <p className="text-xs text-muted-foreground">
-                Download complete! You'll be prompted to restart.
+                Download complete! You&apos;ll be prompted to restart.
               </p>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { Moon, Sun, Monitor } from 'lucide-react'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
@@ -26,25 +26,26 @@ const Settings: React.FC = () => {
   const [channelError, setChannelError] = useState<boolean>(false)
   const [channelsError, setChannelsError] = useState<boolean>(false)
 
-  useEffect(() => {
-    loadEnvironmentInfo()
-    loadWorkspaceDirectory()
-    loadUpdateInfo()
-    window.griptapeAPI.refreshConfig()
+  const handleRefreshEnvironmentInfo = useCallback(async () => {
+    setRefreshing(true)
+    setError(null)
+    try {
+      const result = await window.pythonAPI.refreshEnvironmentInfo()
 
-    const handleWorkspaceChanged = (event: any, directory: string) => {
-      setWorkspaceDir(directory)
-      setLoadingWorkspace(false)
-    }
-
-    window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged)
-
-    return () => {
-      window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
+      if (result.success && result.data) {
+        setEnvironmentInfo(result.data)
+      } else {
+        setError(result.error || 'Failed to refresh environment information')
+      }
+    } catch (err) {
+      console.error('Failed to refresh environment info:', err)
+      setError('Failed to refresh environment information')
+    } finally {
+      setRefreshing(false)
     }
   }, [])
 
-  const loadEnvironmentInfo = async () => {
+  const loadEnvironmentInfo = useCallback(async () => {
     try {
       setError(null)
       const result = await window.pythonAPI.getEnvironmentInfo()
@@ -63,26 +64,25 @@ const Settings: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [handleRefreshEnvironmentInfo])
 
-  const handleRefreshEnvironmentInfo = async () => {
-    setRefreshing(true)
-    setError(null)
-    try {
-      const result = await window.pythonAPI.refreshEnvironmentInfo()
+  useEffect(() => {
+    loadEnvironmentInfo()
+    loadWorkspaceDirectory()
+    loadUpdateInfo()
+    window.griptapeAPI.refreshConfig()
 
-      if (result.success && result.data) {
-        setEnvironmentInfo(result.data)
-      } else {
-        setError(result.error || 'Failed to refresh environment information')
-      }
-    } catch (err) {
-      console.error('Failed to refresh environment info:', err)
-      setError('Failed to refresh environment information')
-    } finally {
-      setRefreshing(false)
+    const handleWorkspaceChanged = (event: any, directory: string) => {
+      setWorkspaceDir(directory)
+      setLoadingWorkspace(false)
     }
-  }
+
+    window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged)
+
+    return () => {
+      window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
+    }
+  }, [loadEnvironmentInfo])
 
   const copyApiKey = () => {
     if (apiKey) {

@@ -2,9 +2,8 @@ import { ChildProcess, spawn } from 'child_process'
 import { EventEmitter } from 'events'
 import { attachOutputForwarder } from '../../child-process/output-forwarder'
 import { getEnv } from '../../config/env'
-import { getCwd, getGtnExecutablePath } from '../../config/paths'
+import { getCwd } from '../../config/paths'
 import { GtnService } from '../gtn/gtn-service'
-import { PythonService } from '../python/python-service'
 import { logger } from '@/main/utils/logger'
 
 export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error'
@@ -243,7 +242,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
       })
 
       // Handle process exit
-      this.engineProcess.once('exit', (code, signal) => {
+      this.engineProcess.once('exit', (code, _signal) => {
         // Flush any remaining buffered data
         if (this.stdoutBuffer.trim().length > 0) {
           this.addLog('stdout', this.stdoutBuffer)

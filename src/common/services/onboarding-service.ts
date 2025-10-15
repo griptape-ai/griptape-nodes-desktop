@@ -1,14 +1,6 @@
 import Store from 'electron-store'
 import { logger } from '@/main/utils/logger'
 
-interface OnboardingData {
-  onboardingComplete: boolean
-  credentialStorageEnabled: boolean
-  keychainAccessGranted: boolean
-  keychainVerificationSeen: boolean
-  workspaceSetupComplete: boolean
-}
-
 export class OnboardingService {
   private store: any
 

@@ -38,7 +38,7 @@ export function getBuildInfo(): BuildInfo {
       buildDate: new Date().toISOString(),
       buildId: Date.now().toString()
     }
-  } catch (error) {
+  } catch {
     return {
       version,
       commitHash: 'unknown',

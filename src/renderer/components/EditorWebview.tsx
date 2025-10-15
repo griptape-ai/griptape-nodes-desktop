@@ -232,6 +232,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         zIndex: 10
       }}
     >
+      {/* eslint-disable react/no-unknown-property */}
       <webview
         ref={webviewRef}
         style={{
@@ -242,6 +243,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         partition="editor"
         preload={preloadPath || undefined}
       />
+      {/* eslint-enable react/no-unknown-property */}
     </div>
   )
 

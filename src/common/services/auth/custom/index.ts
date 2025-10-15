@@ -1,23 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
 import { PersistentStore } from '../stores/persistent-store'
-
-interface OAuthTokens {
-  access_token: string
-  id_token: string
-  token_type: string
-  expires_in: number
-}
-
-interface UserInfo {
-  sub: string
-  name: string
-  email: string
-  email_verified: boolean
-}
-
-interface ApiKeyResponse {
-  api_key: string
-}
 
 interface AuthData {
   apiKey?: string

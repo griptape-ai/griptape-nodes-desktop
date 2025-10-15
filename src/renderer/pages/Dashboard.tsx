@@ -70,7 +70,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
             <h3 className="text-sm font-semibold text-foreground">Getting Started:</h3>
             <ol className="list-decimal list-inside space-y-2 text-sm">
               <li>Ensure the engine is running (check the status below)</li>
-              <li>Click "Open Editor" to launch the visual workflow editor in your browser</li>
+              <li>
+                Click &quot;Open Editor&quot; to launch the visual workflow editor in your browser
+              </li>
               <li>Create and test your AI workflows using drag-and-drop nodes</li>
               <li>Your workflows are saved in the workspace directory shown below</li>
             </ol>

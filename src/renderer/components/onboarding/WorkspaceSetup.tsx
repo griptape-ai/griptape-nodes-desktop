@@ -106,7 +106,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
             </p>
             <p className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
-              <span>The directory will be created if it doesn't exist</span>
+              <span>The directory will be created if it doesn&apos;t exist</span>
             </p>
           </div>
         </div>
@@ -114,9 +114,9 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
         {/* Info note */}
         <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4">
           <p className="text-sm text-blue-300">
-            <span className="font-semibold">Tip:</span> Choose a location that's easy to find and
-            has enough storage space for your workflows. The default location works great for most
-            users.
+            <span className="font-semibold">Tip:</span> Choose a location that&apos;s easy to find
+            and has enough storage space for your workflows. The default location works great for
+            most users.
           </p>
         </div>
 
