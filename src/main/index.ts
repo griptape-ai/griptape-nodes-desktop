@@ -392,7 +392,12 @@ const showAboutDialog = async () => {
   const uvToolDir = envInfo?.uv?.toolDir || 'Unknown'
   const uvPythonInstallDir = envInfo?.uv?.pythonInstallDir || 'Unknown'
 
-  detailText.push(`UV: ${uvVersion}`, `UV Tool Directory: ${uvToolDir}`, `UV Python Install Directory: ${uvPythonInstallDir}`, '')
+  detailText.push(
+    `UV: ${uvVersion}`,
+    `UV Tool Directory: ${uvToolDir}`,
+    `UV Python Install Directory: ${uvPythonInstallDir}`,
+    ''
+  )
 
   // Griptape Nodes information
   const gtnVersion = envInfo?.griptapeNodes?.version || 'Not installed'
@@ -656,7 +661,7 @@ const setupIPC = () => {
   // Check if user is already authenticated
   ipcMain.handle('auth:check', async () => {
     // Always check for credentials in current session, regardless of persistence preference
-    const credentials = authService.getStoredCredentials();
+    const credentials = authService.getStoredCredentials()
 
     if (credentials) {
       // Check if token is expired or missing expiration time
