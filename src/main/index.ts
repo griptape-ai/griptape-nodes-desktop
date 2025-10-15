@@ -547,17 +547,9 @@ const setupIPC = () => {
 
   // Check if user is already authenticated
   ipcMain.handle('auth:check', async () => {
-    // Only return stored credentials if credential storage is enabled
-    const credentialStorageEnabled = onboardingService.isCredentialStorageEnabled()
+    // Always check for credentials in current session, regardless of persistence preference
+    const credentials = authService.getStoredCredentials();
 
-    if (!credentialStorageEnabled) {
-      logger.info('auth:check - Credential storage is disabled, not returning stored credentials')
-      return {
-        isAuthenticated: false
-      }
-    }
-
-    const credentials = authService.getStoredCredentials()
     if (credentials) {
       // Check if token is expired or missing expiration time
       const currentTime = Math.floor(Date.now() / 1000)
