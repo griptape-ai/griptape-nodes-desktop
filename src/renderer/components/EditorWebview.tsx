@@ -145,7 +145,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         style={{
           position: 'fixed',
           top: '57px',
-          left: '256px',
+          left: 0,
           right: 0,
           bottom: 0,
           display: isVisible ? 'flex' : 'none',
@@ -170,7 +170,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         style={{
           position: 'fixed',
           top: '57px',
-          left: '256px',
+          left: 0,
           right: 0,
           bottom: 0,
           display: isVisible ? 'flex' : 'none',
@@ -202,7 +202,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         style={{
           position: 'fixed',
           top: '57px',
-          left: '256px',
+          left: 0,
           right: 0,
           bottom: 0,
           display: isVisible ? 'flex' : 'none',
@@ -225,7 +225,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       style={{
         position: 'fixed',
         top: '57px',
-        left: '256px',
+        left: 0,
         right: 0,
         bottom: 0,
         display: isVisible ? 'block' : 'none',
