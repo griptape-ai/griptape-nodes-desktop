@@ -233,6 +233,17 @@ declare global {
       isWorkspaceSetupComplete: () => Promise<boolean>
       setWorkspaceSetupComplete: (complete: boolean) => Promise<{ success: boolean }>
     }
+    usageMetricsAPI: {
+      reportLaunch: () => Promise<{ success: boolean; error?: string }>
+    }
+    deviceIdAPI: {
+      getDeviceId: () => Promise<{ success: boolean; deviceId?: string; error?: string }>
+      getDeviceIdInfo: () => Promise<{
+        success: boolean
+        info?: { deviceId: string; generatedAt: string } | null
+      }>
+      resetDeviceId: () => Promise<{ success: boolean }>
+    }
   }
 }
 

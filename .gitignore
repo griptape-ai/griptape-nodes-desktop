@@ -8,10 +8,10 @@ Releases
 .eslintcache
 .webpack
 *.log*
+.idea/
 
 # Environment variables
 .env
 
 # Development userData and document directories
 /_*/
-
