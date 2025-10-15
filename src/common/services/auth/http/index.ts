@@ -374,6 +374,9 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       this.store.set('expiresAt', expiresAt)
       this.store.set('user', userInfo)
 
+      // Emit the apiKey event to unblock waitForApiKey() regardless of storage type
+      this.emit('apiKey', apiKey)
+
       // Resolve the auth promise if it exists
       this.authResolve?.({
         success: true,
