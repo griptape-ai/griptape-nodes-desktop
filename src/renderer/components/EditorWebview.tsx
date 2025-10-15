@@ -1,135 +1,142 @@
-import React, { useEffect, useState, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useEffect, useState, useRef } from 'react'
+import ReactDOM from 'react-dom'
 
 interface EditorWebviewProps {
-  isVisible: boolean;
+  isVisible: boolean
 }
 
 export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
-  const [error, setError] = useState<string | null>(null);
-  const [hasInitialized, setHasInitialized] = useState(false);
-  const [preloadPath, setPreloadPath] = useState<string | null>(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const webviewRef = useRef<HTMLWebViewElement>(null);
+  const [error, setError] = useState<string | null>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
+  const [preloadPath, setPreloadPath] = useState<string | null>(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const webviewRef = useRef<HTMLWebViewElement>(null)
 
   // Check auth before doing anything else
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('Checking auth before creating webview...');
-        const authData = await window.oauthAPI.checkAuth();
+        console.log('Checking auth before creating webview...')
+        const authData = await window.oauthAPI.checkAuth()
 
         if (!authData.isAuthenticated || !authData.tokens) {
-          console.error('Not authenticated, cannot load editor');
-          setError('Not authenticated. Please log in first.');
-          setIsCheckingAuth(false);
-          return;
+          console.error('Not authenticated, cannot load editor')
+          setError('Not authenticated. Please log in first.')
+          setIsCheckingAuth(false)
+          return
         }
 
-        console.log('Auth confirmed, ready to create webview');
-        setAuthReady(true);
-        setIsCheckingAuth(false);
+        console.log('Auth confirmed, ready to create webview')
+        setAuthReady(true)
+        setIsCheckingAuth(false)
       } catch (err) {
-        console.error('Failed to check auth:', err);
-        setError('Failed to verify authentication');
-        setIsCheckingAuth(false);
+        console.error('Failed to check auth:', err)
+        setError('Failed to verify authentication')
+        setIsCheckingAuth(false)
       }
-    };
+    }
 
-    checkAuth();
-  }, []);
+    checkAuth()
+  }, [])
 
   // Get the webview preload path only after auth is ready
   useEffect(() => {
     if (!authReady) {
-      return;
+      return
     }
 
     try {
-      const path = window.electron.getWebviewPreloadPath();
-      console.log('Got webview preload path:', path);
-      setPreloadPath(path);
+      const path = window.electron.getWebviewPreloadPath()
+      console.log('Got webview preload path:', path)
+      setPreloadPath(path)
     } catch (err) {
-      console.error('Failed to get webview preload path:', err);
-      setError('Failed to initialize editor');
+      console.error('Failed to get webview preload path:', err)
+      setError('Failed to initialize editor')
     }
-  }, [authReady]);
+  }, [authReady])
 
   useEffect(() => {
-    const webview = webviewRef.current;
+    const webview = webviewRef.current
 
-    console.log('EditorWebview useEffect running, webview:', webview, 'preloadPath:', preloadPath);
+    console.log('EditorWebview useEffect running, webview:', webview, 'preloadPath:', preloadPath)
 
     if (!webview || hasInitialized || !preloadPath) {
-      console.log('Skipping initialization - webview:', !!webview, 'hasInitialized:', hasInitialized, 'preloadPath:', preloadPath);
-      return;
+      console.log(
+        'Skipping initialization - webview:',
+        !!webview,
+        'hasInitialized:',
+        hasInitialized,
+        'preloadPath:',
+        preloadPath
+      )
+      return
     }
 
     const handleLoad = async () => {
-      console.log('Editor webview loaded successfully');
-    };
+      console.log('Editor webview loaded successfully')
+    }
 
     const handleLoadFail = (event: any) => {
-      console.error('Editor webview failed to load:', event);
-      setError(`Failed to load editor: ${event.errorDescription || 'Unknown error'}`);
-    };
+      console.error('Editor webview failed to load:', event)
+      setError(`Failed to load editor: ${event.errorDescription || 'Unknown error'}`)
+    }
 
     const handleNewWindow = (e: any) => {
-      e.preventDefault(); // Prevent webview from opening new window
+      e.preventDefault() // Prevent webview from opening new window
 
-      const url = e.url;
-      console.log('Opening new window link in default browser:', url);
+      const url = e.url
+      console.log('Opening new window link in default browser:', url)
 
       // Open in system default browser
-      window.electronAPI.openExternal(url);
-    };
+      window.electronAPI.openExternal(url)
+    }
 
     const handleWillNavigate = (e: any) => {
-      const url = e.url;
+      const url = e.url
 
       try {
         // Check if URL is external (different domain from nodes.griptape.ai)
-        const urlObj = new URL(url);
-        const isExternal = !urlObj.hostname.includes('nodes.griptape.ai');
+        const urlObj = new URL(url)
+        const isExternal = !urlObj.hostname.includes('nodes.griptape.ai')
 
         if (isExternal) {
-          e.preventDefault();
-          console.log('Opening external link in default browser:', url);
-          window.electronAPI.openExternal(url);
+          e.preventDefault()
+          console.log('Opening external link in default browser:', url)
+          window.electronAPI.openExternal(url)
         } else {
-          console.log('Allowing internal navigation to:', url);
+          console.log('Allowing internal navigation to:', url)
         }
       } catch (err) {
-        console.error('Error parsing URL:', url, err);
+        console.error('Error parsing URL:', url, err)
       }
-    };
+    }
 
-    console.log('Adding event listeners to webview');
-    webview.addEventListener('did-finish-load', handleLoad);
-    webview.addEventListener('did-fail-load', handleLoadFail);
-    webview.addEventListener('new-window', handleNewWindow);
-    webview.addEventListener('will-navigate', handleWillNavigate);
+    console.log('Adding event listeners to webview')
+    webview.addEventListener('did-finish-load', handleLoad)
+    webview.addEventListener('did-fail-load', handleLoadFail)
+    webview.addEventListener('new-window', handleNewWindow)
+    webview.addEventListener('will-navigate', handleWillNavigate)
 
     // Also listen for console messages from webview for debugging
     webview.addEventListener('console-message', (e: any) => {
-      console.log('Webview console:', e.message);
-    });
+      console.log('Webview console:', e.message)
+    })
 
     // NOW set the src to start loading (after listeners are attached)
-    console.log('Setting webview src to trigger load');
-    webview.src = 'https://nodes.griptape.ai';
+    console.log('Setting webview src to trigger load')
+    webview.src = 'https://nodes.griptape.ai'
 
-    setHasInitialized(true);
+    setHasInitialized(true)
 
     return () => {
-      console.log('Cleaning up webview event listeners');
-      webview.removeEventListener('did-finish-load', handleLoad);
-      webview.removeEventListener('did-fail-load', handleLoadFail);
-      webview.removeEventListener('new-window', handleNewWindow);
-      webview.removeEventListener('will-navigate', handleWillNavigate);
-    };
-  }, [hasInitialized, preloadPath]);
+      console.log('Cleaning up webview event listeners')
+      webview.removeEventListener('did-finish-load', handleLoad)
+      webview.removeEventListener('did-fail-load', handleLoadFail)
+      webview.removeEventListener('new-window', handleNewWindow)
+      webview.removeEventListener('will-navigate', handleWillNavigate)
+    }
+  }, [hasInitialized, preloadPath])
 
   // Show loading state while checking auth
   if (isCheckingAuth) {
@@ -152,8 +159,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
           <p className="text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
-    );
-    return ReactDOM.createPortal(content, document.body);
+    )
+    return ReactDOM.createPortal(content, document.body)
   }
 
   // Show error state
@@ -184,8 +191,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
           </button>
         </div>
       </div>
-    );
-    return ReactDOM.createPortal(content, document.body);
+    )
+    return ReactDOM.createPortal(content, document.body)
   }
 
   // Only render webview if auth is ready and we have preload path
@@ -209,8 +216,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
           <p className="text-muted-foreground">Initializing editor...</p>
         </div>
       </div>
-    );
-    return ReactDOM.createPortal(content, document.body);
+    )
+    return ReactDOM.createPortal(content, document.body)
   }
 
   const content = (
@@ -236,7 +243,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         preload={preloadPath || undefined}
       />
     </div>
-  );
+  )
 
-  return ReactDOM.createPortal(content, document.body);
-};
+  return ReactDOM.createPortal(content, document.body)
+}

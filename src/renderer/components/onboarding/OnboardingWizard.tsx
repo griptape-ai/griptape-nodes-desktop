@@ -1,100 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import KeychainExplanation from './KeychainExplanation';
-import WorkspaceSetup from './WorkspaceSetup';
-import headerLogoSrc from '../../../assets/griptape_nodes_header_logo.svg';
+import React, { useState, useEffect } from 'react'
+import KeychainExplanation from './KeychainExplanation'
+import WorkspaceSetup from './WorkspaceSetup'
+import headerLogoSrc from '../../../assets/griptape_nodes_header_logo.svg'
 
 interface OnboardingWizardProps {
-  onOnboardingComplete: () => void;
+  onOnboardingComplete: () => void
 }
 
 const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplete }) => {
-  const [currentStep, setCurrentStep] = useState<'keychain' | 'workspace' | null>(null);
-  const [showKeychainStep, setShowKeychainStep] = useState(false);
-  const [showWorkspaceStep, setShowWorkspaceStep] = useState(false);
-  const [isCheckingSteps, setIsCheckingSteps] = useState(true);
+  const [currentStep, setCurrentStep] = useState<'keychain' | 'workspace' | null>(null)
+  const [showKeychainStep, setShowKeychainStep] = useState(false)
+  const [showWorkspaceStep, setShowWorkspaceStep] = useState(false)
+  const [isCheckingSteps, setIsCheckingSteps] = useState(true)
 
   useEffect(() => {
-    checkWhichStepsNeeded();
-  }, []);
+    checkWhichStepsNeeded()
+  }, [])
 
   const checkWhichStepsNeeded = async () => {
     try {
-      const platform = await window.electronAPI.getPlatform();
-      const hasExistingStore = await window.oauthAPI.hasExistingEncryptedStore();
-      const credentialStorageEnabled = await window.onboardingAPI.isCredentialStorageEnabled();
-      const workspaceSetupComplete = await window.onboardingAPI.isWorkspaceSetupComplete();
+      const platform = await window.electronAPI.getPlatform()
+      const hasExistingStore = await window.oauthAPI.hasExistingEncryptedStore()
+      const credentialStorageEnabled = await window.onboardingAPI.isCredentialStorageEnabled()
+      const workspaceSetupComplete = await window.onboardingAPI.isWorkspaceSetupComplete()
 
       // Check if keychain step is needed:
       // - macOS platform
       // - User opted to remember credentials
       // - No encrypted store exists yet (haven't done keychain flow)
-      const needsKeychainStep = platform === 'darwin' && credentialStorageEnabled && !hasExistingStore;
+      const needsKeychainStep =
+        platform === 'darwin' && credentialStorageEnabled && !hasExistingStore
 
       // For non-macOS platforms, auto-enable credential storage if user opted in
       // Windows/Linux don't need keychain permission, so we enable silently
       if (platform !== 'darwin' && credentialStorageEnabled && !hasExistingStore) {
         try {
-          await window.onboardingAPI.enableCredentialStorage();
-          console.log('Auto-enabled credential storage for non-macOS platform');
+          await window.onboardingAPI.enableCredentialStorage()
+          console.log('Auto-enabled credential storage for non-macOS platform')
         } catch (error) {
-          console.error('Failed to auto-enable credential storage:', error);
+          console.error('Failed to auto-enable credential storage:', error)
         }
       }
 
       // Check if workspace step is needed (first time only)
-      const needsWorkspaceStep = !workspaceSetupComplete;
+      const needsWorkspaceStep = !workspaceSetupComplete
 
-      setShowKeychainStep(needsKeychainStep);
-      setShowWorkspaceStep(needsWorkspaceStep);
+      setShowKeychainStep(needsKeychainStep)
+      setShowWorkspaceStep(needsWorkspaceStep)
 
       // Determine which step to show first
       if (needsKeychainStep) {
-        setCurrentStep('keychain');
+        setCurrentStep('keychain')
       } else if (needsWorkspaceStep) {
-        setCurrentStep('workspace');
+        setCurrentStep('workspace')
       } else {
         // No steps needed, complete immediately
-        onOnboardingComplete();
+        onOnboardingComplete()
       }
     } catch (error) {
-      console.error('Failed to check which steps are needed:', error);
+      console.error('Failed to check which steps are needed:', error)
       // Default to workspace step if check fails
-      setShowWorkspaceStep(true);
-      setCurrentStep('workspace');
+      setShowWorkspaceStep(true)
+      setCurrentStep('workspace')
     } finally {
-      setIsCheckingSteps(false);
+      setIsCheckingSteps(false)
     }
-  };
+  }
 
   const handleKeychainComplete = () => {
     // Move to workspace step if needed, otherwise complete
     if (showWorkspaceStep) {
-      setCurrentStep('workspace');
+      setCurrentStep('workspace')
     } else {
-      onOnboardingComplete();
+      onOnboardingComplete()
     }
-  };
+  }
 
   const handleWorkspaceComplete = async (workspaceDirectory: string) => {
     try {
       // Mark workspace setup as complete
-      await window.onboardingAPI.setWorkspaceSetupComplete(true);
+      await window.onboardingAPI.setWorkspaceSetupComplete(true)
 
       // Set the workspace directory preference (GTN will pick it up during initialization)
       if (workspaceDirectory) {
-        await window.griptapeAPI.setWorkspacePreference(workspaceDirectory);
+        await window.griptapeAPI.setWorkspacePreference(workspaceDirectory)
       }
 
       // Notify App component that wizard is complete
-      onOnboardingComplete();
+      onOnboardingComplete()
     } catch (error) {
-      console.error('Failed to complete workspace setup:', error);
-      alert('Failed to complete setup. Please try again.');
+      console.error('Failed to complete workspace setup:', error)
+      alert('Failed to complete setup. Please try again.')
     }
-  };
+  }
 
   if (isCheckingSteps || currentStep === null) {
-    return null; // Or a loading spinner
+    return null // Or a loading spinner
   }
 
   return (
@@ -110,13 +111,11 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
           {currentStep === 'keychain' && showKeychainStep && (
             <KeychainExplanation onContinue={handleKeychainComplete} />
           )}
-          {currentStep === 'workspace' && (
-            <WorkspaceSetup onComplete={handleWorkspaceComplete} />
-          )}
+          {currentStep === 'workspace' && <WorkspaceSetup onComplete={handleWorkspaceComplete} />}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default OnboardingWizard;
+export default OnboardingWizard

@@ -1,53 +1,53 @@
-import React, { useState } from 'react';
-import { Shield, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { cn } from '../../utils/utils';
+import React, { useState } from 'react'
+import { Shield, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
+import { cn } from '../../utils/utils'
 
 interface KeychainExplanationProps {
-  onContinue: () => void;
+  onContinue: () => void
 }
 
 const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue }) => {
-  const [stage, setStage] = useState<'info' | 'testing' | 'success' | 'error'>('info');
-  const [error, setError] = useState<string | null>(null);
+  const [stage, setStage] = useState<'info' | 'testing' | 'success' | 'error'>('info')
+  const [error, setError] = useState<string | null>(null)
 
   const startVerificationFlow = async () => {
-    setStage('testing');
+    setStage('testing')
 
     // Enable credential storage - this will trigger the keychain prompt
     // and migrate credentials from in-memory to encrypted persistent store
     try {
-      await window.onboardingAPI.enableCredentialStorage();
-      console.log('Credential storage enabled, keychain access granted');
+      await window.onboardingAPI.enableCredentialStorage()
+      console.log('Credential storage enabled, keychain access granted')
 
-      setStage('success');
+      setStage('success')
       // Wait a moment to show success before continuing
       setTimeout(() => {
-        onContinue();
-      }, 500);
+        onContinue()
+      }, 500)
     } catch (err) {
-      console.error('Keychain access error:', err);
-      setStage('error');
-      setError('Failed to enable credential storage. Keychain access may have been denied.');
+      console.error('Keychain access error:', err)
+      setStage('error')
+      setError('Failed to enable credential storage. Keychain access may have been denied.')
     }
-  };
+  }
 
   const handleSkip = async () => {
     // Disable credential storage and continue
     try {
-      await window.onboardingAPI.setCredentialStoragePreference(false);
-      onContinue();
+      await window.onboardingAPI.setCredentialStoragePreference(false)
+      onContinue()
     } catch (err) {
-      console.error('Failed to skip:', err);
+      console.error('Failed to skip:', err)
     }
-  };
+  }
 
   const handleRestart = async () => {
     try {
-      await window.electronAPI.restartApp();
+      await window.electronAPI.restartApp()
     } catch (err) {
-      console.error('Failed to restart app:', err);
+      console.error('Failed to restart app:', err)
     }
-  };
+  }
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col items-center justify-center min-h-full py-8">
@@ -61,7 +61,8 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
           </div>
           <h2 className="text-xl font-semibold text-white">Grant Keychain Access</h2>
           <p className="text-gray-400 text-sm">
-            To remember your credentials, macOS needs permission to securely store them in the system keychain
+            To remember your credentials, macOS needs permission to securely store them in the
+            system keychain
           </p>
         </div>
 
@@ -79,7 +80,8 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
                   <h4 className="font-semibold text-white text-sm">Always Allow</h4>
                 </div>
                 <p className="text-xs text-gray-400">
-                  Recommended. Grants permanent access. If you don't select this, the prompt will appear immediately when opening the app in the future.
+                  Recommended. Grants permanent access. If you don't select this, the prompt will
+                  appear immediately when opening the app in the future.
                 </p>
               </div>
             </div>
@@ -118,8 +120,9 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
             <Shield className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-xs text-blue-300">
-                <span className="font-semibold">Security:</span> Your credentials are encrypted by macOS using your login password.
-                Even if someone accesses your computer, they can't read your credentials without your macOS password.
+                <span className="font-semibold">Security:</span> Your credentials are encrypted by
+                macOS using your login password. Even if someone accesses your computer, they can't
+                read your credentials without your macOS password.
               </p>
             </div>
           </div>
@@ -131,10 +134,10 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
             <button
               onClick={handleSkip}
               className={cn(
-                "px-6 py-3 rounded-md",
-                "bg-gray-700 hover:bg-gray-600",
-                "text-white font-medium text-sm",
-                "transition-colors"
+                'px-6 py-3 rounded-md',
+                'bg-gray-700 hover:bg-gray-600',
+                'text-white font-medium text-sm',
+                'transition-colors'
               )}
             >
               Skip for Now
@@ -142,9 +145,9 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
             <button
               onClick={startVerificationFlow}
               className={cn(
-                "px-6 py-3 text-sm font-medium rounded-md",
-                "bg-sky-700 hover:bg-sky-500 active:bg-sky-300",
-                "text-white transition-colors"
+                'px-6 py-3 text-sm font-medium rounded-md',
+                'bg-sky-700 hover:bg-sky-500 active:bg-sky-300',
+                'text-white transition-colors'
               )}
             >
               Save Credentials
@@ -154,9 +157,7 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
 
         {stage === 'testing' && (
           <div className="p-4 rounded-md border bg-yellow-900/20 border-yellow-700 text-center">
-            <h3 className="text-white font-medium mb-2 text-base">
-              Waiting for Keychain Response
-            </h3>
+            <h3 className="text-white font-medium mb-2 text-base">Waiting for Keychain Response</h3>
             <p className="text-gray-300 text-sm">
               Please respond to the keychain prompt to continue.
             </p>
@@ -166,21 +167,15 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
         {stage === 'success' && (
           <div className="p-4 rounded-md border bg-green-900/20 border-green-700 text-center">
             <div className="text-green-400 text-3xl mb-2">✓</div>
-            <h3 className="text-white font-medium mb-2 text-base">
-              Keychain Access Granted
-            </h3>
-            <p className="text-gray-300 text-sm">
-              Your credentials will be stored securely.
-            </p>
+            <h3 className="text-white font-medium mb-2 text-base">Keychain Access Granted</h3>
+            <p className="text-gray-300 text-sm">Your credentials will be stored securely.</p>
           </div>
         )}
 
         {stage === 'error' && (
           <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 space-y-3">
             <div className="space-y-2">
-              <h3 className="text-white font-semibold text-base">
-                Keychain Access Was Denied
-              </h3>
+              <h3 className="text-white font-semibold text-base">Keychain Access Was Denied</h3>
               <p className="text-gray-300 text-sm leading-relaxed">
                 You clicked "Deny" in the macOS keychain dialog. You have two options:
               </p>
@@ -193,10 +188,10 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
               <button
                 onClick={handleRestart}
                 className={cn(
-                  "px-4 py-2 rounded-md",
-                  "bg-gray-700 hover:bg-gray-600",
-                  "text-white font-medium text-sm",
-                  "transition-colors"
+                  'px-4 py-2 rounded-md',
+                  'bg-gray-700 hover:bg-gray-600',
+                  'text-white font-medium text-sm',
+                  'transition-colors'
                 )}
               >
                 Restart
@@ -204,10 +199,10 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
               <button
                 onClick={handleSkip}
                 className={cn(
-                  "px-4 py-2 rounded-md",
-                  "bg-sky-700 hover:bg-sky-500 active:bg-sky-300",
-                  "text-white font-medium text-sm",
-                  "transition-colors"
+                  'px-4 py-2 rounded-md',
+                  'bg-sky-700 hover:bg-sky-500 active:bg-sky-300',
+                  'text-white font-medium text-sm',
+                  'transition-colors'
                 )}
               >
                 Skip
@@ -217,7 +212,7 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default KeychainExplanation;
+export default KeychainExplanation

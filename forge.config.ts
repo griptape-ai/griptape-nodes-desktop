@@ -1,14 +1,14 @@
-import { FuseV1Options, FuseVersion } from '@electron/fuses';
-import { MakerDeb } from '@electron-forge/maker-deb';
-import { MakerRpm } from '@electron-forge/maker-rpm';
-import { MakerZIP } from '@electron-forge/maker-zip';
-import { FusesPlugin } from '@electron-forge/plugin-fuses';
-import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
-import { WebpackPlugin } from '@electron-forge/plugin-webpack';
-import type { ForgeConfig } from '@electron-forge/shared-types';
+import { FuseV1Options, FuseVersion } from '@electron/fuses'
+import { MakerDeb } from '@electron-forge/maker-deb'
+import { MakerRpm } from '@electron-forge/maker-rpm'
+import { MakerZIP } from '@electron-forge/maker-zip'
+import { FusesPlugin } from '@electron-forge/plugin-fuses'
+import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives'
+import { WebpackPlugin } from '@electron-forge/plugin-webpack'
+import type { ForgeConfig } from '@electron-forge/shared-types'
 
-import { mainConfig } from './webpack.main.config.ts';
-import { rendererConfig } from './webpack.renderer.config.ts';
+import { mainConfig } from './webpack.main.config.ts'
+import { rendererConfig } from './webpack.renderer.config.ts'
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -28,21 +28,17 @@ const config: ForgeConfig = {
       osxSign: {
         identity: process.env.APPLE_IDENTITY,
         entitlements: 'entitlements.entitlements',
-        'hardened-runtime': true, // Required for Developer ID Application certificates
-      } as any,
+        'hardened-runtime': true // Required for Developer ID Application certificates
+      } as any
       // osxNotarize: {
       //   appleId: process.env.APPLE_ID as string,
       //   appleIdPassword: process.env.APPLE_PASSWORD as string,
       //   teamId: process.env.APPLE_TEAM_ID as string,
       // },
-    }),
+    })
   },
   rebuildConfig: {},
-  makers: [
-    new MakerZIP({}, ['darwin']),
-    new MakerRpm({}),
-    new MakerDeb({}),
-  ],
+  makers: [new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
   plugins: [
     new AutoUnpackNativesPlugin({}),
     new WebpackPlugin({
@@ -55,17 +51,17 @@ const config: ForgeConfig = {
             html: './index.html',
             js: './src/renderer/index.tsx',
             preload: {
-              js: './src/preload/index.ts',
-            },
+              js: './src/preload/index.ts'
+            }
           },
           {
             name: 'webview_preload',
             preload: {
-              js: './src/preload/webview-preload.ts',
-            },
-          },
-        ],
-      },
+              js: './src/preload/webview-preload.ts'
+            }
+          }
+        ]
+      }
     }),
     // Fuses are used to enable/disable various Electron functionality
     // at package time, before code signing the application
@@ -82,9 +78,9 @@ const config: ForgeConfig = {
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true,
-    }),
-  ],
-};
+      [FuseV1Options.OnlyLoadAppFromAsar]: true
+    })
+  ]
+}
 
-export default config;
+export default config

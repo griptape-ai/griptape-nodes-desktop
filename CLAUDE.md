@@ -55,12 +55,14 @@ npm run generate-icons      # Generate app icons from source
 ### Service Architecture
 
 All services follow a common pattern:
+
 - Extend EventEmitter for event-driven communication
 - Implement `start()` method called during app initialization
 - Provide `waitForReady()` for async initialization dependencies
 - Use `isReady` flag to track initialization state
 
 **Service Initialization Order** (critical for dependencies):
+
 1. `OnboardingService` - Manages first-run experience
 2. `AuthService` (HTTP or Custom) - Handles OAuth authentication
 3. `UvService` - Installs and manages UV package manager
@@ -72,6 +74,7 @@ All services follow a common pattern:
 ### Key Services
 
 **GtnService** (`src/common/services/gtn/gtn-service.ts`)
+
 - Installs Griptape Nodes using UV tool installer
 - Manages workspace directory configuration
 - Handles library installation and registration
@@ -79,18 +82,21 @@ All services follow a common pattern:
 - Config stored in XDG directories: `{userDataDir}/xdg_config_home/griptape_nodes/`
 
 **EngineService** (`src/common/services/gtn/engine-service.ts`)
+
 - Spawns GTN engine as child process with `spawn(gtnPath, ['--no-update'])`
 - Buffers stdout/stderr and emits log events line-by-line
 - Auto-restarts on crashes (up to 3 attempts with 5s delay)
 - Engine states: 'not-ready' | 'ready' | 'initializing' | 'running' | 'error'
 
 **AuthService** (`src/common/services/auth/http/` and `src/common/services/auth/custom/`)
+
 - HTTP flow: Local server on port 51413 for OAuth callback
 - Custom flow: Uses custom URL scheme (gtn://) for OAuth (packaged apps only)
 - Supports persistent credential storage using electron-store + safeStorage
 - Credentials stored encrypted in OS keychain when user opts in
 
 **UpdateService** (`src/common/services/update/update-service.ts`)
+
 - Uses Velopack for cross-platform auto-updates
 - Supports multiple update channels (stable, preview, nightly)
 - Only functional in packaged builds (disabled in dev mode)
@@ -98,6 +104,7 @@ All services follow a common pattern:
 ### Path Management
 
 All paths are centralized in `src/common/config/paths.ts`:
+
 - XDG directories used for GTN config/data to maintain Linux compatibility
 - UV installed to: `{userDataDir}/uv/`
 - Python installed to: `{userDataDir}/python/`
@@ -109,6 +116,7 @@ In development mode (`!isPackaged()`), userDataPath is overridden to `{appPath}/
 ### Environment Variables
 
 Environment setup for child processes in `src/common/config/env.ts`:
+
 - Sets XDG paths for GTN config/data
 - Configures UV_TOOL_DIR and UV_TOOL_BIN_DIR
 - Sets PATH to include UV tool bin directory
@@ -117,6 +125,7 @@ Environment setup for child processes in `src/common/config/env.ts`:
 ### IPC Communication
 
 All IPC handlers defined in `setupIPC()` in `src/main/index.ts`:
+
 - Naming convention: `{service}:{action}` (e.g., `engine:start`, `auth:login`)
 - Use `ipcMain.handle()` for async operations (returns Promise)
 - Use `ipcMain.on()` with `event.returnValue` for synchronous operations
@@ -134,6 +143,7 @@ All IPC handlers defined in `setupIPC()` in `src/main/index.ts`:
 ### Onboarding Wizard
 
 Multi-step wizard shown on first launch (`src/renderer/components/onboarding/OnboardingWizard.tsx`):
+
 1. **Keychain Explanation**: Explains credential storage, prompts for opt-in
 2. **Authentication**: Login flow with Auth0
 3. **Workspace Setup**: Choose workspace directory for GTN projects
@@ -143,31 +153,37 @@ Onboarding state tracked in OnboardingService using electron-store.
 ## Important Technical Details
 
 ### Cookie Encryption is Disabled
+
 - `EnableCookieEncryption` fuse is disabled to prevent keychain prompts on first launch
 - **CRITICAL**: All BrowserWindows and webviews MUST use in-memory partitions (e.g., `partition: 'main'` NOT `partition: 'persist:name'`)
 - Explicit credential storage uses electron-store with safeStorage when user opts in
 
 ### Custom URL Schemes
+
 - Custom URL scheme (gtn://) only works in packaged apps
 - Dev mode MUST use `AUTH_SCHEME=http` environment variable
 - If `AUTH_SCHEME=custom` in dev mode, app throws error on startup
 
 ### Engine Process Management
+
 - Engine runs as detached child process, not killed automatically on app quit
 - `app.on('before-quit')` hook ensures `engineService.destroy()` is called
 - SIGKILL attempted first, then SIGTERM after 3s grace period
 
 ### TypeScript Path Aliases
+
 - `@/*` maps to `src/*` (configured in tsconfig.json and webpack)
 - Import example: `import { logger } from '@/main/utils/logger'`
 
 ### Webpack Configuration
+
 - Main process: `webpack.main.config.ts`
 - Renderer process: `webpack.renderer.config.ts`
 - Two entry points: main window and webview preload
 - Uses TailwindCSS for styling with PostCSS processing
 
 ### Logging
+
 - Main process: electron-log (`@/main/utils/logger`)
 - Renderer process: console wrapper (`@/renderer/utils/logger`)
 - Logs stored in platform-specific locations (see electron-log docs)
@@ -175,40 +191,43 @@ Onboarding state tracked in OnboardingService using electron-store.
 ## Common Patterns
 
 ### Waiting for Service Initialization
+
 ```typescript
-await serviceInstance.waitForReady();
+await serviceInstance.waitForReady()
 // Now safe to use service methods
 ```
 
 ### Running GTN Commands
+
 ```typescript
-const childProcess = await gtnService.runGtn(
-  ['config', 'show'],
-  { wait: true, forward_logs: true }
-);
+const childProcess = await gtnService.runGtn(['config', 'show'], { wait: true, forward_logs: true })
 ```
 
 ### Emitting Events to Renderer
+
 ```typescript
-BrowserWindow.getAllWindows().forEach(window => {
-  window.webContents.send('event-name', data);
-});
+BrowserWindow.getAllWindows().forEach((window) => {
+  window.webContents.send('event-name', data)
+})
 ```
 
 ### Safe API Key Handling
+
 Always redact API keys in logs:
+
 ```typescript
-const sanitizedArgs = [...args];
-const apiKeyIndex = sanitizedArgs.indexOf('--api-key');
+const sanitizedArgs = [...args]
+const apiKeyIndex = sanitizedArgs.indexOf('--api-key')
 if (apiKeyIndex !== -1) {
-  sanitizedArgs[apiKeyIndex + 1] = '[REDACTED]';
+  sanitizedArgs[apiKeyIndex + 1] = '[REDACTED]'
 }
-logger.info('Command:', sanitizedArgs.join(' '));
+logger.info('Command:', sanitizedArgs.join(' '))
 ```
 
 ## Development Environment Setup
 
 In dev mode, the app uses these isolated directories:
+
 - `_userdata/`: Application data (config, installed tools)
 - `_documents/`: User documents (GTN workspaces)
 - `_logs/`: Application logs
@@ -225,6 +244,7 @@ This prevents dev environment from polluting production paths.
 ## Build Process
 
 Electron Forge handles packaging:
+
 1. Webpack bundles main, renderer, and preload scripts
 2. Native modules auto-unpacked from asar
 3. Platform-specific makers: DMG (macOS), ZIP, DEB, RPM

@@ -1,54 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { Folder, CheckCircle } from 'lucide-react';
-import { cn } from '../../utils/utils';
+import React, { useState, useEffect } from 'react'
+import { Folder, CheckCircle } from 'lucide-react'
+import { cn } from '../../utils/utils'
 
 interface WorkspaceSetupProps {
-  onComplete: (workspaceDirectory: string) => void;
+  onComplete: (workspaceDirectory: string) => void
 }
 
 const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
-  const [workspaceDirectory, setWorkspaceDirectory] = useState<string>('');
-  const [isCompleting, setIsCompleting] = useState(false);
+  const [workspaceDirectory, setWorkspaceDirectory] = useState<string>('')
+  const [isCompleting, setIsCompleting] = useState(false)
 
   useEffect(() => {
     // Load the default workspace directory
     const loadDefaultWorkspace = async () => {
       try {
-        const directory = await window.griptapeAPI.getDefaultWorkspace();
-        setWorkspaceDirectory(directory);
+        const directory = await window.griptapeAPI.getDefaultWorkspace()
+        setWorkspaceDirectory(directory)
       } catch (error) {
-        console.error('Failed to load default workspace directory:', error);
+        console.error('Failed to load default workspace directory:', error)
       }
-    };
-    loadDefaultWorkspace();
-  }, []);
+    }
+    loadDefaultWorkspace()
+  }, [])
 
   const handleBrowse = async () => {
     try {
-      const directory = await window.griptapeAPI.selectDirectory();
+      const directory = await window.griptapeAPI.selectDirectory()
       if (directory) {
-        setWorkspaceDirectory(directory);
+        setWorkspaceDirectory(directory)
       }
     } catch (error) {
-      console.error('Failed to select directory:', error);
-      alert('Failed to select directory. Please try again.');
+      console.error('Failed to select directory:', error)
+      alert('Failed to select directory. Please try again.')
     }
-  };
+  }
 
   const handleComplete = async () => {
     if (!workspaceDirectory) {
-      alert('Please select a workspace directory');
-      return;
+      alert('Please select a workspace directory')
+      return
     }
 
-    setIsCompleting(true);
+    setIsCompleting(true)
     try {
-      await onComplete(workspaceDirectory);
+      await onComplete(workspaceDirectory)
     } catch (error) {
-      console.error('Failed to complete setup:', error);
-      setIsCompleting(false);
+      console.error('Failed to complete setup:', error)
+      setIsCompleting(false)
     }
-  };
+  }
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col items-center justify-center min-h-full py-12">
@@ -76,18 +76,18 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
                 value={workspaceDirectory}
                 readOnly
                 className={cn(
-                  "flex-1 px-4 py-3 text-sm rounded-md",
-                  "bg-gray-900 border border-gray-700",
-                  "text-gray-300 font-mono"
+                  'flex-1 px-4 py-3 text-sm rounded-md',
+                  'bg-gray-900 border border-gray-700',
+                  'text-gray-300 font-mono'
                 )}
                 placeholder="Select a directory"
               />
               <button
                 onClick={handleBrowse}
                 className={cn(
-                  "px-6 py-3 text-sm font-medium rounded-md",
-                  "bg-purple-600 hover:bg-purple-500 active:bg-purple-400",
-                  "text-white transition-colors"
+                  'px-6 py-3 text-sm font-medium rounded-md',
+                  'bg-purple-600 hover:bg-purple-500 active:bg-purple-400',
+                  'text-white transition-colors'
                 )}
               >
                 Browse
@@ -114,8 +114,9 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
         {/* Info note */}
         <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4">
           <p className="text-sm text-blue-300">
-            <span className="font-semibold">Tip:</span> Choose a location that's easy to find and has enough storage space
-            for your workflows. The default location works great for most users.
+            <span className="font-semibold">Tip:</span> Choose a location that's easy to find and
+            has enough storage space for your workflows. The default location works great for most
+            users.
           </p>
         </div>
 
@@ -125,10 +126,10 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
             onClick={handleComplete}
             disabled={isCompleting || !workspaceDirectory}
             className={cn(
-              "px-8 py-4 text-lg font-medium rounded-lg",
-              "bg-green-600 hover:bg-green-500 active:bg-green-400",
-              "text-white transition-colors",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              'px-8 py-4 text-lg font-medium rounded-lg',
+              'bg-green-600 hover:bg-green-500 active:bg-green-400',
+              'text-white transition-colors',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
             {isCompleting ? 'Completing Setup...' : 'Complete Setup'}
@@ -136,7 +137,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default WorkspaceSetup;
+export default WorkspaceSetup

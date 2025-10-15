@@ -1,6 +1,22 @@
+# Build output directories
 out
 dist
+.webpack
+Releases
+
+# Dependencies and lock files
+node_modules
 pnpm-lock.yaml
+package-lock.json
+
+# Generated and cache files
+.eslintcache
+*.log*
+
+# Development directories
+/_*/
+
+# Config files (preserve formatting)
 LICENSE.md
 tsconfig.json
 tsconfig.*.json

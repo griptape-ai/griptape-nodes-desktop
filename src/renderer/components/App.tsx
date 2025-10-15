@@ -1,37 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import { ThemeProvider } from '../contexts/ThemeContext';
-import LoginPage from './LoginPage';
-import MainApp from './MainApp';
-import OnboardingWizard from './onboarding/OnboardingWizard';
+import React, { useState, useEffect } from 'react'
+import { AuthProvider, useAuth } from '../contexts/AuthContext'
+import { ThemeProvider } from '../contexts/ThemeContext'
+import LoginPage from './LoginPage'
+import MainApp from './MainApp'
+import OnboardingWizard from './onboarding/OnboardingWizard'
 
 const AppContent: React.FC = () => {
-  const isElectron = typeof window.electronAPI !== 'undefined';
+  const isElectron = typeof window.electronAPI !== 'undefined'
 
-  const { isAuthenticated } = useAuth();
-  const [showOnboardingWizard, setShowOnboardingWizard] = useState(true);
+  const { isAuthenticated } = useAuth()
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(true)
 
   // Reset wizard state when user logs out
   useEffect(() => {
     if (!isAuthenticated) {
-      setShowOnboardingWizard(true);
+      setShowOnboardingWizard(true)
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated])
 
   if (!isElectron) {
     return <p>NOT ELECTRON :p</p>
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return <LoginPage />
   }
 
   if (showOnboardingWizard) {
-    return <OnboardingWizard onOnboardingComplete={() => setShowOnboardingWizard(false)} />;
+    return <OnboardingWizard onOnboardingComplete={() => setShowOnboardingWizard(false)} />
   }
 
-  return <MainApp />;
-};
+  return <MainApp />
+}
 
 const App: React.FC = () => {
   return (
@@ -40,7 +40,7 @@ const App: React.FC = () => {
         <AppContent />
       </AuthProvider>
     </ThemeProvider>
-  );
-};
+  )
+}
 
-export default App;
+export default App

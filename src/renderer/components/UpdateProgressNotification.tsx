@@ -1,42 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
-import { cn } from '../utils/utils';
+import React, { useState, useEffect } from 'react'
+import { Download } from 'lucide-react'
+import { cn } from '../utils/utils'
 
 const UpdateProgressNotification: React.FC = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [isVisible, setIsVisible] = useState(false)
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
     const handleDownloadStarted = () => {
-      setIsVisible(true);
-      setProgress(0);
-    };
+      setIsVisible(true)
+      setProgress(0)
+    }
 
     const handleDownloadProgress = (_event: any, progressValue: number) => {
-      setProgress(progressValue);
-    };
+      setProgress(progressValue)
+    }
 
     const handleDownloadComplete = () => {
-      setProgress(100);
+      setProgress(100)
       // Keep the notification visible for 2 seconds after completion
       setTimeout(() => {
-        setIsVisible(false);
-      }, 2000);
-    };
+        setIsVisible(false)
+      }, 2000)
+    }
 
-    window.updateAPI.onDownloadStarted(handleDownloadStarted);
-    window.updateAPI.onDownloadProgress(handleDownloadProgress);
-    window.updateAPI.onDownloadComplete(handleDownloadComplete);
+    window.updateAPI.onDownloadStarted(handleDownloadStarted)
+    window.updateAPI.onDownloadProgress(handleDownloadProgress)
+    window.updateAPI.onDownloadComplete(handleDownloadComplete)
 
     return () => {
-      window.updateAPI.removeDownloadStarted(handleDownloadStarted);
-      window.updateAPI.removeDownloadProgress(handleDownloadProgress);
-      window.updateAPI.removeDownloadComplete(handleDownloadComplete);
-    };
-  }, []);
+      window.updateAPI.removeDownloadStarted(handleDownloadStarted)
+      window.updateAPI.removeDownloadProgress(handleDownloadProgress)
+      window.updateAPI.removeDownloadComplete(handleDownloadComplete)
+    }
+  }, [])
 
   if (!isVisible) {
-    return null;
+    return null
   }
 
   return (
@@ -56,8 +56,8 @@ const UpdateProgressNotification: React.FC = () => {
             <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
               <div
                 className={cn(
-                  "h-full transition-all duration-300 ease-out",
-                  progress === 100 ? "bg-green-500" : "bg-primary"
+                  'h-full transition-all duration-300 ease-out',
+                  progress === 100 ? 'bg-green-500' : 'bg-primary'
                 )}
                 style={{ width: `${progress}%` }}
               />
@@ -71,7 +71,7 @@ const UpdateProgressNotification: React.FC = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default UpdateProgressNotification;
+export default UpdateProgressNotification

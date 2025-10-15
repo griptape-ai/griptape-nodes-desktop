@@ -1,92 +1,92 @@
-import { ChildProcess, spawn } from 'child_process';
-import { EventEmitter } from 'events';
-import { attachOutputForwarder } from '../../child-process/output-forwarder';
-import { getEnv } from '../../config/env';
-import { getCwd, getGtnExecutablePath } from '../../config/paths';
-import { GtnService } from '../gtn/gtn-service';
-import { PythonService } from '../python/python-service';
-import { logger } from '@/main/utils/logger';
+import { ChildProcess, spawn } from 'child_process'
+import { EventEmitter } from 'events'
+import { attachOutputForwarder } from '../../child-process/output-forwarder'
+import { getEnv } from '../../config/env'
+import { getCwd, getGtnExecutablePath } from '../../config/paths'
+import { GtnService } from '../gtn/gtn-service'
+import { PythonService } from '../python/python-service'
+import { logger } from '@/main/utils/logger'
 
-export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error';
+export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error'
 
 export interface EngineLog {
-  timestamp: Date;
-  type: 'stdout' | 'stderr';
-  message: string;
+  timestamp: Date
+  type: 'stdout' | 'stderr'
+  message: string
 }
 
 interface EngineEvents {
-  'ready': [];
-  'engine:status-changed': [EngineStatus];
+  ready: []
+  'engine:status-changed': [EngineStatus]
   'engine:log': [EngineLog]
-  'engine:logs-cleared': [];
+  'engine:logs-cleared': []
 }
 
 export class EngineService extends EventEmitter<EngineEvents> {
-  private engineProcess: ChildProcess | null = null;
-  private status: EngineStatus = 'not-ready';
-  private logs: EngineLog[] = [];
-  private maxLogSize = 1000; // Keep last 1000 log entries
-  private restartAttempts = 0;
-  private maxRestartAttempts = 3;
-  private restartDelay = 5000; // 5 seconds
-  private stdoutBuffer = ''; // Buffer for incomplete stdout lines
-  private stderrBuffer = ''; // Buffer for incomplete stderr lines
-  private isReady: boolean = false;
+  private engineProcess: ChildProcess | null = null
+  private status: EngineStatus = 'not-ready'
+  private logs: EngineLog[] = []
+  private maxLogSize = 1000 // Keep last 1000 log entries
+  private restartAttempts = 0
+  private maxRestartAttempts = 3
+  private restartDelay = 5000 // 5 seconds
+  private stdoutBuffer = '' // Buffer for incomplete stdout lines
+  private stderrBuffer = '' // Buffer for incomplete stderr lines
+  private isReady: boolean = false
 
   constructor(
     private userDataDir: string,
-    private gtnService: GtnService,
+    private gtnService: GtnService
   ) {
-    super();
+    super()
   }
 
   async start() {
-    logger.info("engine service start");
-    await this.gtnService.waitForReady();
+    logger.info('engine service start')
+    await this.gtnService.waitForReady()
 
-    this.isReady = true;
-    this.emit('ready');
-    this.setEngineStatus('ready');
-    logger.info("engine service ready");
+    this.isReady = true
+    this.emit('ready')
+    this.setEngineStatus('ready')
+    logger.info('engine service ready')
   }
 
   async waitForReady(): Promise<void> {
     if (this.isReady) {
-      return Promise.resolve();
+      return Promise.resolve()
     }
-    return new Promise(resolve => this.once('ready', resolve));
+    return new Promise((resolve) => this.once('ready', resolve))
   }
 
   /**
    * Get current engine status
    */
   getStatus(): EngineStatus {
-    return this.status;
+    return this.status
   }
 
   /**
    * Set engine to initializing state (used during background setup)
    */
   setInitializing(): void {
-    this.status = 'initializing';
-    this.addLog('stdout', 'Setting up Griptape Nodes environment...');
-    this.emit('engine:status-changed', this.status);
+    this.status = 'initializing'
+    this.addLog('stdout', 'Setting up Griptape Nodes environment...')
+    this.emit('engine:status-changed', this.status)
   }
 
   /**
    * Get engine logs
    */
   getLogs(): EngineLog[] {
-    return [...this.logs];
+    return [...this.logs]
   }
 
   /**
    * Clear logs
    */
   clearLogs(): void {
-    this.logs = [];
-    this.emit('engine:logs-cleared');
+    this.logs = []
+    this.emit('engine:logs-cleared')
   }
 
   /**
@@ -95,28 +95,26 @@ export class EngineService extends EventEmitter<EngineEvents> {
   private addLog(type: 'stdout' | 'stderr', message: string): void {
     // Clean up control sequences that shouldn't be displayed
     let cleanMessage = message
-      // TODO: [Add back engine log colors cross platform](https://github.com/griptape-ai/griptape-nodes-desktop/issues/31)
-      // // Remove cursor show/hide sequences
-      // .replace(/\x1b\[\?25[lh]/g, '')
-      // // Remove other cursor control sequences
-      // .replace(/\x1b\[\d*[ABCDEFGHJKST]/gi, '')
-      // // Remove clear line/screen sequences
-      // .replace(/\x1b\[2?[JK]/gi, '')
-      // // Remove save/restore cursor position
-      // .replace(/\x1b\[[su]/gi, '')
-      // // Remove Windows-specific ANSI sequences
-      // // .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
-      // // Remove color reset and other SGR sequences
-      // .replace(/\x1b\[\d*;?\d*;?\d*;?\d*m/g, '')
-      // // Remove bracketed paste mode
-      // .replace(/\x1b\[\?2004[lh]/g, '')
-      // // Clean up any remaining escape sequences we don't handle
-      // .replace(/\x1b\[\?\d+[lh]/g, '')
-      // // Handle Windows line endings properly
-      // .replace(/\r\n/g, '\n')
-      // .replace(/\r(?!\n)/g, '');
-      ;
-
+    // TODO: [Add back engine log colors cross platform](https://github.com/griptape-ai/griptape-nodes-desktop/issues/31)
+    // // Remove cursor show/hide sequences
+    // .replace(/\x1b\[\?25[lh]/g, '')
+    // // Remove other cursor control sequences
+    // .replace(/\x1b\[\d*[ABCDEFGHJKST]/gi, '')
+    // // Remove clear line/screen sequences
+    // .replace(/\x1b\[2?[JK]/gi, '')
+    // // Remove save/restore cursor position
+    // .replace(/\x1b\[[su]/gi, '')
+    // // Remove Windows-specific ANSI sequences
+    // // .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+    // // Remove color reset and other SGR sequences
+    // .replace(/\x1b\[\d*;?\d*;?\d*;?\d*m/g, '')
+    // // Remove bracketed paste mode
+    // .replace(/\x1b\[\?2004[lh]/g, '')
+    // // Clean up any remaining escape sequences we don't handle
+    // .replace(/\x1b\[\?\d+[lh]/g, '')
+    // // Handle Windows line endings properly
+    // .replace(/\r\n/g, '\n')
+    // .replace(/\r(?!\n)/g, '');
     // Don't process OSC 8 hyperlinks here - let the frontend handle them
     // This preserves them for conversion to clickable links in the UI
 
@@ -131,44 +129,44 @@ export class EngineService extends EventEmitter<EngineEvents> {
       timestamp: new Date(),
       type,
       message: cleanMessage
-    };
+    }
 
-    this.logs.push(log);
+    this.logs.push(log)
 
     // Trim logs if they exceed max size
     if (this.logs.length > this.maxLogSize) {
-      this.logs = this.logs.slice(-this.maxLogSize);
+      this.logs = this.logs.slice(-this.maxLogSize)
     }
 
-    this.emit('engine:log', log);
+    this.emit('engine:log', log)
   }
 
   /**
    * Start the engine
    */
   async startEngine(): Promise<void> {
-    await this.waitForReady();
+    await this.waitForReady()
 
-    const gtnPath = await this.gtnService.getGtnExecutablePath();
-    this.setEngineStatus('running');
+    const gtnPath = await this.gtnService.getGtnExecutablePath()
+    this.setEngineStatus('running')
 
     try {
       // Clear logs from previous session when starting fresh
-      this.logs = [];
-      logger.info('[ENGINE] Starting Griptape Nodes engine...');
-      logger.info(`[ENGINE] Command: ${gtnPath} engine`);
+      this.logs = []
+      logger.info('[ENGINE] Starting Griptape Nodes engine...')
+      logger.info(`[ENGINE] Command: ${gtnPath} engine`)
 
       // Spawn the engine process from config directory so it finds the config file
       this.engineProcess = spawn(
         gtnPath,
         [
-          '--no-update',
+          '--no-update'
           // 'engine', TODO: uncomment after resolving https://github.com/griptape-ai/griptape-nodes/issues/2315
         ],
         {
           cwd: getCwd(this.userDataDir),
           env: {
-            ...getEnv(this.userDataDir),
+            ...getEnv(this.userDataDir)
             // TODO: [Add back engine log colors cross platform](https://github.com/griptape-ai/griptape-nodes-desktop/issues/31)
             // // Force color output for terminals that support it
             // FORCE_COLOR: '1',
@@ -181,150 +179,157 @@ export class EngineService extends EventEmitter<EngineEvents> {
             // PYTHONUTF8: '1'
           },
           stdio: ['pipe', 'pipe', 'pipe']
-        });
+        }
+      )
 
-      attachOutputForwarder(this.engineProcess, { logPrefix: "GTN-ENGINE" })
+      attachOutputForwarder(this.engineProcess, { logPrefix: 'GTN-ENGINE' })
 
       // Handle stdout with line buffering and carriage return handling
       this.engineProcess.stdout?.on('data', (data) => {
-        this.stdoutBuffer += data.toString('utf8');
+        this.stdoutBuffer += data.toString('utf8')
 
         // Handle both Windows CRLF and Unix LF line endings
         // First normalize Windows line endings
-        this.stdoutBuffer = this.stdoutBuffer.replace(/\r\n/g, '\n');
+        this.stdoutBuffer = this.stdoutBuffer.replace(/\r\n/g, '\n')
 
         // Handle carriage returns (\r) which are used for progress indicators
         // Split by \r to handle overwrites, keeping only the last one
-        const carriageReturnParts = this.stdoutBuffer.split('\r');
+        const carriageReturnParts = this.stdoutBuffer.split('\r')
         if (carriageReturnParts.length > 1) {
           // Keep only the last part after \r (this is what should be displayed)
-          this.stdoutBuffer = carriageReturnParts[carriageReturnParts.length - 1];
+          this.stdoutBuffer = carriageReturnParts[carriageReturnParts.length - 1]
         }
 
-        const lines = this.stdoutBuffer.split('\n');
+        const lines = this.stdoutBuffer.split('\n')
 
         // Keep the last incomplete line in the buffer
-        this.stdoutBuffer = lines.pop() || '';
+        this.stdoutBuffer = lines.pop() || ''
 
         // Process complete lines
-        lines.forEach(line => {
+        lines.forEach((line) => {
           if (line.trim().length > 0) {
-            this.addLog('stdout', line);
+            this.addLog('stdout', line)
           }
-        });
-      });
+        })
+      })
 
       // Handle stderr with line buffering and carriage return handling
       this.engineProcess.stderr?.on('data', (data) => {
-        this.stderrBuffer += data.toString('utf8');
+        this.stderrBuffer += data.toString('utf8')
 
         // Handle both Windows CRLF and Unix LF line endings
         // First normalize Windows line endings
-        this.stderrBuffer = this.stderrBuffer.replace(/\r\n/g, '\n');
+        this.stderrBuffer = this.stderrBuffer.replace(/\r\n/g, '\n')
 
         // Handle carriage returns (\r) which are used for progress indicators
         // Split by \r to handle overwrites, keeping only the last one
-        const carriageReturnParts = this.stderrBuffer.split('\r');
+        const carriageReturnParts = this.stderrBuffer.split('\r')
         if (carriageReturnParts.length > 1) {
           // Keep only the last part after \r (this is what should be displayed)
-          this.stderrBuffer = carriageReturnParts[carriageReturnParts.length - 1];
+          this.stderrBuffer = carriageReturnParts[carriageReturnParts.length - 1]
         }
 
-        const lines = this.stderrBuffer.split('\n');
+        const lines = this.stderrBuffer.split('\n')
 
         // Keep the last incomplete line in the buffer
-        this.stderrBuffer = lines.pop() || '';
+        this.stderrBuffer = lines.pop() || ''
 
         // Process complete lines
-        lines.forEach(line => {
+        lines.forEach((line) => {
           if (line.trim().length > 0) {
-            this.addLog('stderr', line);
+            this.addLog('stderr', line)
           }
-        });
-      });
+        })
+      })
 
       // Handle process exit
       this.engineProcess.once('exit', (code, signal) => {
         // Flush any remaining buffered data
         if (this.stdoutBuffer.trim().length > 0) {
-          this.addLog('stdout', this.stdoutBuffer);
-          this.stdoutBuffer = '';
+          this.addLog('stdout', this.stdoutBuffer)
+          this.stdoutBuffer = ''
         }
         if (this.stderrBuffer.trim().length > 0) {
-          this.addLog('stderr', this.stderrBuffer);
-          this.stderrBuffer = '';
+          this.addLog('stderr', this.stderrBuffer)
+          this.stderrBuffer = ''
         }
 
         // Clean up the process and its listeners
-        this.engineProcess?.removeAllListeners();
-        this.engineProcess?.stdout?.removeAllListeners();
-        this.engineProcess?.stderr?.removeAllListeners();
-        this.engineProcess = null;
+        this.engineProcess?.removeAllListeners()
+        this.engineProcess?.stdout?.removeAllListeners()
+        this.engineProcess?.stderr?.removeAllListeners()
+        this.engineProcess = null
 
         // Auto-restart if it crashed unexpectedly
         if (this.status == 'ready') {
           // This means someone "stopped" the engine.
-          this.restartAttempts = 0;
-          this.addLog('stdout', 'Engine stopped.');
-        } else if (this.status == 'running' && code !== 0 && this.restartAttempts < this.maxRestartAttempts) {
-          this.restartAttempts++;
-          this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`);
-          this.addLog('stdout', `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
-          setTimeout(() => this.startEngine(), this.restartDelay);
-          this.setEngineStatus('ready');
+          this.restartAttempts = 0
+          this.addLog('stdout', 'Engine stopped.')
+        } else if (
+          this.status == 'running' &&
+          code !== 0 &&
+          this.restartAttempts < this.maxRestartAttempts
+        ) {
+          this.restartAttempts++
+          this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`)
+          this.addLog(
+            'stdout',
+            `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`
+          )
+          setTimeout(() => this.startEngine(), this.restartDelay)
+          this.setEngineStatus('ready')
         } else {
-          this.addLog('stderr', 'Maximum restart attempts reached. Engine will not auto-restart.');
-          this.setEngineStatus('error');
+          this.addLog('stderr', 'Maximum restart attempts reached. Engine will not auto-restart.')
+          this.setEngineStatus('error')
         }
-      });
+      })
 
       // Handle process error
       this.engineProcess.on('error', (error) => {
-        this.addLog('stderr', `Engine process error: ${error.message}`);
-        this.addLog('stderr', `Error code: ${(error as any).code}, errno: ${(error as any).errno}`);
-        this.setEngineStatus('error');
-      });
-
+        this.addLog('stderr', `Engine process error: ${error.message}`)
+        this.addLog('stderr', `Error code: ${(error as any).code}, errno: ${(error as any).errno}`)
+        this.setEngineStatus('error')
+      })
     } catch (error: any) {
-      this.addLog('stderr', `Failed to start engine: ${error.message}`);
-      this.setEngineStatus('error');
+      this.addLog('stderr', `Failed to start engine: ${error.message}`)
+      this.setEngineStatus('error')
     }
   }
 
   private setEngineStatus(status: EngineStatus) {
     if (status == this.status) {
-      return;
+      return
     }
-    this.status = status;
-    this.emit('engine:status-changed', status);
+    this.status = status
+    this.emit('engine:status-changed', status)
   }
 
   async stopEngine(): Promise<void> {
     if (this.status == 'running') {
       // Set status to ready so that the exit handler doesn't try to restart.
-      this.setEngineStatus('ready');
+      this.setEngineStatus('ready')
     }
     // Try kill first.
     if (this.engineProcess) {
       // Let process exit event handle the clean up.
-      this.engineProcess.kill('SIGKILL');
+      this.engineProcess.kill('SIGKILL')
     }
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 3000))
     // Try sigterm after graceperiod.
     if (this.engineProcess) {
       // Let process exit event handle the clean up.
-      this.engineProcess.kill('SIGTERM');
+      this.engineProcess.kill('SIGTERM')
     }
   }
 
   async restartEngine(): Promise<void> {
-    this.addLog('stdout', 'Restarting Griptape Nodes engine...');
-    await this.stopEngine();
-    await this.startEngine();
+    this.addLog('stdout', 'Restarting Griptape Nodes engine...')
+    await this.stopEngine()
+    await this.startEngine()
   }
 
   async destroy(): Promise<void> {
-    await this.stopEngine();
-    this.removeAllListeners();
+    await this.stopEngine()
+    this.removeAllListeners()
   }
 }

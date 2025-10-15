@@ -1,45 +1,44 @@
-import { FolderOpen } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
-import { useEngine } from '../contexts/EngineContext';
-import { cn } from '../utils/utils';
-import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons';
+import { FolderOpen } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { useEngine } from '../contexts/EngineContext'
+import { cn } from '../utils/utils'
+import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
 
 interface DashboardProps {
-  onPageChange: (page: string) => void;
+  onPageChange: (page: string) => void
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
-  const { status: engineStatus } = useEngine();
-  const [workspaceDir, setWorkspaceDir] = useState<string>('');
-  const [loadingWorkspace, setLoadingWorkspace] = useState(true);
+  const { status: engineStatus } = useEngine()
+  const [workspaceDir, setWorkspaceDir] = useState<string>('')
+  const [loadingWorkspace, setLoadingWorkspace] = useState(true)
 
   useEffect(() => {
-    loadWorkspaceDirectory();
-    window.griptapeAPI.refreshConfig();
+    loadWorkspaceDirectory()
+    window.griptapeAPI.refreshConfig()
 
     const handleWorkspaceChanged = (event: any, directory: string) => {
-      setWorkspaceDir(directory);
-      setLoadingWorkspace(false);
-    };
+      setWorkspaceDir(directory)
+      setLoadingWorkspace(false)
+    }
 
-    window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged);
+    window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged)
 
     return () => {
-      window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged);
-    };
-  }, []);
+      window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
+    }
+  }, [])
 
   const loadWorkspaceDirectory = async () => {
     try {
-      const directory = await window.griptapeAPI.getWorkspace();
-      setWorkspaceDir(directory);
+      const directory = await window.griptapeAPI.getWorkspace()
+      setWorkspaceDir(directory)
     } catch (err) {
-      console.error('Failed to load workspace directory:', err);
+      console.error('Failed to load workspace directory:', err)
     } finally {
-      setLoadingWorkspace(false);
+      setLoadingWorkspace(false)
     }
-  };
-
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -47,8 +46,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
         <h2 className="text-xl font-semibold mb-4">Welcome to Griptape Nodes Desktop</h2>
         <div className="space-y-4 text-muted-foreground">
           <p>
-            Griptape Nodes Desktop is your local development environment for building AI workflows 
-            with the Griptape framework. This application manages the Griptape Nodes engine and 
+            Griptape Nodes Desktop is your local development environment for building AI workflows
+            with the Griptape framework. This application manages the Griptape Nodes engine and
             provides easy access to the visual workflow editor.
           </p>
           <div className="bg-muted/50 rounded-lg p-4 space-y-3">
@@ -61,37 +60,37 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
             </ol>
           </div>
           <p className="text-sm">
-            The Griptape Nodes engine runs locally and provides the backend services 
-            for executing your workflows. Use the Engine tab to monitor logs and troubleshoot any issues.
+            The Griptape Nodes engine runs locally and provides the backend services for executing
+            your workflows. Use the Engine tab to monitor logs and troubleshoot any issues.
           </p>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h3 className="text-lg font-semibold mb-3">Engine Status</h3>
           <div className="flex items-center gap-2">
             {getStatusIcon(engineStatus, 'md')}
             <span className={`font-medium ${getStatusColor(engineStatus)}`}>
-              {engineStatus === 'ready' ? 'Stopped' : engineStatus.charAt(0).toUpperCase() + engineStatus.slice(1).replace('-', ' ')}
+              {engineStatus === 'ready'
+                ? 'Stopped'
+                : engineStatus.charAt(0).toUpperCase() + engineStatus.slice(1).replace('-', ' ')}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            Manage from the Engine tab
-          </p>
+          <p className="text-xs text-muted-foreground mt-3">Manage from the Engine tab</p>
         </div>
 
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h3 className="text-lg font-semibold mb-3">Visual Editor</h3>
           <button
             onClick={() => {
-              onPageChange('editor');
+              onPageChange('editor')
             }}
             disabled={engineStatus !== 'running'}
             className={cn(
-              "w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md mb-3",
-              "bg-primary text-primary-foreground hover:bg-primary/90 transition-colors",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              'w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md mb-3',
+              'bg-primary text-primary-foreground hover:bg-primary/90 transition-colors',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
             Open Editor
@@ -109,15 +108,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
         <div className="flex items-start gap-2 mb-3">
           <FolderOpen className="w-5 h-5 text-muted-foreground mt-0.5" />
           <p className="text-sm font-mono text-muted-foreground break-all">
-            {loadingWorkspace ? 'Loading...' : (workspaceDir || 'Not configured')}
+            {loadingWorkspace ? 'Loading...' : workspaceDir || 'Not configured'}
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Manage from the Settings tab
-        </p>
+        <p className="text-xs text-muted-foreground">Manage from the Settings tab</p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard

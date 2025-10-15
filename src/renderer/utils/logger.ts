@@ -1,5 +1,5 @@
-import log from "electron-log/renderer";
-import { Logger } from '../../common/utils/logger.types';
+import log from 'electron-log/renderer'
+import { Logger } from '../../common/utils/logger.types'
 
 // Defaults to ~/Library/Logs/<AppName>/renderer.log
 export const logger: Logger = {
@@ -9,9 +9,9 @@ export const logger: Logger = {
   error: (...args) => log.error(...args),
   fatal: (err) => {
     if (err instanceof Error) {
-      log.error("Fatal:", err.stack || err.message);
+      log.error('Fatal:', err.stack || err.message)
     } else {
-      log.error("Fatal:", err);
+      log.error('Fatal:', err)
     }
-  },
-};
+  }
+}

@@ -1,37 +1,37 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { logger } from '@/main/utils/logger';
+import * as fs from 'fs'
+import * as path from 'path'
+import { logger } from '@/main/utils/logger'
 
 export interface EnvironmentInfo {
   python: {
-    version: string;
-    executable: string;
-  };
+    version: string
+    executable: string
+  }
   griptapeNodes: {
-    path: string;
-    version: string;
-    installed: boolean;
-  };
+    path: string
+    version: string
+    installed: boolean
+  }
   uv: {
-    version: string;
-    toolDir: string;
-    pythonInstallDir: string;
-  };
+    version: string
+    toolDir: string
+    pythonInstallDir: string
+  }
   system: {
-    platform: string;
-    arch: string;
-    nodeVersion: string;
-    electronVersion: string;
-  };
-  collectedAt: string;
-  errors: string[];
+    platform: string
+    arch: string
+    nodeVersion: string
+    electronVersion: string
+  }
+  collectedAt: string
+  errors: string[]
 }
 
 export class EnvironmentInfoService {
-  private envInfoFile: string;
+  private envInfoFile: string
 
   constructor(private userDataPath: string) {
-    this.envInfoFile = path.join(this.userDataPath, 'environment-info.json');
+    this.envInfoFile = path.join(this.userDataPath, 'environment-info.json')
   }
 
   /**
@@ -41,15 +41,15 @@ export class EnvironmentInfoService {
     try {
       // Ensure directory exists
       if (!fs.existsSync(this.userDataPath)) {
-        fs.mkdirSync(this.userDataPath, { recursive: true });
+        fs.mkdirSync(this.userDataPath, { recursive: true })
       }
 
       // Write environment info to file
-      fs.writeFileSync(this.envInfoFile, JSON.stringify(info, null, 2));
-      logger.info('Environment info saved to:', this.envInfoFile);
+      fs.writeFileSync(this.envInfoFile, JSON.stringify(info, null, 2))
+      logger.info('Environment info saved to:', this.envInfoFile)
     } catch (error) {
-      logger.error('Failed to save environment info:', error);
-      throw error;
+      logger.error('Failed to save environment info:', error)
+      throw error
     }
   }
 
@@ -59,13 +59,13 @@ export class EnvironmentInfoService {
   loadEnvironmentInfo(): EnvironmentInfo | null {
     try {
       if (fs.existsSync(this.envInfoFile)) {
-        const data = fs.readFileSync(this.envInfoFile, 'utf8');
-        return JSON.parse(data) as EnvironmentInfo;
+        const data = fs.readFileSync(this.envInfoFile, 'utf8')
+        return JSON.parse(data) as EnvironmentInfo
       }
-      return null;
+      return null
     } catch (error) {
-      logger.error('Failed to load environment info:', error);
-      return null;
+      logger.error('Failed to load environment info:', error)
+      return null
     }
   }
 
@@ -73,7 +73,7 @@ export class EnvironmentInfoService {
    * Check if environment info exists
    */
   hasEnvironmentInfo(): boolean {
-    return fs.existsSync(this.envInfoFile);
+    return fs.existsSync(this.envInfoFile)
   }
 
   /**
@@ -82,11 +82,11 @@ export class EnvironmentInfoService {
   clearEnvironmentInfo(): void {
     try {
       if (fs.existsSync(this.envInfoFile)) {
-        fs.unlinkSync(this.envInfoFile);
-        logger.info('Environment info cleared');
+        fs.unlinkSync(this.envInfoFile)
+        logger.info('Environment info cleared')
       }
     } catch (error) {
-      logger.error('Failed to clear environment info:', error);
+      logger.error('Failed to clear environment info:', error)
     }
   }
 }

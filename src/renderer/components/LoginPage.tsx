@@ -1,69 +1,69 @@
-import { ExternalLink } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { cn } from '../utils/utils';
-import headerLogoSrc from '../../assets/griptape_nodes_header_logo.svg';
-import animatedNodesSrc from '../../assets/animated_nodes.svg';
+import { ExternalLink } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { cn } from '../utils/utils'
+import headerLogoSrc from '../../assets/griptape_nodes_header_logo.svg'
+import animatedNodesSrc from '../../assets/animated_nodes.svg'
 
 const LoginPage: React.FC = () => {
-  const { login } = useAuth();
-  const [browserOpened, setBrowserOpened] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [rememberCredentials, setRememberCredentials] = useState(false);
-  const [platform, setPlatform] = useState<NodeJS.Platform | null>(null);
+  const { login } = useAuth()
+  const [browserOpened, setBrowserOpened] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [rememberCredentials, setRememberCredentials] = useState(false)
+  const [platform, setPlatform] = useState<NodeJS.Platform | null>(null)
 
   // Load saved credential storage preference and platform on mount
   useEffect(() => {
     const loadPreference = async () => {
       try {
-        const enabled = await window.onboardingAPI.isCredentialStorageEnabled();
-        setRememberCredentials(enabled);
+        const enabled = await window.onboardingAPI.isCredentialStorageEnabled()
+        setRememberCredentials(enabled)
 
-        const platformValue = await window.electronAPI.getPlatform();
-        setPlatform(platformValue);
+        const platformValue = await window.electronAPI.getPlatform()
+        setPlatform(platformValue)
       } catch (error) {
-        console.error('Failed to load credential storage preference:', error);
+        console.error('Failed to load credential storage preference:', error)
       }
-    };
-    loadPreference();
-  }, []);
+    }
+    loadPreference()
+  }, [])
 
   const handleCheckboxChange = async (checked: boolean) => {
-    setRememberCredentials(checked);
+    setRememberCredentials(checked)
     if (!checked) {
-      setError(null);
+      setError(null)
     }
     // Persist the preference immediately
     try {
-      await window.onboardingAPI.setCredentialStoragePreference(checked);
+      await window.onboardingAPI.setCredentialStoragePreference(checked)
     } catch (error) {
-      console.error('Failed to save credential storage preference:', error);
+      console.error('Failed to save credential storage preference:', error)
     }
-  };
+  }
 
   const handleLogin = async () => {
     try {
-      setError(null);
-      setBrowserOpened(true);
+      setError(null)
+      setBrowserOpened(true)
 
-      await login();
+      await login()
 
       // The login promise will resolve when auth completes and automatically redirect
       // Credentials are stored in-memory for now
       // If user checked "remember credentials", they'll be persisted during onboarding
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Login failed');
-      setBrowserOpened(false);
+      setError(error instanceof Error ? error.message : 'Login failed')
+      setBrowserOpened(false)
     }
-  };
+  }
 
   const openExternalLink = (url: string) => {
     if (window.electronAPI?.openExternal) {
-      window.electronAPI.openExternal(url);
+      window.electronAPI.openExternal(url)
     } else {
-      window.open(url, '_blank');
+      window.open(url, '_blank')
     }
-  };
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center bg-black/50 draggable">
@@ -78,36 +78,41 @@ const LoginPage: React.FC = () => {
           <div className="w-full max-w-3xl flex flex-col items-center flex-1 justify-center">
             {/* Animation */}
             <div className="mb-12">
-              <img src={animatedNodesSrc} alt="Animated Griptape Nodes" className="w-full max-w-lg" />
+              <img
+                src={animatedNodesSrc}
+                alt="Animated Griptape Nodes"
+                className="w-full max-w-lg"
+              />
             </div>
 
             {/* Login content */}
             <div className="w-full max-w-md space-y-8">
-              <div className={cn(
-                "p-6 rounded-md border",
-                browserOpened
-                  ? "bg-green-900/20 border-green-700"
-                  : "bg-sky-900/20 border-sky-700"
-              )}>
+              <div
+                className={cn(
+                  'p-6 rounded-md border',
+                  browserOpened
+                    ? 'bg-green-900/20 border-green-700'
+                    : 'bg-sky-900/20 border-sky-700'
+                )}
+              >
                 <h3 className="text-white font-medium mb-2 text-lg">
-                  {browserOpened ? "Browser Opened" : "Login Required"}
+                  {browserOpened ? 'Browser Opened' : 'Login Required'}
                 </h3>
                 <p className="text-gray-400 text-sm">
                   {browserOpened
-                    ? "Complete the login process in your browser."
-                    : "Please log in with your Griptape account to continue"
-                  }
+                    ? 'Complete the login process in your browser.'
+                    : 'Please log in with your Griptape account to continue'}
                 </p>
               </div>
 
               <button
                 onClick={handleLogin}
                 className={cn(
-                  "w-full flex items-center justify-center gap-3",
-                  "bg-sky-700 hover:bg-sky-500 active:bg-sky-300",
-                  "text-white font-medium text-base",
-                  "px-6 py-4 rounded-md",
-                  "transition-colors"
+                  'w-full flex items-center justify-center gap-3',
+                  'bg-sky-700 hover:bg-sky-500 active:bg-sky-300',
+                  'text-white font-medium text-base',
+                  'px-6 py-4 rounded-md',
+                  'transition-colors'
                 )}
               >
                 <ExternalLink className="w-5 h-5" />
@@ -129,7 +134,8 @@ const LoginPage: React.FC = () => {
                     </span>
                     <p className="text-xs text-gray-500 mt-1">
                       Securely stores your credentials.
-                      {platform === 'darwin' && ' On macOS, you\'ll be prompted to grant keychain access after login.'}
+                      {platform === 'darwin' &&
+                        " On macOS, you'll be prompted to grant keychain access after login."}
                     </p>
                   </div>
                 </label>
@@ -170,7 +176,7 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default LoginPage;
+export default LoginPage

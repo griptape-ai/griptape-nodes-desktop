@@ -1,35 +1,31 @@
-import {
-  Home,
-  Settings,
-  User2,
-  ChevronDown,
-  ChevronUp,
-  LogOut,
-  Code,
-  Layers
-} from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useEngine } from '../contexts/EngineContext';
-import { cn } from '../utils/utils';
-import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip';
-import { getStatusIcon, getStatusTooltip } from '../utils/engineStatusIcons';
-import markLightSrc from '@/assets/griptape_nodes_mark_light.svg';
-import markDarkSrc from '@/assets/griptape_nodes_mark_dark.svg';
+import { Home, Settings, User2, ChevronDown, ChevronUp, LogOut, Code, Layers } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { useEngine } from '../contexts/EngineContext'
+import { cn } from '../utils/utils'
+import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip'
+import { getStatusIcon, getStatusTooltip } from '../utils/engineStatusIcons'
+import markLightSrc from '@/assets/griptape_nodes_mark_light.svg'
+import markDarkSrc from '@/assets/griptape_nodes_mark_dark.svg'
 
 interface SidebarProps {
-  className?: string;
-  selectedPage: string;
-  onPageChange: (page: string) => void;
-  hideHeader?: boolean;
+  className?: string
+  selectedPage: string
+  onPageChange: (page: string) => void
+  hideHeader?: boolean
 }
 
-export function Sidebar({ className, selectedPage, onPageChange, hideHeader = false }: SidebarProps) {
-  const { user, logout } = useAuth();
-  const { status } = useEngine();
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const profileButtonRef = useRef<HTMLButtonElement>(null);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
+export function Sidebar({
+  className,
+  selectedPage,
+  onPageChange,
+  hideHeader = false
+}: SidebarProps) {
+  const { user, logout } = useAuth()
+  const { status } = useEngine()
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const profileButtonRef = useRef<HTMLButtonElement>(null)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,37 +35,38 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
         !profileButtonRef.current.contains(event.target as Node) &&
         !profileMenuRef.current.contains(event.target as Node)
       ) {
-        setIsProfileOpen(false);
+        setIsProfileOpen(false)
       }
-    };
+    }
 
     if (isProfileOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isProfileOpen]);
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isProfileOpen])
 
   const handleLogout = () => {
-    logout();
-    setIsProfileOpen(false);
-  };
-
+    logout()
+    setIsProfileOpen(false)
+  }
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'engine', label: 'Engine', icon: Layers, showStatus: true },
     { id: 'editor', label: 'Editor', icon: Code },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+    { id: 'settings', label: 'Settings', icon: Settings }
+  ]
 
   return (
-    <div className={cn(
-      "flex flex-col h-full bg-sidebar text-sidebar-foreground border-r border-border w-64",
-      className
-    )}>
+    <div
+      className={cn(
+        'flex flex-col h-full bg-sidebar text-sidebar-foreground border-r border-border w-64',
+        className
+      )}
+    >
       {/* Logo Section - only show if not hidden */}
       {!hideHeader && (
         <div className="flex-shrink-0 px-4 py-4 border-b border-border draggable">
@@ -93,15 +90,15 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
       <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-1 px-2">
           {menuItems.map((item) => {
-            const Icon = item.icon;
+            const Icon = item.icon
             return (
               <li key={item.id}>
                 <button
                   onClick={() => onPageChange(item.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors relative",
-                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    selectedPage === item.id && "bg-sidebar-accent text-sidebar-accent-foreground"
+                    'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors relative',
+                    'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    selectedPage === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground'
                   )}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
@@ -109,9 +106,7 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
                   {item.showStatus && (
                     <Tooltip delayDuration={500}>
                       <TooltipTrigger asChild>
-                        <div className="flex items-center">
-                          {getStatusIcon(status, 'sm')}
-                        </div>
+                        <div className="flex items-center">{getStatusIcon(status, 'sm')}</div>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{getStatusTooltip(status)}</p>
@@ -120,7 +115,7 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
                   )}
                 </button>
               </li>
-            );
+            )
           })}
         </ul>
       </nav>
@@ -163,5 +158,5 @@ export function Sidebar({ className, selectedPage, onPageChange, hideHeader = fa
         </div>
       </div>
     </div>
-  );
+  )
 }
