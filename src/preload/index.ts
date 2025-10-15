@@ -143,3 +143,13 @@ contextBridge.exposeInMainWorld('onboardingAPI', {
   setWorkspaceSetupComplete: (complete: boolean) =>
     ipcRenderer.invoke('onboarding:set-workspace-setup-complete', complete)
 })
+
+contextBridge.exposeInMainWorld('usageMetricsAPI', {
+  reportLaunch: () => ipcRenderer.invoke('usage-metrics:report-launch')
+})
+
+contextBridge.exposeInMainWorld('deviceIdAPI', {
+  getDeviceId: () => ipcRenderer.invoke('device-id:get'),
+  getDeviceIdInfo: () => ipcRenderer.invoke('device-id:get-info'),
+  resetDeviceId: () => ipcRenderer.invoke('device-id:reset')
+})

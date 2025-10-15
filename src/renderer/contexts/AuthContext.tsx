@@ -43,6 +43,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkStoredAuth()
   }, [])
 
+  const reportUsageMetrics = async () => {
+    try {
+      // Report launch event (backend will determine if it's a new device/install)
+      await window.usageMetricsAPI?.reportLaunch()
+    } catch (error) {
+      // Don't log errors for usage metrics - they shouldn't block normal functionality
+      console.debug('Usage metrics reporting failed:', error)
+    }
+  }
+
   const checkStoredAuth = async () => {
     try {
       // Check for dev environment bypass
@@ -71,6 +81,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setApiKey(devApiKey)
         setIsAuthenticated(true)
         setIsLoading(false)
+        
+        // Report usage metrics in dev mode too (temporary for testing)
+        reportUsageMetrics()
         return
       }
 
@@ -105,6 +118,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setUser(result.user)
               setApiKey(result.apiKey)
               setIsAuthenticated(true)
+              
+              // Report usage metrics when token refresh is successful
+              reportUsageMetrics()
             } else {
               // Refresh failed - refresh token is invalid/expired
               console.log('Token refresh failed, requiring re-login:', refreshResult.error)
@@ -123,6 +139,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(result.user)
           setApiKey(result.apiKey)
           setIsAuthenticated(true)
+          
+          // Report usage metrics when authentication is successful
+          reportUsageMetrics()
         }
       }
     } catch (error) {
@@ -174,6 +193,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setApiKey(result.apiKey || null)
         setIsAuthenticated(true)
         // Storage is handled by the backend (electron-store)
+        
+        // Report usage metrics when login is successful
+        reportUsageMetrics()
       } else {
         throw new Error(result.error || 'Login failed')
       }

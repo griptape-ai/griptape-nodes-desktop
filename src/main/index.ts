@@ -19,6 +19,8 @@ import { isPackaged } from '@/main/utils/is-packaged'
 import { PythonService } from '../common/services/python/python-service'
 import { UpdateService } from '../common/services/update/update-service'
 import { OnboardingService } from '../common/services/onboarding-service'
+import { UsageMetricsService } from '../common/services/usage-metrics-service'
+import { DeviceIdService } from '../common/services/device-id-service'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string
@@ -75,6 +77,8 @@ if (!isPackaged() && process.env.AUTH_SCHEME === 'custom') {
 
 // Services
 const onboardingService = new OnboardingService()
+const deviceIdService = new DeviceIdService()
+const usageMetricsService = new UsageMetricsService()
 const uvService = new UvService(userDataPath)
 const environmentInfoService = new EnvironmentInfoService(userDataPath)
 const pythonService = new PythonService(userDataPath, uvService)
@@ -146,6 +150,8 @@ const createWindow = () => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
   onboardingService.start()
+  deviceIdService.start()
+  usageMetricsService.start()
   authService.start()
   uvService.start()
   pythonService.start()
@@ -939,6 +945,49 @@ const setupIPC = () => {
   // Check if encrypted credentials store exists
   ipcMain.handle('auth:has-existing-encrypted-store', () => {
     return authService.hasExistingEncryptedStore()
+  })
+
+  // Usage metrics handlers
+  ipcMain.handle('usage-metrics:report-launch', async () => {
+    try {
+      const credentials = authService.getStoredCredentials()
+      if (!credentials?.tokens?.access_token) {
+        return { success: false, error: 'Not authenticated' }
+      }
+
+      const deviceId = await deviceIdService.getDeviceId()
+      await usageMetricsService.reportLaunch(credentials.tokens.access_token, deviceId)
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to report launch usage:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  // Device ID handlers
+  ipcMain.handle('device-id:get', async () => {
+    try {
+      const deviceId = await deviceIdService.getDeviceId()
+      return { success: true, deviceId }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('device-id:get-info', () => {
+    const info = deviceIdService.getDeviceIdInfo()
+    return { success: true, info }
+  })
+
+  ipcMain.handle('device-id:reset', () => {
+    deviceIdService.resetDeviceId()
+    return { success: true }
   })
 }
 
