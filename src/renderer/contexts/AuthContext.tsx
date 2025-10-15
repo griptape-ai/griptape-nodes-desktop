@@ -45,6 +45,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const reportUsageMetrics = async () => {
     try {
+      // Skip usage metrics in development mode
+      const isPackaged = await window.electronAPI?.isPackaged()
+      if (!isPackaged) {
+        console.debug('Skipping usage metrics in development mode')
+        return
+      }
+
       // Report launch event (backend will determine if it's a new device/install)
       await window.usageMetricsAPI?.reportLaunch()
     } catch (error) {
@@ -81,9 +88,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setApiKey(devApiKey)
         setIsAuthenticated(true)
         setIsLoading(false)
-        
-        // Report usage metrics in dev mode too (temporary for testing)
-        reportUsageMetrics()
         return
       }
 
