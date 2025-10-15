@@ -1,11 +1,24 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { logger } from '@/main/utils/logger'
+import { PythonService } from './python/python-service'
+import { UvService } from './uv/uv-service'
+import { GtnService } from './gtn/gtn-service'
+import { getUvToolDir, getPythonInstallDir } from '../config/paths'
 
 export interface EnvironmentInfo {
+  build: {
+    version: string
+    commitHash: string
+    commitDate: string
+    branch: string
+    buildDate: string
+    buildId: string
+  }
   python: {
     version: string
     executable: string
+    installedPackages?: string[]
   }
   griptapeNodes: {
     path: string
@@ -32,6 +45,112 @@ export class EnvironmentInfoService {
 
   constructor(private userDataPath: string) {
     this.envInfoFile = path.join(this.userDataPath, 'environment-info.json')
+  }
+
+  /**
+   * Collect environment information from all services
+   */
+  async collectEnvironmentInfo(
+    services: {
+      pythonService: PythonService
+      uvService: UvService
+      gtnService: GtnService
+    },
+    buildInfo: {
+      version: string
+      commitHash: string
+      commitDate: string
+      branch: string
+      buildDate: string
+      buildId: string
+    }
+  ): Promise<EnvironmentInfo> {
+    const errors: string[] = []
+    const collectedAt = new Date().toISOString()
+
+    // Collect Python information
+    let pythonVersion = 'Unknown'
+    let pythonExecutable = 'Unknown'
+    let installedPackages: string[] = []
+
+    try {
+      await services.pythonService.waitForReady()
+      pythonVersion = await services.pythonService.getPythonVersion()
+      pythonExecutable = await services.pythonService.getPythonExecutablePath()
+      installedPackages = await services.pythonService.getInstalledPackages()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      errors.push(`Python: ${message}`)
+      logger.error('Failed to collect Python info:', error)
+    }
+
+    // Collect UV information
+    let uvVersion = 'Unknown'
+    const uvToolDir = getUvToolDir(this.userDataPath)
+    const pythonInstallDir = getPythonInstallDir(this.userDataPath)
+
+    try {
+      await services.uvService.waitForReady()
+      uvVersion = await services.uvService.getUvVersion()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      errors.push(`UV: ${message}`)
+      logger.error('Failed to collect UV info:', error)
+    }
+
+    // Collect Griptape Nodes information
+    let gtnInstalled = false
+    let gtnVersion = 'Unknown'
+    let gtnPath = 'Unknown'
+
+    try {
+      await services.gtnService.waitForReady()
+      gtnInstalled = services.gtnService.gtnExecutableExists()
+      if (gtnInstalled) {
+        gtnPath = await services.gtnService.getGtnExecutablePath()
+        gtnVersion = (await services.gtnService.getGtnVersion()).trim()
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      errors.push(`Griptape Nodes: ${message}`)
+      logger.error('Failed to collect GTN info:', error)
+    }
+
+    // Collect system information
+    const systemInfo = {
+      platform: process.platform,
+      arch: process.arch,
+      nodeVersion: process.versions.node,
+      electronVersion: process.versions.electron || 'Unknown'
+    }
+
+    const envInfo: EnvironmentInfo = {
+      build: buildInfo,
+      python: {
+        version: pythonVersion,
+        executable: pythonExecutable,
+        installedPackages
+      },
+      griptapeNodes: {
+        path: gtnPath,
+        version: gtnVersion,
+        installed: gtnInstalled
+      },
+      uv: {
+        version: uvVersion,
+        toolDir: uvToolDir,
+        pythonInstallDir
+      },
+      system: systemInfo,
+      collectedAt,
+      errors
+    }
+
+    // Save the collected information
+    this.saveEnvironmentInfo(envInfo)
+
+    logger.info('Environment info collected successfully')
+    return envInfo
   }
 
   /**

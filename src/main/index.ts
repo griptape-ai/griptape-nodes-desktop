@@ -7,6 +7,7 @@ VelopackApp.build().run()
 import path from 'node:path'
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
 import { getPythonVersion } from '../common/config/versions'
+import { ENV_INFO_NOT_COLLECTED } from '../common/config/constants'
 import { CustomAuthService } from '../common/services/auth/custom'
 import { HttpAuthService } from '../common/services/auth/http'
 import { EngineService } from '../common/services/gtn/engine-service'
@@ -172,6 +173,24 @@ app.on('ready', async () => {
   createWindow()
 
   engineService.startEngine()
+
+  // Collect environment info after all services are ready (async in background)
+  ;(async () => {
+    try {
+      await gtnService.waitForReady()
+      await environmentInfoService.collectEnvironmentInfo(
+        {
+          pythonService,
+          uvService,
+          gtnService
+        },
+        __BUILD_INFO__
+      )
+      logger.info('Initial environment info collection completed')
+    } catch (error) {
+      logger.error('Failed to collect initial environment info:', error)
+    }
+  })()
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -338,11 +357,15 @@ const showAboutDialog = async () => {
   // Load persisted environment info
   const envInfo = environmentInfoService.loadEnvironmentInfo()
 
+  // Use build info from environment info, fallback to __BUILD_INFO__
+  const buildInfo = envInfo?.build || __BUILD_INFO__
+
   const detailText = [
-    `Version: ${__BUILD_INFO__.version}`,
-    `Commit: ${__BUILD_INFO__.commitHash.substring(0, 8)}`,
-    `Branch: ${__BUILD_INFO__.branch}`,
-    `Build Date: ${new Date(__BUILD_INFO__.buildDate).toLocaleString()}`,
+    `Version: ${buildInfo.version}`,
+    `Commit: ${buildInfo.commitHash.substring(0, 8)}`,
+    `Branch: ${buildInfo.branch}`,
+    `Build ID: ${buildInfo.buildId}`,
+    `Build Date: ${new Date(buildInfo.buildDate).toLocaleString()}`,
     '',
     `Platform: ${process.platform} (${process.arch})`,
     `Electron: ${process.versions.electron}`,
@@ -351,16 +374,51 @@ const showAboutDialog = async () => {
     ''
   ]
 
+  // Python information
   const pythonVersion =
     envInfo?.python?.version?.split('\n')?.[0] || getPythonVersion() || 'Not installed'
-  const uvVersion = envInfo?.uv?.version || (await uvService.getUvVersion()) || 'Not installed'
-  // const gtnVersion = envInfo?.griptapeNodes?.version || 'Not installed';
+  const pythonExecutable = envInfo?.python?.executable || 'Unknown'
+  const pythonPackagesCount = envInfo?.python?.installedPackages?.length || 0
 
   detailText.push(
     `Python: ${pythonVersion}`,
-    `UV: ${uvVersion}`
-    // `Griptape Nodes: ${gtnVersion}`
+    `Python Executable: ${pythonExecutable}`,
+    `Python Packages: ${pythonPackagesCount} installed`,
+    ''
   )
+
+  // UV information
+  const uvVersion = envInfo?.uv?.version || (await uvService.getUvVersion()) || 'Not installed'
+  const uvToolDir = envInfo?.uv?.toolDir || 'Unknown'
+  const uvPythonInstallDir = envInfo?.uv?.pythonInstallDir || 'Unknown'
+
+  detailText.push(`UV: ${uvVersion}`, `UV Tool Directory: ${uvToolDir}`, `UV Python Install Directory: ${uvPythonInstallDir}`, '')
+
+  // Griptape Nodes information
+  const gtnVersion = envInfo?.griptapeNodes?.version || 'Not installed'
+  const gtnPath = envInfo?.griptapeNodes?.path || 'Unknown'
+  const gtnInstalled = envInfo?.griptapeNodes?.installed ? 'Yes' : 'No'
+
+  detailText.push(
+    `Griptape Nodes: ${gtnVersion}`,
+    `GTN Path: ${gtnPath}`,
+    `GTN Installed: ${gtnInstalled}`,
+    ''
+  )
+
+  // Collection metadata
+  if (envInfo?.collectedAt) {
+    const collectedDate = new Date(envInfo.collectedAt).toLocaleString()
+    detailText.push(`Environment Info Collected: ${collectedDate}`, '')
+  }
+
+  // Show errors if any
+  if (envInfo?.errors && envInfo.errors.length > 0) {
+    detailText.push('Collection Errors:')
+    envInfo.errors.forEach((error) => {
+      detailText.push(`  - ${error}`)
+    })
+  }
 
   dialog.showMessageBox({
     type: 'info',
@@ -524,10 +582,60 @@ const setupIPC = () => {
       } else {
         return {
           success: false,
-          error: 'Environment info not yet collected'
+          error: ENV_INFO_NOT_COLLECTED
         }
       }
     } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  // Handle environment info collection
+  ipcMain.handle('collect-environment-info', async () => {
+    try {
+      const envInfo = await environmentInfoService.collectEnvironmentInfo(
+        {
+          pythonService,
+          uvService,
+          gtnService
+        },
+        __BUILD_INFO__
+      )
+
+      return {
+        success: true,
+        data: envInfo
+      }
+    } catch (error) {
+      logger.error('Failed to collect environment info:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  // Handle environment info refresh (alias for collect)
+  ipcMain.handle('refresh-environment-info', async () => {
+    try {
+      const envInfo = await environmentInfoService.collectEnvironmentInfo(
+        {
+          pythonService,
+          uvService,
+          gtnService
+        },
+        __BUILD_INFO__
+      )
+
+      return {
+        success: true,
+        data: envInfo
+      }
+    } catch (error) {
+      logger.error('Failed to refresh environment info:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

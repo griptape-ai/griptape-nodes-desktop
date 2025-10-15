@@ -14,10 +14,91 @@ declare global {
       getEnvironmentInfo: () => Promise<{
         success: boolean
         data?: {
+          build: {
+            version: string
+            commitHash: string
+            commitDate: string
+            branch: string
+            buildDate: string
+            buildId: string
+          }
           python: {
             version: string
             executable: string
-            systemPath: string[]
+            installedPackages?: string[]
+          }
+          griptapeNodes: {
+            path: string
+            version: string
+            installed: boolean
+          }
+          uv: {
+            version: string
+            toolDir: string
+            pythonInstallDir: string
+          }
+          system: {
+            platform: string
+            arch: string
+            nodeVersion: string
+            electronVersion: string
+          }
+          collectedAt: string
+          errors: string[]
+        }
+        error?: string
+      }>
+      collectEnvironmentInfo: () => Promise<{
+        success: boolean
+        data?: {
+          build: {
+            version: string
+            commitHash: string
+            commitDate: string
+            branch: string
+            buildDate: string
+            buildId: string
+          }
+          python: {
+            version: string
+            executable: string
+            installedPackages?: string[]
+          }
+          griptapeNodes: {
+            path: string
+            version: string
+            installed: boolean
+          }
+          uv: {
+            version: string
+            toolDir: string
+            pythonInstallDir: string
+          }
+          system: {
+            platform: string
+            arch: string
+            nodeVersion: string
+            electronVersion: string
+          }
+          collectedAt: string
+          errors: string[]
+        }
+        error?: string
+      }>
+      refreshEnvironmentInfo: () => Promise<{
+        success: boolean
+        data?: {
+          build: {
+            version: string
+            commitHash: string
+            commitDate: string
+            branch: string
+            buildDate: string
+            buildId: string
+          }
+          python: {
+            version: string
+            executable: string
             installedPackages?: string[]
           }
           griptapeNodes: {
