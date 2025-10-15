@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useEngine } from '../contexts/EngineContext';
 import { cn } from '../utils/utils';
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons';
+import headerLogoLightSrc from '@/assets/griptape_nodes_header_logo_light.svg';
+import headerLogoDarkSrc from '@/assets/griptape_nodes_header_logo.svg';
 
 interface DashboardProps {
   onPageChange: (page: string) => void;
@@ -43,6 +45,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Logo Section */}
+      <div className="flex justify-center py-8">
+        <img
+          src={headerLogoLightSrc}
+          className="block w-auto h-16 dark:hidden"
+          alt="Griptape Nodes Logo"
+        />
+        <img
+          src={headerLogoDarkSrc}
+          className="hidden w-auto h-16 dark:block"
+          alt="Griptape Nodes Logo"
+        />
+      </div>
+
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <h2 className="text-xl font-semibold mb-4">Welcome to Griptape Nodes Desktop</h2>
         <div className="space-y-4 text-muted-foreground">
