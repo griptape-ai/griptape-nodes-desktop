@@ -559,7 +559,7 @@ const Settings: React.FC = () => {
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-2">Release Channel</p>
+            <p className="text-sm font-medium mb-2">Change Release Channel</p>
             {channelsError && (
               <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mb-2">
                 <p className="text-xs text-destructive">Failed to load available channels</p>
