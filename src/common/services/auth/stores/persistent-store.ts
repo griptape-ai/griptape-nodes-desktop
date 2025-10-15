@@ -133,7 +133,7 @@ export class PersistentStore<T extends Record<string, any>> extends Store<T> {
     try {
       const buffer = Buffer.from(encryptedHex, 'hex')
       return safeStorage.decryptString(buffer)
-    } catch (error) {
+    } catch (_error) {
       logger.warn('PersistentStore: Decryption failed, assuming unencrypted value')
       return encryptedHex
     }

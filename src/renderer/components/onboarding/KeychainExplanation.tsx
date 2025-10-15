@@ -8,7 +8,6 @@ interface KeychainExplanationProps {
 
 const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue }) => {
   const [stage, setStage] = useState<'info' | 'testing' | 'success' | 'error'>('info')
-  const [error, setError] = useState<string | null>(null)
 
   const startVerificationFlow = async () => {
     setStage('testing')
@@ -27,7 +26,6 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
     } catch (err) {
       console.error('Keychain access error:', err)
       setStage('error')
-      setError('Failed to enable credential storage. Keychain access may have been denied.')
     }
   }
 
@@ -80,8 +78,8 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
                   <h4 className="font-semibold text-white text-sm">Always Allow</h4>
                 </div>
                 <p className="text-xs text-gray-400">
-                  Recommended. Grants permanent access. If you don't select this, the prompt will
-                  appear immediately when opening the app in the future.
+                  Recommended. Grants permanent access. If you don&apos;t select this, the prompt
+                  will appear immediately when opening the app in the future.
                 </p>
               </div>
             </div>
@@ -94,7 +92,8 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
                   <h4 className="font-semibold text-white text-sm">Deny</h4>
                 </div>
                 <p className="text-xs text-gray-400">
-                  Credentials won't be saved. You'll need to log in every time you open the app.
+                  Credentials won&apos;t be saved. You&apos;ll need to log in every time you open
+                  the app.
                 </p>
               </div>
             </div>
@@ -121,8 +120,8 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
             <div className="flex-1">
               <p className="text-xs text-blue-300">
                 <span className="font-semibold">Security:</span> Your credentials are encrypted by
-                macOS using your login password. Even if someone accesses your computer, they can't
-                read your credentials without your macOS password.
+                macOS using your login password. Even if someone accesses your computer, they
+                can&apos;t read your credentials without your macOS password.
               </p>
             </div>
           </div>
@@ -177,7 +176,7 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
             <div className="space-y-2">
               <h3 className="text-white font-semibold text-base">Keychain Access Was Denied</h3>
               <p className="text-gray-300 text-sm leading-relaxed">
-                You clicked "Deny" in the macOS keychain dialog. You have two options:
+                You clicked &quot;Deny&quot; in the macOS keychain dialog. You have two options:
               </p>
               <ul className="text-gray-300 text-sm leading-relaxed list-disc list-inside space-y-1">
                 <li>Restart to grant keychain access and securely save your credentials</li>

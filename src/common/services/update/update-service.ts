@@ -3,10 +3,6 @@ import Store from 'electron-store'
 import { logger } from '@/main/utils/logger'
 import { FakeUpdateManager } from './fake-update-manager'
 
-interface UpdateStoreData {
-  selectedChannel?: string
-}
-
 declare const __VELOPACK_CHANNEL__: string | undefined
 
 export class UpdateService {

@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process'
+import { ChildProcess } from 'child_process'
 
 export function collectStdout(child: ChildProcess): Promise<string> {
   return new Promise((resolve, reject) => {

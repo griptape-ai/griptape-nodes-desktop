@@ -8,7 +8,6 @@ import path from 'node:path'
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
 import { getPythonVersion } from '../common/config/versions'
 import { ENV_INFO_NOT_COLLECTED } from '../common/config/constants'
-import { CustomAuthService } from '../common/services/auth/custom'
 import { HttpAuthService } from '../common/services/auth/http'
 import { EngineService } from '../common/services/gtn/engine-service'
 import { EnvironmentInfoService } from '../common/services/environment-info'
@@ -59,7 +58,6 @@ if (!isPackaged()) {
 
 // Initialize services with proper paths
 const userDataPath = app.getPath('userData')
-const logsPath = app.getPath('logs')
 const gtnDefaultWorkspaceDir = path.join(app.getPath('documents'), 'GriptapeNodes')
 
 // Register custom URL scheme for OAuth callback
@@ -463,7 +461,7 @@ const setupKeyboardShortcuts = (mainWindow: BrowserWindow) => {
   })
 
   // Set up right-click context menu
-  mainWindow.webContents.on('context-menu', (event, params) => {
+  mainWindow.webContents.on('context-menu', (_event, _params) => {
     const menu = Menu.buildFromTemplate([
       { role: 'undo' },
       { role: 'redo' },
@@ -819,7 +817,7 @@ const setupIPC = () => {
     return onboardingService.isCredentialStorageEnabled()
   })
 
-  ipcMain.handle('onboarding:complete', async (event, credentialStorageEnabled: boolean) => {
+  ipcMain.handle('onboarding:complete', async (_event, _credentialStorageEnabled: boolean) => {
     // Just mark onboarding as complete
     // Credential storage is now handled at login time, so we don't modify that setting here
     onboardingService.setOnboardingComplete(true)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import KeychainExplanation from './KeychainExplanation'
 import WorkspaceSetup from './WorkspaceSetup'
 import headerLogoSrc from '../../../assets/griptape_nodes_header_logo.svg'
@@ -13,11 +13,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
   const [showWorkspaceStep, setShowWorkspaceStep] = useState(false)
   const [isCheckingSteps, setIsCheckingSteps] = useState(true)
 
-  useEffect(() => {
-    checkWhichStepsNeeded()
-  }, [])
-
-  const checkWhichStepsNeeded = async () => {
+  const checkWhichStepsNeeded = useCallback(async () => {
     try {
       const platform = await window.electronAPI.getPlatform()
       const hasExistingStore = await window.oauthAPI.hasExistingEncryptedStore()
@@ -65,7 +61,11 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
     } finally {
       setIsCheckingSteps(false)
     }
-  }
+  }, [onOnboardingComplete])
+
+  useEffect(() => {
+    checkWhichStepsNeeded()
+  }, [checkWhichStepsNeeded])
 
   const handleKeychainComplete = () => {
     // Move to workspace step if needed, otherwise complete

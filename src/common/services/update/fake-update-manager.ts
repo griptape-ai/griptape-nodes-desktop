@@ -36,7 +36,7 @@ export class FakeUpdateManager {
     })
   }
 
-  waitExitThenApplyUpdate(updateInfo: any): void {
+  waitExitThenApplyUpdate(_updateInfo: any): void {
     logger.info('FakeUpdateManager: Would apply update (but doing nothing in dev mode)')
   }
 

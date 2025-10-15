@@ -63,11 +63,14 @@ export default [
         'warn',
         {
           argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_'
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_'
         }
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
-      'react/prop-types': 'off' // TypeScript handles this
+      'react/prop-types': 'off', // TypeScript handles this
+      'react-hooks/set-state-in-effect': 'off', // Going to be too disruptive to fix at this point
+      '@typescript-eslint/no-explicit-any': 'off' // We're too far gone at this point
     },
     settings: {
       react: {

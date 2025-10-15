@@ -27,17 +27,6 @@ async function findFiles(dir: string, target: string): Promise<string[]> {
   return results.flat()
 }
 
-function setNested(obj: Record<string, any>, path: string[], value: unknown): void {
-  path.reduce<Record<string, any>>((acc, key, i) => {
-    if (i === path.length - 1) {
-      acc[key] = value
-    } else {
-      acc[key] ??= {}
-    }
-    return acc[key]
-  }, obj)
-}
-
 export function mergeNestedArray<T>({
   obj,
   path,
@@ -64,10 +53,6 @@ export function mergeNestedArray<T>({
 interface GtnServiceEvents {
   ready: []
   'workspace-changed': [string]
-}
-
-interface GtnStoreData {
-  workspaceDirectory?: string
 }
 
 export class GtnService extends EventEmitter<GtnServiceEvents> {

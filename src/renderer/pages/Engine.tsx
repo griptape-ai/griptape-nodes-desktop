@@ -1,5 +1,5 @@
 import Convert from 'ansi-to-html'
-import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react'
+import React, { useEffect, useRef, useMemo, useCallback, memo } from 'react'
 import { List, type RowComponentProps } from 'react-window'
 import { Play, Square, RotateCcw } from 'lucide-react'
 import { useEngine } from '../contexts/EngineContext'
@@ -34,7 +34,6 @@ const ansiConverter = new Convert({
 const Engine: React.FC = () => {
   const { status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs } = useEngine()
   const listRef = useRef<any>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const wasAtBottomRef = useRef(true)
   const prevLogCountRef = useRef(0)
@@ -105,7 +104,7 @@ const Engine: React.FC = () => {
     }, 100)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [logs.length])
 
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget
@@ -127,7 +126,7 @@ const Engine: React.FC = () => {
     })
   }, [])
 
-  const getItemSize = useCallback((index: number) => {
+  const getItemSize = useCallback(() => {
     // Reduced height for tighter spacing
     return 20
   }, [])
@@ -239,6 +238,7 @@ const Engine: React.FC = () => {
       )
     }
   )
+  LogRow.displayName = 'LogRow'
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -352,7 +352,7 @@ const Engine: React.FC = () => {
                 color: '#e5e7eb',
                 height: '384px'
               }}
-              // @ts-ignore
+              // @ts-expect-error - List component types don't include initialScrollOffset
               initialScrollOffset={logs.length > 0 ? logs.length * 20 : 0}
             />
           )}
