@@ -43,7 +43,9 @@ contextBridge.exposeInMainWorld('electron', {
 
 // Expose APIs to renderer process
 contextBridge.exposeInMainWorld('pythonAPI', {
-  getEnvironmentInfo: () => ipcRenderer.invoke('get-environment-info')
+  getEnvironmentInfo: () => ipcRenderer.invoke('get-environment-info'),
+  collectEnvironmentInfo: () => ipcRenderer.invoke('collect-environment-info'),
+  refreshEnvironmentInfo: () => ipcRenderer.invoke('refresh-environment-info')
 })
 
 contextBridge.exposeInMainWorld('oauthAPI', {

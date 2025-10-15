@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
+import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
@@ -50,6 +51,9 @@ const Settings: React.FC = () => {
 
       if (result.success && result.data) {
         setEnvironmentInfo(result.data)
+      } else if (result.error === ENV_INFO_NOT_COLLECTED) {
+        // Automatically trigger collection if no data exists
+        handleRefreshEnvironmentInfo()
       } else {
         setError(result.error || 'Failed to load environment information')
       }
@@ -58,6 +62,25 @@ const Settings: React.FC = () => {
       setError('Failed to load environment information')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRefreshEnvironmentInfo = async () => {
+    setRefreshing(true)
+    setError(null)
+    try {
+      const result = await window.pythonAPI.refreshEnvironmentInfo()
+
+      if (result.success && result.data) {
+        setEnvironmentInfo(result.data)
+      } else {
+        setError(result.error || 'Failed to refresh environment information')
+      }
+    } catch (err) {
+      console.error('Failed to refresh environment info:', err)
+      setError('Failed to refresh environment information')
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -316,7 +339,21 @@ const Settings: React.FC = () => {
 
       {/* Environment Information */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h2 className="text-lg font-semibold mb-4">Environment Information</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Environment Information</h2>
+          <button
+            onClick={handleRefreshEnvironmentInfo}
+            disabled={refreshing || loading}
+            className={cn(
+              'px-4 py-2 text-sm rounded-md',
+              'bg-primary text-primary-foreground',
+              'hover:bg-primary/90 transition-colors',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
 
         {loading ? (
           <p className="text-muted-foreground">Loading environment information...</p>
@@ -324,6 +361,37 @@ const Settings: React.FC = () => {
           <div className="text-destructive">{error}</div>
         ) : environmentInfo ? (
           <div className="space-y-6">
+            {/* Desktop App */}
+            {environmentInfo.build && (
+              <div>
+                <h3 className="text-md font-semibold mb-3">Desktop App</h3>
+                <div className="bg-muted rounded-md p-4 space-y-2">
+                  <p className="text-sm">
+                    <span className="font-medium">Version:</span> {environmentInfo.build.version}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Commit:</span>{' '}
+                    <code className="text-xs bg-background px-1 py-0.5 rounded">
+                      {environmentInfo.build.commitHash.substring(0, 8)}
+                    </code>
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Branch:</span> {environmentInfo.build.branch}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Build ID:</span>{' '}
+                    <code className="text-xs bg-background px-1 py-0.5 rounded">
+                      {environmentInfo.build.buildId}
+                    </code>
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Build Date:</span>{' '}
+                    {formatDate(environmentInfo.build.buildDate)}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Python Information */}
             <div>
               <h3 className="text-md font-semibold mb-3">Python</h3>

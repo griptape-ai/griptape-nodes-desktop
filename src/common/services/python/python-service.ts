@@ -70,4 +70,18 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
     const stdout = await collectStdout(child)
     return stdout.trim()
   }
+
+  async getInstalledPackages(): Promise<string[]> {
+    try {
+      const child = await this.spawnPython(
+        'import subprocess; import json; result = subprocess.run(["pip", "list", "--format=json"], capture_output=True, text=True); print(result.stdout)'
+      )
+      const stdout = await collectStdout(child)
+      const packages = JSON.parse(stdout.trim())
+      return packages.map((pkg: { name: string; version: string }) => `${pkg.name}==${pkg.version}`)
+    } catch (error) {
+      logger.error('Failed to get installed packages:', error)
+      return []
+    }
+  }
 }
