@@ -314,7 +314,10 @@ jobs:
 
           if [ -f "$DMG_FILE" ]; then
             echo "Uploading DMG to S3 for channel: $FULL_CHANNEL..."
-            aws s3 cp "$DMG_FILE" "s3://griptape-nodes-desktop-releases/${USER_CHANNEL}/${FULL_CHANNEL}/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
+            # Upload versioned DMG
+            aws s3 cp "$DMG_FILE" "s3://griptape-nodes-desktop-releases/${USER_CHANNEL}/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
+            # Upload latest DMG (without version number for stable URL)
+            aws s3 cp "$DMG_FILE" "s3://griptape-nodes-desktop-releases/${USER_CHANNEL}/GriptapeNodes-${FULL_CHANNEL}.dmg"
           else
             echo "Warning: DMG file not found: $DMG_FILE"
           fi
