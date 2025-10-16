@@ -350,6 +350,43 @@ const createMenu = () => {
         { type: 'separator' },
         { role: 'quit' }
       ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { type: 'separator' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' },
+        ...(process.platform === 'darwin'
+          ? [{ type: 'separator' as const }, { role: 'front' as const }]
+          : [])
+      ]
     }
   ]
 
@@ -439,33 +476,6 @@ const showAboutDialog = async () => {
 }
 
 const setupKeyboardShortcuts = (mainWindow: BrowserWindow) => {
-  // Register global shortcuts for copy/paste/cut/select all
-  mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.meta || input.control) {
-      switch (input.key.toLowerCase()) {
-        case 'c':
-          mainWindow.webContents.copy()
-          break
-        case 'v':
-          mainWindow.webContents.paste()
-          break
-        case 'x':
-          mainWindow.webContents.cut()
-          break
-        case 'a':
-          mainWindow.webContents.selectAll()
-          break
-        case 'z':
-          if (input.shift) {
-            mainWindow.webContents.redo()
-          } else {
-            mainWindow.webContents.undo()
-          }
-          break
-      }
-    }
-  })
-
   // Set up right-click context menu
   mainWindow.webContents.on('context-menu', (_event, _params) => {
     const menu = Menu.buildFromTemplate([
