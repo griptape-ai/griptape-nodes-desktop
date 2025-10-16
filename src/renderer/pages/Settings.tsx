@@ -1,12 +1,14 @@
 import { Moon, Sun, Monitor } from 'lucide-react'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useEngine } from '../contexts/EngineContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
+  const { status } = useEngine()
   const { theme, setTheme } = useTheme()
   const [environmentInfo, setEnvironmentInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -25,6 +27,17 @@ const Settings: React.FC = () => {
   const [versionError, setVersionError] = useState<boolean>(false)
   const [channelError, setChannelError] = useState<boolean>(false)
   const [channelsError, setChannelsError] = useState<boolean>(false)
+  const [checkingEngineUpdate, setCheckingEngineUpdate] = useState(false)
+  const [upgradingEngine, setUpgradingEngine] = useState(false)
+  const [engineUpdateInfo, setEngineUpdateInfo] = useState<{
+    currentVersion?: string
+    latestVersion?: string
+    updateAvailable?: boolean
+  } | null>(null)
+  const [engineUpdateMessage, setEngineUpdateMessage] = useState<{
+    type: 'success' | 'error' | 'info'
+    text: string
+  } | null>(null)
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -213,6 +226,85 @@ const Settings: React.FC = () => {
       console.error('Failed to check for updates:', err)
     } finally {
       setCheckingForUpdates(false)
+    }
+  }
+
+  const handleCheckForEngineUpdate = async () => {
+    setCheckingEngineUpdate(true)
+    setEngineUpdateMessage(null)
+    try {
+      const result = await window.griptapeAPI.checkForEngineUpdate()
+      if (result.success) {
+        setEngineUpdateInfo({
+          currentVersion: result.currentVersion,
+          latestVersion: result.latestVersion,
+          updateAvailable: result.updateAvailable
+        })
+        if (result.updateAvailable) {
+          setEngineUpdateMessage({
+            type: 'info',
+            text: `Version ${result.latestVersion} is available`
+          })
+        } else {
+          setEngineUpdateMessage({
+            type: 'success',
+            text: 'You are running the latest version'
+          })
+        }
+      } else {
+        setEngineUpdateMessage({
+          type: 'error',
+          text: `Failed to check for updates: ${result.error || 'Unknown error'}`
+        })
+      }
+    } catch (err) {
+      console.error('Failed to check for engine update:', err)
+      setEngineUpdateMessage({
+        type: 'error',
+        text: 'Failed to check for updates'
+      })
+    } finally {
+      setCheckingEngineUpdate(false)
+    }
+  }
+
+  const handleUpgradeEngine = async () => {
+    if (status === 'running') {
+      setEngineUpdateMessage({
+        type: 'error',
+        text: 'Please stop the engine before upgrading (go to Engine page)'
+      })
+      return
+    }
+
+    setUpgradingEngine(true)
+    setEngineUpdateMessage(null)
+
+    try {
+      const result = await window.griptapeAPI.upgrade()
+      if (result.success) {
+        setEngineUpdateMessage({
+          type: 'success',
+          text: 'Engine upgraded successfully! Please restart the engine to use the new version.'
+        })
+        // Refresh environment info to show new version
+        await handleRefreshEnvironmentInfo()
+        // Clear update info so user can check again
+        setEngineUpdateInfo(null)
+      } else {
+        setEngineUpdateMessage({
+          type: 'error',
+          text: `Upgrade failed: ${result.error || 'Unknown error'}`
+        })
+      }
+    } catch (err) {
+      console.error('Failed to upgrade engine:', err)
+      setEngineUpdateMessage({
+        type: 'error',
+        text: 'Failed to upgrade engine'
+      })
+    } finally {
+      setUpgradingEngine(false)
     }
   }
 
@@ -595,6 +687,83 @@ const Settings: React.FC = () => {
               Changing the channel will affect which updates you receive
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Engine Updates Section */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Engine Updates</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Current Engine Version</p>
+              <p className="text-sm text-muted-foreground">
+                {environmentInfo?.griptapeNodes?.version || 'Loading...'}
+              </p>
+            </div>
+            <button
+              onClick={handleCheckForEngineUpdate}
+              disabled={checkingEngineUpdate || !environmentInfo?.griptapeNodes?.installed}
+              className={cn(
+                'px-4 py-2 text-sm rounded-md',
+                'bg-primary text-primary-foreground',
+                'hover:bg-primary/90 transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+            >
+              {checkingEngineUpdate ? 'Checking...' : 'Check for Updates'}
+            </button>
+          </div>
+
+          {/* Update Message */}
+          {engineUpdateMessage && (
+            <div
+              className={cn(
+                'p-3 rounded-md border',
+                engineUpdateMessage.type === 'success' &&
+                  'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-500',
+                engineUpdateMessage.type === 'error' &&
+                  'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-500',
+                engineUpdateMessage.type === 'info' &&
+                  'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500'
+              )}
+            >
+              <p className="text-sm font-medium">{engineUpdateMessage.text}</p>
+            </div>
+          )}
+
+          {/* Upgrade Button (only show if update is available) */}
+          {engineUpdateInfo?.updateAvailable && (
+            <div className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/30 rounded-md">
+              <div>
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-500">
+                  Version {engineUpdateInfo.latestVersion} is available
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {status === 'running'
+                    ? 'Stop the engine before upgrading'
+                    : 'Click to upgrade now'}
+                </p>
+              </div>
+              <button
+                onClick={handleUpgradeEngine}
+                disabled={upgradingEngine || status === 'running'}
+                className={cn(
+                  'px-4 py-2 text-sm rounded-md',
+                  'bg-blue-600 text-white',
+                  'hover:bg-blue-700 transition-colors',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                {upgradingEngine ? 'Upgrading...' : 'Upgrade Now'}
+              </button>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            The engine (Griptape Nodes) provides the core functionality for running workflows. Check
+            for updates regularly to get the latest features and fixes.
+          </p>
         </div>
       </div>
     </div>

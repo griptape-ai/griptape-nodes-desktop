@@ -813,6 +813,46 @@ const setupIPC = () => {
 
   ipcMain.handle('gtn:refresh-config', () => gtnService.refreshConfig())
 
+  ipcMain.handle('gtn:upgrade', async () => {
+    try {
+      await gtnService.upgradeGtn()
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to upgrade GTN:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('gtn:get-version', async () => {
+    try {
+      await gtnService.waitForReady()
+      const version = await gtnService.getGtnVersion()
+      return { success: true, version: version.trim() }
+    } catch (error) {
+      logger.error('Failed to get GTN version:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('gtn:check-for-engine-update', async () => {
+    try {
+      const result = await gtnService.checkForEngineUpdate()
+      return { success: true, ...result }
+    } catch (error) {
+      logger.error('Failed to check for engine update:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
   // Update service handlers
   ipcMain.handle('update:check', async () => {
     const focusedWindow = BrowserWindow.getFocusedWindow()
