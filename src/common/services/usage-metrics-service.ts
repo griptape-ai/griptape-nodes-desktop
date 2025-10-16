@@ -2,7 +2,7 @@ import { logger } from '@/main/utils/logger'
 
 interface UsageReportPayload {
   type: 'nodes_desktop_app_launched'
-  deviceId: string
+  resource_id: string
 }
 
 export class UsageMetricsService {
@@ -27,10 +27,8 @@ export class UsageMetricsService {
   private async reportUsage(accessToken: string, deviceId: string): Promise<void> {
     const payload: UsageReportPayload = {
       type: 'nodes_desktop_app_launched',
-      deviceId
+      resource_id: deviceId
     }
-
-    logger.info('UsageMetricsService: Reporting app launch to API')
 
     const response = await fetch('https://cloud.griptape.ai/api/usage/report/nodes', {
       method: 'POST',
@@ -47,7 +45,5 @@ export class UsageMetricsService {
         `Usage report failed: ${response.status} ${response.statusText} - ${errorText}`
       )
     }
-
-    logger.info('UsageMetricsService: Successfully reported app launch')
   }
 }
