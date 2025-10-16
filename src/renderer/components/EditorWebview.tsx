@@ -138,6 +138,34 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     }
   }, [hasInitialized, preloadPath])
 
+  // Add CMD-R keybind to refresh editor
+  useEffect(() => {
+    const webview = webviewRef.current
+
+    if (!webview || !isVisible) {
+      return
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for CMD-R (Mac) or Ctrl-R (Windows/Linux)
+      const isMac = navigator.platform.toUpperCase().includes('MAC')
+      const isRefreshKey = e.key === 'r' || e.key === 'R'
+      const hasModifier = isMac ? e.metaKey : e.ctrlKey
+
+      if (isRefreshKey && hasModifier && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        console.log('Refreshing editor webview via keyboard shortcut')
+        webview.reload()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isVisible])
+
   // Show loading state while checking auth
   if (isCheckingAuth) {
     const content = (

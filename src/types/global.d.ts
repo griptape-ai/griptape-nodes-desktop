@@ -267,6 +267,7 @@ declare global {
     partition: string
     getWebContents(): Electron.WebContents
     executeJavaScript(code: string): Promise<any>
+    reload(): void
     addEventListener<K extends keyof HTMLElementEventMap>(
       type: K,
       listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
