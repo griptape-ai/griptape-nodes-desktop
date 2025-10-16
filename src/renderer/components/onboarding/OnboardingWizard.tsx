@@ -99,8 +99,8 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center bg-black/50 draggable">
-      <div className="w-[90%] h-[90%] max-w-6xl flex flex-col bg-gray-900 rounded-lg border border-blue-500/30 non-draggable">
+    <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center draggable">
+      <div className="w-screen h-screen flex flex-col bg-gray-900 border-t border-blue-500/30 non-draggable">
         {/* Header with logo */}
         <div className="flex items-center justify-center p-6 pb-4 border-b border-gray-700/50">
           <img src={headerLogoSrc} alt="Griptape" className="h-10" />
