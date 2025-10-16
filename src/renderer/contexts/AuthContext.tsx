@@ -40,6 +40,101 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check for stored authentication on app start
+
+    const checkStoredAuth = async () => {
+      try {
+        // Check for dev environment bypass
+        const devApiKey = await window.electronAPI?.getEnvVar('GT_CLOUD_API_KEY')
+        const isPackaged = await window.electronAPI?.isPackaged()
+
+        if (!isPackaged && devApiKey) {
+          console.log('Dev mode detected with API key - bypassing OAuth')
+          // Create mock user and tokens for development
+          const mockUser = {
+            sub: 'dev-user',
+            name: 'Development User',
+            email: 'dev@griptape.ai',
+            email_verified: true
+          }
+
+          const mockTokens = {
+            access_token: devApiKey,
+            id_token: 'dev-id-token',
+            token_type: 'Bearer',
+            expires_in: 86400
+          }
+
+          setUser(mockUser)
+          setTokens(mockTokens)
+          setApiKey(devApiKey)
+          setIsAuthenticated(true)
+          setIsLoading(false)
+          return
+        }
+
+        // Load from persistent store if credential storage was previously enabled
+        const credentialStorageEnabled = await window.onboardingAPI.isCredentialStorageEnabled()
+        if (credentialStorageEnabled) {
+          const hasEncryptedStore = await window.oauthAPI.hasExistingEncryptedStore()
+          if (hasEncryptedStore) {
+            await window.oauthAPI.loadFromPersistentStore()
+          }
+        }
+
+        // Check stored auth from backend (electron-store)
+        const result = await window.oauthAPI.checkAuth()
+
+        if (result.isAuthenticated && result.user && result.tokens) {
+          // Check if tokens are expired
+          const currentTime = Math.floor(Date.now() / 1000)
+          const expiresAt = result.expiresAt
+
+          if (!expiresAt || currentTime >= expiresAt) {
+            // Tokens are expired or have no expiration time (legacy data), attempt to refresh if we have a refresh token
+            console.log('Stored tokens are expired or missing expiration time')
+
+            if (result.tokens.refresh_token) {
+              console.log('Attempting to refresh tokens using refresh_token...')
+              const refreshResult = await window.oauthAPI.refreshToken(result.tokens.refresh_token)
+
+              if (refreshResult.success && refreshResult.tokens) {
+                console.log('Token refresh successful')
+                setTokens(refreshResult.tokens)
+                setUser(result.user)
+                setApiKey(result.apiKey)
+                setIsAuthenticated(true)
+
+                // Report usage metrics when token refresh is successful
+                reportUsageMetrics()
+              } else {
+                // Refresh failed - refresh token is invalid/expired
+                console.log('Token refresh failed, requiring re-login:', refreshResult.error)
+                await window.oauthAPI.logout()
+                setIsAuthenticated(false)
+              }
+            } else {
+              // No refresh token available
+              console.log('No refresh token available, requiring re-login')
+              await window.oauthAPI.logout()
+              setIsAuthenticated(false)
+            }
+          } else {
+            // Tokens are still valid
+            setTokens(result.tokens)
+            setUser(result.user)
+            setApiKey(result.apiKey)
+            setIsAuthenticated(true)
+
+            // Report usage metrics when authentication is successful
+            reportUsageMetrics()
+          }
+        }
+      } catch (error) {
+        console.error('Error checking stored auth:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
     checkStoredAuth()
   }, [])
 
@@ -57,101 +152,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       // Don't log errors for usage metrics - they shouldn't block normal functionality
       console.debug('Usage metrics reporting failed:', error)
-    }
-  }
-
-  const checkStoredAuth = async () => {
-    try {
-      // Check for dev environment bypass
-      const devApiKey = await window.electronAPI?.getEnvVar('GT_CLOUD_API_KEY')
-      const isPackaged = await window.electronAPI?.isPackaged()
-
-      if (!isPackaged && devApiKey) {
-        console.log('Dev mode detected with API key - bypassing OAuth')
-        // Create mock user and tokens for development
-        const mockUser = {
-          sub: 'dev-user',
-          name: 'Development User',
-          email: 'dev@griptape.ai',
-          email_verified: true
-        }
-
-        const mockTokens = {
-          access_token: devApiKey,
-          id_token: 'dev-id-token',
-          token_type: 'Bearer',
-          expires_in: 86400
-        }
-
-        setUser(mockUser)
-        setTokens(mockTokens)
-        setApiKey(devApiKey)
-        setIsAuthenticated(true)
-        setIsLoading(false)
-        return
-      }
-
-      // Load from persistent store if credential storage was previously enabled
-      const credentialStorageEnabled = await window.onboardingAPI.isCredentialStorageEnabled()
-      if (credentialStorageEnabled) {
-        const hasEncryptedStore = await window.oauthAPI.hasExistingEncryptedStore()
-        if (hasEncryptedStore) {
-          await window.oauthAPI.loadFromPersistentStore()
-        }
-      }
-
-      // Check stored auth from backend (electron-store)
-      const result = await window.oauthAPI.checkAuth()
-
-      if (result.isAuthenticated && result.user && result.tokens) {
-        // Check if tokens are expired
-        const currentTime = Math.floor(Date.now() / 1000)
-        const expiresAt = result.expiresAt
-
-        if (!expiresAt || currentTime >= expiresAt) {
-          // Tokens are expired or have no expiration time (legacy data), attempt to refresh if we have a refresh token
-          console.log('Stored tokens are expired or missing expiration time')
-
-          if (result.tokens.refresh_token) {
-            console.log('Attempting to refresh tokens using refresh_token...')
-            const refreshResult = await window.oauthAPI.refreshToken(result.tokens.refresh_token)
-
-            if (refreshResult.success && refreshResult.tokens) {
-              console.log('Token refresh successful')
-              setTokens(refreshResult.tokens)
-              setUser(result.user)
-              setApiKey(result.apiKey)
-              setIsAuthenticated(true)
-
-              // Report usage metrics when token refresh is successful
-              reportUsageMetrics()
-            } else {
-              // Refresh failed - refresh token is invalid/expired
-              console.log('Token refresh failed, requiring re-login:', refreshResult.error)
-              await window.oauthAPI.logout()
-              setIsAuthenticated(false)
-            }
-          } else {
-            // No refresh token available
-            console.log('No refresh token available, requiring re-login')
-            await window.oauthAPI.logout()
-            setIsAuthenticated(false)
-          }
-        } else {
-          // Tokens are still valid
-          setTokens(result.tokens)
-          setUser(result.user)
-          setApiKey(result.apiKey)
-          setIsAuthenticated(true)
-
-          // Report usage metrics when authentication is successful
-          reportUsageMetrics()
-        }
-      }
-    } catch (error) {
-      console.error('Error checking stored auth:', error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
