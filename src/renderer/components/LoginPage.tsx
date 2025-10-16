@@ -66,22 +66,22 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center bg-black/50 draggable">
-      <div className="w-[90%] h-[90%] max-w-6xl flex flex-col bg-gray-900 rounded-lg border border-blue-500/30 non-draggable">
-        {/* Header with logo */}
-        <div className="flex items-center justify-center p-6 pb-4 border-b border-gray-700/50">
-          <img src={headerLogoSrc} alt="Griptape" className="h-10" />
-        </div>
-
+    <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center draggable">
+      <div className="w-screen h-screen flex flex-col bg-gray-900 border-t border-blue-500/30 non-draggable">
         {/* Content area */}
         <div className="flex-1 overflow-y-auto px-8 py-12 flex flex-col items-center">
           <div className="w-full max-w-3xl flex flex-col items-center flex-1 justify-center">
+            {/* Logo */}
+            <div className="mb-8">
+              <img src={headerLogoSrc} alt="Griptape" className="h-16" />
+            </div>
+
             {/* Animation */}
             <div className="mb-12">
               <img
                 src={animatedNodesSrc}
                 alt="Animated Griptape Nodes"
-                className="w-full max-w-lg"
+                className="w-full max-w-md"
               />
             </div>
 
