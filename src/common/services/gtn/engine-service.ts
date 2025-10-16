@@ -165,17 +165,16 @@ export class EngineService extends EventEmitter<EngineEvents> {
         {
           cwd: getCwd(this.userDataDir),
           env: {
-            ...getEnv(this.userDataDir)
-            // TODO: [Add back engine log colors cross platform](https://github.com/griptape-ai/griptape-nodes-desktop/issues/31)
-            // // Force color output for terminals that support it
-            // FORCE_COLOR: '1',
-            // RICH_FORCE_TERMINAL: "1",
-            // PYTHONUNBUFFERED: '1',
-            // // Help with Windows terminal compatibility
-            // TERM: 'xterm-256color',
-            // // Fix Windows Unicode encoding issues
-            // PYTHONIOENCODING: 'utf-8',
-            // PYTHONUTF8: '1'
+            ...getEnv(this.userDataDir),
+            // Force color output for terminals that support it
+            FORCE_COLOR: '1',
+            RICH_FORCE_TERMINAL: '1',
+            PYTHONUNBUFFERED: '1',
+            // Help with Windows terminal compatibility
+            TERM: 'xterm-256color',
+            // Fix Windows Unicode encoding issues
+            PYTHONIOENCODING: 'utf-8',
+            PYTHONUTF8: '1'
           },
           stdio: ['pipe', 'pipe', 'pipe']
         }

@@ -145,8 +145,6 @@ const Engine: React.FC = () => {
             .replace(/\x1b\[\d*[A-G]/g, '')
             // Remove Windows-specific cursor positioning
             .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
-            // Remove SGR (color/style) codes that might not be handled properly
-            .replace(/\x1b\[\d*;?\d*;?\d*;?\d*m/g, '')
             // Handle Windows CRLF line endings
             .replace(/\r\n/g, '\n')
             // Remove carriage returns that cause overwriting
