@@ -101,13 +101,13 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
   return (
     <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center draggable">
       <div className="w-screen h-screen flex flex-col bg-gray-900 border-t border-blue-500/30 non-draggable">
-        {/* Header with logo */}
-        <div className="flex items-center justify-center p-6 pb-4 border-b border-gray-700/50">
-          <img src={headerLogoSrc} alt="Griptape" className="h-10" />
-        </div>
-
         {/* Content area */}
         <div className="flex-1 overflow-y-auto px-8 py-12">
+          {/* Logo */}
+          <div className="flex items-center justify-center mb-8">
+            <img src={headerLogoSrc} alt="Griptape" className="h-10" />
+          </div>
+
           {currentStep === 'keychain' && showKeychainStep && (
             <KeychainExplanation onContinue={handleKeychainComplete} />
           )}
