@@ -99,10 +99,10 @@ const updateService = new UpdateService(isPackaged())
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 1200,
-    minHeight: 800,
+    width: 1920,
+    height: 1200,
+    minWidth: 1600,
+    minHeight: 1000,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: process.platform === 'darwin' ? { x: 20, y: 18 } : undefined,
     frame: process.platform === 'darwin' ? false : true,
