@@ -61,7 +61,7 @@ export function Header({ className, selectedPage, onPageChange }: HeaderProps) {
       )}
     >
       {/* Navigation Menu */}
-      <nav className={cn('flex-1 flex items-center gap-1 non-draggable', isMac && 'ml-20')}>
+      <nav className={cn('flex-1 flex items-center gap-1', isMac && 'ml-20')}>
         {menuItems.map((item) => {
           const Icon = item.icon
           const button = (
@@ -93,7 +93,7 @@ export function Header({ className, selectedPage, onPageChange }: HeaderProps) {
       </nav>
 
       {/* Profile Section */}
-      <div className="flex-shrink-0 relative non-draggable">
+      <div className="flex-shrink-0 relative">
         <button
           ref={profileButtonRef}
           onClick={() => setIsProfileOpen(!isProfileOpen)}
