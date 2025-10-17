@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { EngineProvider } from '../contexts/EngineContext'
 import Dashboard from '../pages/Dashboard'
 import Engine from '../pages/Engine'
@@ -10,6 +10,11 @@ import UpdateProgressNotification from './UpdateProgressNotification'
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
+
+  // Notify main process when page changes
+  useEffect(() => {
+    window.electronAPI.setCurrentPage(currentPage)
+  }, [currentPage])
 
   const renderContent = () => {
     switch (currentPage) {

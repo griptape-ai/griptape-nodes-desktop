@@ -123,14 +123,14 @@ const createWindow = () => {
     mainWindow.webContents.openDevTools()
   }
 
-  // Set up application menu
-  createMenu()
+  // Set up IPC handlers (function handles its own initialization state and returns current page getter)
+  const getCurrentPage = setupIPC()
+
+  // Set up application menu with current page getter
+  createMenu(getCurrentPage)
 
   // Enable keyboard shortcuts for copy/paste
   setupKeyboardShortcuts(mainWindow)
-
-  // Set up IPC handlers (function handles its own initialization state)
-  setupIPC()
 
   // Start engine when window is created (if ready)
   if (engineService.getStatus() === 'ready') {
@@ -334,7 +334,7 @@ const downloadAndInstallUpdateWithDialog = async (
   }
 }
 
-const createMenu = () => {
+const createMenu = (getCurrentPage: () => string) => {
   const checkForUpdatesItem = {
     label: 'Check for Updates…',
     click: async () => {
@@ -373,7 +373,22 @@ const createMenu = () => {
     {
       label: 'View',
       submenu: [
-        { role: 'reload' },
+        {
+          label: 'Reload',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => {
+            const page = getCurrentPage()
+            const focusedWindow = BrowserWindow.getFocusedWindow()
+
+            if (page === 'editor' && focusedWindow) {
+              // Reload only the webview when on editor page
+              focusedWindow.webContents.send('editor:do-reload-webview')
+            } else if (focusedWindow) {
+              // Reload the entire app for other pages
+              focusedWindow.reload()
+            }
+          }
+        },
         { role: 'forceReload' },
         { role: 'toggleDevTools' },
         { type: 'separator' },
@@ -503,11 +518,12 @@ let ipcInitialized = false
 const setupIPC = () => {
   // Only set up IPC handlers once
   if (ipcInitialized) {
-    return
+    return () => 'dashboard'
   }
   ipcInitialized = true
 
   let mainWindow: BrowserWindow | null = null
+  let currentPage = 'dashboard'
 
   // Store reference to main window for sending events
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -766,6 +782,10 @@ const setupIPC = () => {
     app.quit()
   })
 
+  ipcMain.on('app:set-current-page', (event, page: string) => {
+    currentPage = page
+  })
+
   // Engine Service handlers
   ipcMain.handle('engine:get-status', () => {
     return engineService.getStatus()
@@ -817,6 +837,12 @@ const setupIPC = () => {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  })
+
+  // Editor webview handlers
+  ipcMain.on('editor:reload-webview', (event) => {
+    // Send reload command back to the same window
+    event.sender.send('editor:do-reload-webview')
   })
 
   // Griptape Nodes configuration handlers
@@ -1063,6 +1089,9 @@ const setupIPC = () => {
     deviceIdService.resetDeviceId()
     return { success: true }
   })
+
+  // Return getter function for current page
+  return () => currentPage
 }
 
 // In this file you can include the rest of your app's specific main process

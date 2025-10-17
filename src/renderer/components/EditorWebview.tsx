@@ -138,7 +138,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     }
   }, [hasInitialized, preloadPath])
 
-  // Add CMD-R keybind to refresh editor
+  // Listen for reload command from main process (triggered by CMD-R menu accelerator)
   useEffect(() => {
     const webview = webviewRef.current
 
@@ -146,23 +146,15 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       return
     }
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for CMD-R (Mac) or Ctrl-R (Windows/Linux)
-      const isMac = navigator.platform.toUpperCase().includes('MAC')
-      const isRefreshKey = e.key === 'r' || e.key === 'R'
-      const hasModifier = isMac ? e.metaKey : e.ctrlKey
-
-      if (isRefreshKey && hasModifier && !e.shiftKey && !e.altKey) {
-        e.preventDefault()
-        console.log('Refreshing editor webview via keyboard shortcut')
-        webview.reload()
-      }
+    const handleReload = () => {
+      console.log('Reloading editor webview')
+      webview.reload()
     }
 
-    document.addEventListener('keydown', handleKeyDown)
+    window.editorAPI.onReloadWebview(handleReload)
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown)
+      window.editorAPI.removeReloadWebview(handleReload)
     }
   }, [isVisible])
 
