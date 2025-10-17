@@ -198,13 +198,6 @@ declare global {
       refreshConfig: () => Promise<void>
       upgrade: () => Promise<{ success: boolean; error?: string }>
       getVersion: () => Promise<{ success: boolean; version?: string; error?: string }>
-      checkForEngineUpdate: () => Promise<{
-        success: boolean
-        currentVersion?: string
-        latestVersion?: string | null
-        updateAvailable?: boolean
-        error?: string
-      }>
       onWorkspaceChanged: (callback: (event: any, directory: string) => void) => void
       removeWorkspaceChanged: (callback: (event: any, directory: string) => void) => void
     }
