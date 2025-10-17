@@ -147,6 +147,12 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
+  // Set engine service reference in GtnService so it can forward initialization logs
+  gtnService.setEngineService(engineService)
+
+  // Set engine to initializing state before GTN setup
+  engineService.setInitializing()
+
   onboardingService.start()
   deviceIdService.start()
   usageMetricsService.start()

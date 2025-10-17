@@ -59,6 +59,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   private isReady: boolean = false
   private gtnExecutablePath?: string
   private store: any
+  private engineService?: any // Reference to EngineService for forwarding logs
 
   constructor(
     private userDataDir: string,
@@ -81,6 +82,13 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         this.emit('workspace-changed', newValue.workspaceDirectory)
       }
     })
+  }
+
+  /**
+   * Set the engine service reference for forwarding initialization logs
+   */
+  setEngineService(engineService: any): void {
+    this.engineService = engineService
   }
 
   async start() {
@@ -156,8 +164,41 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     }
     logger.info('Running gtn init with args:', sanitizedArgs.join(' '))
 
-    // Execute gtn init from the config directory so it finds our config file (async)
-    await this.runGtn(args, { wait: true })
+    // Execute gtn init and forward logs to engine service if available
+    const child = await this.runGtn(args, { wait: false })
+
+    // Forward logs to engine service for UI display
+    if (this.engineService) {
+      child.stdout?.on('data', (data) => {
+        const lines = data.toString().split('\n')
+        lines.forEach((line: string) => {
+          if (line.trim()) {
+            this.engineService.addLog('stdout', line)
+          }
+        })
+      })
+
+      child.stderr?.on('data', (data) => {
+        const lines = data.toString().split('\n')
+        lines.forEach((line: string) => {
+          if (line.trim()) {
+            this.engineService.addLog('stderr', line)
+          }
+        })
+      })
+    }
+
+    // Wait for the process to complete
+    await new Promise<void>((resolve, reject) => {
+      child.on('exit', (code) => {
+        if (code === 0) {
+          resolve()
+        } else {
+          reject(new Error(`gtn init failed with exit code ${code}`))
+        }
+      })
+      child.on('error', reject)
+    })
   }
 
   get workspaceDirectory(): string {
