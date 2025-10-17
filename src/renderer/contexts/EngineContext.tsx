@@ -38,6 +38,7 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
   const [status, setStatus] = useState<EngineStatus>('not-ready')
   const [logs, setLogs] = useState<EngineLog[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const maxLogSize = 1000 // Keep last 1000 log entries (matching main process limit)
 
   // Fetch initial status and logs
   useEffect(() => {
@@ -51,7 +52,8 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
 
         if (mounted) {
           setStatus(currentStatus)
-          setLogs(currentLogs)
+          // Trim initial logs if they exceed max size
+          setLogs(currentLogs.length > maxLogSize ? currentLogs.slice(-maxLogSize) : currentLogs)
           setTimeout(() => {
             isInitialLoad = false
           }, 100)
@@ -79,7 +81,12 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
               ) < 100
           )
           if (!exists) {
-            return [...prev, log]
+            const newLogs = [...prev, log]
+            // Trim logs if they exceed max size to prevent unbounded memory growth
+            if (newLogs.length > maxLogSize) {
+              return newLogs.slice(-maxLogSize)
+            }
+            return newLogs
           }
           return prev
         })
