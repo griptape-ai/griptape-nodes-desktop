@@ -27,13 +27,7 @@ const Settings: React.FC = () => {
   const [versionError, setVersionError] = useState<boolean>(false)
   const [channelError, setChannelError] = useState<boolean>(false)
   const [channelsError, setChannelsError] = useState<boolean>(false)
-  const [checkingEngineUpdate, setCheckingEngineUpdate] = useState(false)
   const [upgradingEngine, setUpgradingEngine] = useState(false)
-  const [engineUpdateInfo, setEngineUpdateInfo] = useState<{
-    currentVersion?: string
-    latestVersion?: string
-    updateAvailable?: boolean
-  } | null>(null)
   const [engineUpdateMessage, setEngineUpdateMessage] = useState<{
     type: 'success' | 'error' | 'info'
     text: string
@@ -229,72 +223,72 @@ const Settings: React.FC = () => {
     }
   }
 
-  const handleCheckForEngineUpdate = async () => {
-    setCheckingEngineUpdate(true)
+  const handleUpgradeEngine = async () => {
+    setUpgradingEngine(true)
     setEngineUpdateMessage(null)
+
+    const wasRunning = status === 'running'
+
     try {
-      const result = await window.griptapeAPI.checkForEngineUpdate()
-      if (result.success) {
-        setEngineUpdateInfo({
-          currentVersion: result.currentVersion,
-          latestVersion: result.latestVersion,
-          updateAvailable: result.updateAvailable
+      // Stop engine if running
+      if (wasRunning) {
+        setEngineUpdateMessage({
+          type: 'info',
+          text: 'Stopping engine...'
         })
-        if (result.updateAvailable) {
+        const stopResult = await window.engineAPI.stop()
+        if (!stopResult || !stopResult.success) {
           setEngineUpdateMessage({
-            type: 'info',
-            text: `Version ${result.latestVersion} is available`
+            type: 'error',
+            text: `Failed to stop engine: ${stopResult?.error || 'Unknown error'}`
+          })
+          setUpgradingEngine(false)
+          return
+        }
+        // Wait a moment for engine to fully stop
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+
+      // Upgrade engine
+      setEngineUpdateMessage({
+        type: 'info',
+        text: 'Upgrading engine...'
+      })
+      const result = await window.griptapeAPI.upgrade()
+      if (result && result.success) {
+        setEngineUpdateMessage({
+          type: 'success',
+          text: 'Engine upgraded successfully!'
+        })
+        // Refresh environment info to show new version
+        await handleRefreshEnvironmentInfo()
+
+        // Always start/restart the engine after upgrade
+        setEngineUpdateMessage({
+          type: 'info',
+          text: wasRunning
+            ? 'Engine upgraded successfully! Restarting engine...'
+            : 'Engine upgraded successfully! Starting engine...'
+        })
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        const startResult = await window.engineAPI.start()
+        if (startResult && startResult.success) {
+          setEngineUpdateMessage({
+            type: 'success',
+            text: wasRunning
+              ? 'Engine upgraded and restarted successfully!'
+              : 'Engine upgraded and started successfully!'
           })
         } else {
           setEngineUpdateMessage({
-            type: 'success',
-            text: 'You are running the latest version'
+            type: 'error',
+            text: `Engine upgraded but failed to ${wasRunning ? 'restart' : 'start'}: ${startResult?.error || 'Unknown error'}`
           })
         }
       } else {
         setEngineUpdateMessage({
           type: 'error',
-          text: `Failed to check for updates: ${result.error || 'Unknown error'}`
-        })
-      }
-    } catch (err) {
-      console.error('Failed to check for engine update:', err)
-      setEngineUpdateMessage({
-        type: 'error',
-        text: 'Failed to check for updates'
-      })
-    } finally {
-      setCheckingEngineUpdate(false)
-    }
-  }
-
-  const handleUpgradeEngine = async () => {
-    if (status === 'running') {
-      setEngineUpdateMessage({
-        type: 'error',
-        text: 'Please stop the engine before upgrading (go to Engine page)'
-      })
-      return
-    }
-
-    setUpgradingEngine(true)
-    setEngineUpdateMessage(null)
-
-    try {
-      const result = await window.griptapeAPI.upgrade()
-      if (result.success) {
-        setEngineUpdateMessage({
-          type: 'success',
-          text: 'Engine upgraded successfully! Please restart the engine to use the new version.'
-        })
-        // Refresh environment info to show new version
-        await handleRefreshEnvironmentInfo()
-        // Clear update info so user can check again
-        setEngineUpdateInfo(null)
-      } else {
-        setEngineUpdateMessage({
-          type: 'error',
-          text: `Upgrade failed: ${result.error || 'Unknown error'}`
+          text: `Upgrade failed: ${result?.error || 'Unknown error'}`
         })
       }
     } catch (err) {
@@ -428,6 +422,133 @@ const Settings: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Engine Updates Section */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Engine Updates</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Current Engine Version</p>
+              <p className="text-sm text-muted-foreground">
+                {environmentInfo?.griptapeNodes?.version || 'Loading...'}
+              </p>
+            </div>
+            <button
+              onClick={handleUpgradeEngine}
+              disabled={upgradingEngine || !environmentInfo?.griptapeNodes?.installed}
+              className={cn(
+                'px-4 py-2 text-sm rounded-md',
+                'bg-primary text-primary-foreground',
+                'hover:bg-primary/90 transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+            >
+              {upgradingEngine ? 'Upgrading...' : 'Update Engine'}
+            </button>
+          </div>
+
+          {/* Update Message */}
+          {engineUpdateMessage && (
+            <div
+              className={cn(
+                'p-3 rounded-md border',
+                engineUpdateMessage.type === 'success' &&
+                  'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-500',
+                engineUpdateMessage.type === 'error' &&
+                  'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-500',
+                engineUpdateMessage.type === 'info' &&
+                  'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500'
+              )}
+            >
+              <p className="text-sm font-medium">{engineUpdateMessage.text}</p>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            The engine (Griptape Nodes) provides the core functionality for running workflows. Click
+            &ldquo;Update Engine&rdquo; to upgrade to the latest version. The engine will be
+            automatically stopped and restarted during the upgrade.
+          </p>
+        </div>
+      </div>
+
+      {/* Release Channel Section */}
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Release Channel</h2>
+        {!updatesSupported && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4 mb-4">
+            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-500">
+              Release channel switching and updates are not available in development mode.
+            </p>
+          </div>
+        )}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Current Version</p>
+              <p
+                className={cn(
+                  'text-sm',
+                  versionError ? 'text-destructive' : 'text-muted-foreground'
+                )}
+              >
+                {versionError ? 'Failed to load version' : currentVersion || 'Loading...'}
+              </p>
+            </div>
+            <button
+              onClick={handleCheckForUpdates}
+              disabled={!updatesSupported || checkingForUpdates}
+              className={cn(
+                'px-4 py-2 text-sm rounded-md',
+                'bg-primary text-primary-foreground',
+                'hover:bg-primary/90 transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+            >
+              {checkingForUpdates ? 'Checking...' : 'Check for Updates'}
+            </button>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium mb-2">Change Release Channel</p>
+            {channelsError && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mb-2">
+                <p className="text-xs text-destructive">Failed to load available channels</p>
+              </div>
+            )}
+            <select
+              value={currentChannel}
+              onChange={(e) => handleChannelChange(e.target.value)}
+              disabled={!updatesSupported || channelError || channelsError}
+              className={cn(
+                'w-full px-3 py-2 text-sm rounded-md',
+                'bg-background border',
+                channelError || channelsError ? 'border-destructive' : 'border-input',
+                'focus:outline-none focus:ring-2 focus:ring-primary',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+            >
+              {availableChannels.length > 0 ? (
+                availableChannels.map((channel) => {
+                  const displayName = channelDisplayNames.get(channel) || channel
+                  const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1)
+                  return (
+                    <option key={channel} value={channel}>
+                      {formattedName}
+                    </option>
+                  )
+                })
+              ) : (
+                <option value="">No channels available</option>
+              )}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Changing the channel will affect which updates you receive
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Environment Information */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
@@ -611,160 +732,6 @@ const Settings: React.FC = () => {
             Environment information not yet collected. Click Refresh to collect it now.
           </p>
         )}
-      </div>
-
-      {/* Release Channel Section */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h2 className="text-lg font-semibold mb-4">Release Channel</h2>
-        {!updatesSupported && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4 mb-4">
-            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-500">
-              Release channel switching and updates are not available in development mode.
-            </p>
-          </div>
-        )}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Current Version</p>
-              <p
-                className={cn(
-                  'text-sm',
-                  versionError ? 'text-destructive' : 'text-muted-foreground'
-                )}
-              >
-                {versionError ? 'Failed to load version' : currentVersion || 'Loading...'}
-              </p>
-            </div>
-            <button
-              onClick={handleCheckForUpdates}
-              disabled={!updatesSupported || checkingForUpdates}
-              className={cn(
-                'px-4 py-2 text-sm rounded-md',
-                'bg-primary text-primary-foreground',
-                'hover:bg-primary/90 transition-colors',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-            >
-              {checkingForUpdates ? 'Checking...' : 'Check for Updates'}
-            </button>
-          </div>
-
-          <div>
-            <p className="text-sm font-medium mb-2">Change Release Channel</p>
-            {channelsError && (
-              <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mb-2">
-                <p className="text-xs text-destructive">Failed to load available channels</p>
-              </div>
-            )}
-            <select
-              value={currentChannel}
-              onChange={(e) => handleChannelChange(e.target.value)}
-              disabled={!updatesSupported || channelError || channelsError}
-              className={cn(
-                'w-full px-3 py-2 text-sm rounded-md',
-                'bg-background border',
-                channelError || channelsError ? 'border-destructive' : 'border-input',
-                'focus:outline-none focus:ring-2 focus:ring-primary',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-            >
-              {availableChannels.length > 0 ? (
-                availableChannels.map((channel) => {
-                  const displayName = channelDisplayNames.get(channel) || channel
-                  const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1)
-                  return (
-                    <option key={channel} value={channel}>
-                      {formattedName}
-                    </option>
-                  )
-                })
-              ) : (
-                <option value="">No channels available</option>
-              )}
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Changing the channel will affect which updates you receive
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Engine Updates Section */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h2 className="text-lg font-semibold mb-4">Engine Updates</h2>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Current Engine Version</p>
-              <p className="text-sm text-muted-foreground">
-                {environmentInfo?.griptapeNodes?.version || 'Loading...'}
-              </p>
-            </div>
-            <button
-              onClick={handleCheckForEngineUpdate}
-              disabled={checkingEngineUpdate || !environmentInfo?.griptapeNodes?.installed}
-              className={cn(
-                'px-4 py-2 text-sm rounded-md',
-                'bg-primary text-primary-foreground',
-                'hover:bg-primary/90 transition-colors',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-            >
-              {checkingEngineUpdate ? 'Checking...' : 'Check for Updates'}
-            </button>
-          </div>
-
-          {/* Update Message */}
-          {engineUpdateMessage && (
-            <div
-              className={cn(
-                'p-3 rounded-md border',
-                engineUpdateMessage.type === 'success' &&
-                  'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-500',
-                engineUpdateMessage.type === 'error' &&
-                  'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-500',
-                engineUpdateMessage.type === 'info' &&
-                  'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500'
-              )}
-            >
-              <p className="text-sm font-medium">{engineUpdateMessage.text}</p>
-            </div>
-          )}
-
-          {/* Upgrade Button (only show if update is available) */}
-          {engineUpdateInfo?.updateAvailable && (
-            <div className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/30 rounded-md">
-              <div>
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-500">
-                  Version {engineUpdateInfo.latestVersion} is available
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {status === 'running'
-                    ? 'Stop the engine before upgrading'
-                    : 'Click to upgrade now'}
-                </p>
-              </div>
-              <button
-                onClick={handleUpgradeEngine}
-                disabled={upgradingEngine || status === 'running'}
-                className={cn(
-                  'px-4 py-2 text-sm rounded-md',
-                  'bg-blue-600 text-white',
-                  'hover:bg-blue-700 transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-              >
-                {upgradingEngine ? 'Upgrading...' : 'Upgrade Now'}
-              </button>
-            </div>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            The engine (Griptape Nodes) provides the core functionality for running workflows. Check
-            for updates regularly to get the latest features and fixes.
-          </p>
-        </div>
       </div>
     </div>
   )

@@ -774,11 +774,44 @@ const setupIPC = () => {
     return { success: true }
   })
 
-  ipcMain.handle('engine:start', () => engineService.startEngine())
+  ipcMain.handle('engine:start', async () => {
+    try {
+      await engineService.startEngine()
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to start engine:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
 
-  ipcMain.handle('engine:stop', () => engineService.stopEngine())
+  ipcMain.handle('engine:stop', async () => {
+    try {
+      await engineService.stopEngine()
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to stop engine:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
 
-  ipcMain.handle('engine:restart', () => engineService.restartEngine())
+  ipcMain.handle('engine:restart', async () => {
+    try {
+      await engineService.restartEngine()
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to restart engine:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
 
   // Griptape Nodes configuration handlers
   ipcMain.handle('gtn:get-workspace', async () => {
@@ -833,19 +866,6 @@ const setupIPC = () => {
       return { success: true, version: version.trim() }
     } catch (error) {
       logger.error('Failed to get GTN version:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  })
-
-  ipcMain.handle('gtn:check-for-engine-update', async () => {
-    try {
-      const result = await gtnService.checkForEngineUpdate()
-      return { success: true, ...result }
-    } catch (error) {
-      logger.error('Failed to check for engine update:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
