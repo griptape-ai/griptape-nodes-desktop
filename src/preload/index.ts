@@ -79,6 +79,16 @@ contextBridge.exposeInMainWorld('engineAPI', {
   }
 })
 
+contextBridge.exposeInMainWorld('editorAPI', {
+  requestReloadWebview: () => ipcRenderer.send('editor:reload-webview'),
+  onReloadWebview: (callback: () => void) => {
+    ipcRenderer.on('editor:do-reload-webview', callback)
+  },
+  removeReloadWebview: (callback: () => void) => {
+    ipcRenderer.removeListener('editor:do-reload-webview', callback)
+  }
+})
+
 contextBridge.exposeInMainWorld('griptapeAPI', {
   getWorkspace: () => ipcRenderer.invoke('gtn:get-workspace'),
   getDefaultWorkspace: () => ipcRenderer.invoke('gtn:get-default-workspace'),
@@ -126,7 +136,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isPackaged: () => ipcRenderer.invoke('is-packaged'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   getPlatform: () => ipcRenderer.invoke('get-platform'),
-  restartApp: () => ipcRenderer.invoke('app:restart')
+  restartApp: () => ipcRenderer.invoke('app:restart'),
+  setCurrentPage: (page: string) => ipcRenderer.send('app:set-current-page', page)
 })
 
 contextBridge.exposeInMainWorld('onboardingAPI', {

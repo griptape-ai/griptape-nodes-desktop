@@ -189,6 +189,11 @@ declare global {
       onLog: (callback: (event: any, log: EngineLog) => void) => void
       removeLog: (callback: (event: any, log: EngineLog) => void) => void
     }
+    editorAPI: {
+      requestReloadWebview: () => void
+      onReloadWebview: (callback: () => void) => void
+      removeReloadWebview: (callback: () => void) => void
+    }
     griptapeAPI: {
       getWorkspace: () => Promise<string>
       getDefaultWorkspace: () => Promise<string>
@@ -207,6 +212,7 @@ declare global {
       openExternal: (url: string) => Promise<void>
       getPlatform: () => Promise<NodeJS.Platform>
       restartApp: () => Promise<void>
+      setCurrentPage: (page: string) => void
     }
     electron: {
       getPreloadPath: () => string
