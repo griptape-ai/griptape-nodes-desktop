@@ -91,7 +91,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
   /**
    * Add a log entry
    */
-  private addLog(type: 'stdout' | 'stderr', message: string): void {
+  addLog(type: 'stdout' | 'stderr', message: string): void {
     // Clean up control sequences that shouldn't be displayed
     let cleanMessage = message
     // TODO: [Add back engine log colors cross platform](https://github.com/griptape-ai/griptape-nodes-desktop/issues/31)
