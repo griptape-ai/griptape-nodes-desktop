@@ -87,6 +87,9 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
   setWorkspace: (directory: string) => ipcRenderer.invoke('gtn:set-workspace', directory),
   selectDirectory: () => ipcRenderer.invoke('gtn:select-directory'),
   refreshConfig: () => ipcRenderer.invoke('gtn:refresh-config'),
+  upgrade: () => ipcRenderer.invoke('gtn:upgrade'),
+  getVersion: () => ipcRenderer.invoke('gtn:get-version'),
+  checkForEngineUpdate: () => ipcRenderer.invoke('gtn:check-for-engine-update'),
   onWorkspaceChanged: (callback: (event: any, directory: string) => void) => {
     ipcRenderer.on('workspace-changed', callback)
   },

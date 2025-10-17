@@ -259,6 +259,95 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     return await collectStdout(child)
   }
 
+  async checkForEngineUpdate(): Promise<{
+    currentVersion: string
+    latestVersion: string | null
+    updateAvailable: boolean
+  }> {
+    logger.info('gtn service checkForEngineUpdate start')
+    await this.waitForReady()
+
+    const currentVersion = (await this.getGtnVersion()).trim()
+    const uvExecutablePath = await this.uvService.getUvExecutablePath()
+    const env = getEnv(this.userDataDir)
+    const cwd = getCwd(this.userDataDir)
+
+    logger.info('Running uv pip install --dry-run --system griptape-nodes to check for updates')
+    const checkProcess = spawn(
+      uvExecutablePath,
+      ['pip', 'install', '--dry-run', '--system', 'griptape-nodes'],
+      { env, cwd }
+    )
+
+    try {
+      const output = await collectStdout(checkProcess)
+      logger.info('Check for update output:', output)
+
+      // Parse output to find if an update would be installed
+      // Output format typically includes lines like:
+      // "Would install griptape-nodes-X.Y.Z"
+      const installMatch = output.match(/Would install.*griptape-nodes[=-](\d+\.\d+\.\d+[^\s]*)/i)
+      if (installMatch) {
+        const latestVersion = installMatch[1]
+        const updateAvailable = latestVersion !== currentVersion
+        logger.info(
+          `Update check: current=${currentVersion}, latest=${latestVersion}, available=${updateAvailable}`
+        )
+        return {
+          currentVersion,
+          latestVersion,
+          updateAvailable
+        }
+      }
+
+      // No update found in output
+      logger.info('No update available, current version is latest')
+      return {
+        currentVersion,
+        latestVersion: currentVersion,
+        updateAvailable: false
+      }
+    } catch (error) {
+      logger.error('Failed to check for engine update:', error)
+      throw error
+    }
+  }
+
+  async upgradeGtn(): Promise<void> {
+    logger.info('gtn service upgradeGtn start')
+    await this.waitForReady()
+
+    const uvExecutablePath = await this.uvService.getUvExecutablePath()
+    const env = getEnv(this.userDataDir)
+    const cwd = getCwd(this.userDataDir)
+
+    logger.info('Running uv tool upgrade griptape-nodes')
+    const upgradeProcess = spawn(uvExecutablePath, ['tool', 'upgrade', 'griptape-nodes'], {
+      env,
+      cwd
+    })
+
+    attachOutputForwarder(upgradeProcess, { logPrefix: 'UPGRADE_GTN' })
+
+    // Wait for upgrade to complete
+    await new Promise<void>((resolve, reject) => {
+      upgradeProcess.on('exit', (code) => {
+        if (code === 0) {
+          logger.info('gtn service upgradeGtn completed successfully')
+          resolve()
+        } else {
+          const error = new Error(`GTN upgrade failed with exit code ${code}`)
+          logger.error('gtn service upgradeGtn failed:', error)
+          reject(error)
+        }
+      })
+      upgradeProcess.on('error', (error) => {
+        logger.error('gtn service upgradeGtn error:', error)
+        reject(error)
+      })
+    })
+  }
+
   gtnExecutableExists(): boolean {
     return !!this.gtnExecutablePath && fs.existsSync(this.gtnExecutablePath)
   }
