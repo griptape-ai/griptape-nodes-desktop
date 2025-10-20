@@ -139,7 +139,10 @@ const createWindow = () => {
 
   // Stop engine when window is closed
   mainWindow.on('closed', () => {
-    engineService.stopEngine()
+    // Ensure the async stopEngine completes properly
+    ;(async () => {
+      await engineService.stopEngine()
+    })()
   })
 }
 

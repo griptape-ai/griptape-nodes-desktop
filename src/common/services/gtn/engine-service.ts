@@ -307,16 +307,16 @@ export class EngineService extends EventEmitter<EngineEvents> {
       // Set status to ready so that the exit handler doesn't try to restart.
       this.setEngineStatus('ready')
     }
-    // Try kill first.
-    if (this.engineProcess) {
-      // Let process exit event handle the clean up.
-      this.engineProcess.kill('SIGKILL')
-    }
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-    // Try sigterm after graceperiod.
+    // Try graceful shutdown first with SIGTERM.
     if (this.engineProcess) {
       // Let process exit event handle the clean up.
       this.engineProcess.kill('SIGTERM')
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3000))
+    // Force kill with SIGKILL if process still exists after grace period.
+    if (this.engineProcess) {
+      // Let process exit event handle the clean up.
+      this.engineProcess.kill('SIGKILL')
     }
   }
 
