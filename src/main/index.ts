@@ -349,73 +349,93 @@ const createMenu = (getCurrentPage: () => string) => {
     }
   }
 
-  const template = [
-    {
+  const aboutMenuItem = {
+    label: `About ${app.getName()}`,
+    click: async () => await showAboutDialog()
+  }
+
+  // Build template based on platform
+  const template: any[] = []
+
+  // macOS: Include app menu with About, Check for Updates, and Quit
+  if (process.platform === 'darwin') {
+    template.push({
       label: app.getName(),
       submenu: [
-        {
-          label: `About ${app.getName()}`,
-          click: async () => await showAboutDialog()
-        },
+        aboutMenuItem,
         { type: 'separator' },
         checkForUpdatesItem,
         { type: 'separator' },
         { role: 'quit' }
       ]
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { type: 'separator' },
-        { role: 'selectAll' }
-      ]
-    },
-    {
-      label: 'View',
-      submenu: [
-        {
-          label: 'Reload',
-          accelerator: 'CmdOrCtrl+R',
-          click: () => {
-            const page = getCurrentPage()
-            const focusedWindow = BrowserWindow.getFocusedWindow()
+    })
+  }
 
-            if (page === 'editor' && focusedWindow) {
-              // Reload only the webview when on editor page
-              focusedWindow.webContents.send('editor:do-reload-webview')
-            } else if (focusedWindow) {
-              // Reload the entire app for other pages
-              focusedWindow.reload()
-            }
+  // Edit menu (all platforms)
+  template.push({
+    label: 'Edit',
+    submenu: [
+      { role: 'undo' },
+      { role: 'redo' },
+      { type: 'separator' },
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' },
+      { type: 'separator' },
+      { role: 'selectAll' }
+    ]
+  })
+
+  // View menu (all platforms)
+  template.push({
+    label: 'View',
+    submenu: [
+      {
+        label: 'Reload',
+        accelerator: 'CmdOrCtrl+R',
+        click: () => {
+          const page = getCurrentPage()
+          const focusedWindow = BrowserWindow.getFocusedWindow()
+
+          if (page === 'editor' && focusedWindow) {
+            // Reload only the webview when on editor page
+            focusedWindow.webContents.send('editor:do-reload-webview')
+          } else if (focusedWindow) {
+            // Reload the entire app for other pages
+            focusedWindow.reload()
           }
-        },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
-    },
-    {
-      label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'close' },
-        ...(process.platform === 'darwin'
-          ? [{ type: 'separator' as const }, { role: 'front' as const }]
-          : [])
-      ]
-    }
-  ]
+        }
+      },
+      { role: 'forceReload' },
+      { role: 'toggleDevTools' },
+      { type: 'separator' },
+      { role: 'resetZoom' },
+      { role: 'zoomIn' },
+      { role: 'zoomOut' },
+      { type: 'separator' },
+      { role: 'togglefullscreen' }
+    ]
+  })
+
+  // Window menu (all platforms)
+  template.push({
+    label: 'Window',
+    submenu: [
+      { role: 'minimize' },
+      { role: 'close' },
+      ...(process.platform === 'darwin'
+        ? [{ type: 'separator' as const }, { role: 'front' as const }]
+        : [])
+    ]
+  })
+
+  // Windows/Linux: Add Help menu with About and Check for Updates
+  if (process.platform !== 'darwin') {
+    template.push({
+      label: 'Help',
+      submenu: [aboutMenuItem, { type: 'separator' }, checkForUpdatesItem]
+    })
+  }
 
   const menu = Menu.buildFromTemplate(template as any)
   Menu.setApplicationMenu(menu)
