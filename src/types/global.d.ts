@@ -252,6 +252,39 @@ declare global {
       }>
       resetDeviceId: () => Promise<{ success: boolean }>
     }
+    settingsAPI: {
+      getShowSystemMonitor: () => Promise<boolean>
+      setShowSystemMonitor: (show: boolean) => Promise<{ success: boolean }>
+    }
+    systemMonitorAPI: {
+      getMetrics: () => Promise<{
+        success: boolean
+        metrics?: {
+          cpu: {
+            usage: number
+            model: string
+          }
+          memory: {
+            used: number
+            total: number
+            percentage: number
+          }
+          gpus: Array<{
+            model: string
+            usage: number
+            memory: {
+              used: number
+              total: number
+            }
+          }>
+        }
+        error?: string
+      }>
+      startMonitoring: () => Promise<{ success: boolean }>
+      stopMonitoring: () => Promise<{ success: boolean }>
+      onMetricsUpdate: (callback: (metrics: any) => void) => void
+      removeMetricsUpdate: (callback: (metrics: any) => void) => void
+    }
   }
 }
 

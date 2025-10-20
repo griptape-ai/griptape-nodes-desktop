@@ -167,3 +167,21 @@ contextBridge.exposeInMainWorld('deviceIdAPI', {
   getDeviceIdInfo: () => ipcRenderer.invoke('device-id:get-info'),
   resetDeviceId: () => ipcRenderer.invoke('device-id:reset')
 })
+
+contextBridge.exposeInMainWorld('settingsAPI', {
+  getShowSystemMonitor: () => ipcRenderer.invoke('settings:get-show-system-monitor'),
+  setShowSystemMonitor: (show: boolean) =>
+    ipcRenderer.invoke('settings:set-show-system-monitor', show)
+})
+
+contextBridge.exposeInMainWorld('systemMonitorAPI', {
+  getMetrics: () => ipcRenderer.invoke('system-monitor:get-metrics'),
+  startMonitoring: () => ipcRenderer.invoke('system-monitor:start-monitoring'),
+  stopMonitoring: () => ipcRenderer.invoke('system-monitor:stop-monitoring'),
+  onMetricsUpdate: (callback: (metrics: any) => void) => {
+    ipcRenderer.on('system-monitor:metrics-update', (_, metrics) => callback(metrics))
+  },
+  removeMetricsUpdate: (callback: (metrics: any) => void) => {
+    ipcRenderer.removeListener('system-monitor:metrics-update', callback)
+  }
+})

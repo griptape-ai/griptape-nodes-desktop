@@ -20,6 +20,8 @@ import { UpdateService } from '../common/services/update/update-service'
 import { OnboardingService } from '../common/services/onboarding-service'
 import { UsageMetricsService } from '../common/services/usage-metrics-service'
 import { DeviceIdService } from '../common/services/device-id-service'
+import { SystemMonitorService } from '../common/services/system-monitor-service'
+import { SettingsService } from '../common/services/settings-service'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string
@@ -77,6 +79,8 @@ if (!isPackaged() && process.env.AUTH_SCHEME === 'custom') {
 const onboardingService = new OnboardingService()
 const deviceIdService = new DeviceIdService()
 const usageMetricsService = new UsageMetricsService()
+const settingsService = new SettingsService()
+const systemMonitorService = new SystemMonitorService()
 const uvService = new UvService(userDataPath)
 const environmentInfoService = new EnvironmentInfoService(userDataPath)
 const pythonService = new PythonService(userDataPath, uvService)
@@ -156,6 +160,8 @@ app.on('ready', async () => {
   onboardingService.start()
   deviceIdService.start()
   usageMetricsService.start()
+  settingsService.start()
+  systemMonitorService.start()
   authService.start()
   uvService.start()
   pythonService.start()
@@ -1088,6 +1094,46 @@ const setupIPC = () => {
   ipcMain.handle('device-id:reset', () => {
     deviceIdService.resetDeviceId()
     return { success: true }
+  })
+
+  // Settings handlers
+  ipcMain.handle('settings:get-show-system-monitor', () => {
+    return settingsService.getShowSystemMonitor()
+  })
+
+  ipcMain.handle('settings:set-show-system-monitor', (_, show: boolean) => {
+    settingsService.setShowSystemMonitor(show)
+    return { success: true }
+  })
+
+  // System monitor handlers
+  ipcMain.handle('system-monitor:get-metrics', async () => {
+    try {
+      const metrics = await systemMonitorService.getMetrics()
+      return { success: true, metrics }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('system-monitor:start-monitoring', () => {
+    systemMonitorService.startMonitoring()
+    return { success: true }
+  })
+
+  ipcMain.handle('system-monitor:stop-monitoring', () => {
+    systemMonitorService.stopMonitoring()
+    return { success: true }
+  })
+
+  // Listen for metrics updates and forward to renderer
+  systemMonitorService.on('metrics-update', (metrics) => {
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('system-monitor:metrics-update', metrics)
+    })
   })
 
   // Return getter function for current page
