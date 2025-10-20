@@ -1,6 +1,6 @@
 import { Server } from 'http'
 import { EventEmitter } from 'node:events'
-import { BrowserWindow, shell, app } from 'electron'
+import { BrowserWindow, app } from 'electron'
 import express from 'express'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -323,7 +323,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       this.authReject = reject
 
       const state = Math.random().toString(36).substring(7)
-      const url =
+      const authUrl =
         `https://auth.cloud.griptape.ai/authorize?` +
         `response_type=code&` +
         `client_id=bK5Fijuoy90ftmcwVUZABA5THOZyzHnH&` +
@@ -331,12 +331,95 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         `audience=${encodeURIComponent('https://cloud.griptape.ai/api')}&` +
         `state=${state}&` +
         `scope=openid%20profile%20email%20offline_access`
-      shell.openExternal(url)
+
+      // Create a modal authentication window
+      const mainWindow = BrowserWindow.getAllWindows()[0]
+      const authWindow = new BrowserWindow({
+        width: 500,
+        height: 700,
+        modal: true,
+        parent: mainWindow,
+        center: true,
+        resizable: false,
+        minimizable: false,
+        maximizable: false,
+        fullscreenable: false,
+        title: 'Log In to Griptape',
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          partition: 'auth' // In-memory partition for security
+        }
+      })
+
+      // Remove menu bar
+      authWindow.setMenuBarVisibility(false)
+
+      // Track whether we're processing an auth callback
+      let isProcessingCallback = false
+
+      // Handle navigation to detect OAuth callback
+      const handleAuthCallback = (url: string) => {
+        if (url.startsWith(REDIRECT_URI)) {
+          // Mark that we're processing the callback to prevent the closed handler from rejecting
+          isProcessingCallback = true
+
+          // Parse the URL to extract code and state
+          const urlObj = new URL(url)
+          const code = urlObj.searchParams.get('code')
+          const returnedState = urlObj.searchParams.get('state')
+          const error = urlObj.searchParams.get('error')
+          const errorDescription = urlObj.searchParams.get('error_description')
+
+          logger.info('OAuth callback intercepted in auth window')
+
+          // Handle the auth response
+          if (code) {
+            this.handleAuthCode(code, returnedState || '')
+          } else if (error) {
+            this.authReject?.(new Error(errorDescription || error))
+            this.authResolve = null
+            this.authReject = null
+          }
+
+          // Close the auth window after handling
+          if (!authWindow.isDestroyed()) {
+            authWindow.close()
+          }
+
+          return true
+        }
+        return false
+      }
+
+      authWindow.webContents.on('will-redirect', (event, url) => {
+        if (handleAuthCallback(url)) {
+          event.preventDefault()
+        }
+      })
+
+      authWindow.webContents.on('did-navigate', (event, url) => {
+        handleAuthCallback(url)
+      })
+
+      // Handle window close (user cancelled)
+      authWindow.on('closed', () => {
+        // Only reject if we're not processing a callback (i.e., user manually closed the window)
+        if (this.authResolve && !isProcessingCallback) {
+          this.authReject?.(new Error('Authentication cancelled'))
+          this.authResolve = null
+          this.authReject = null
+        }
+      })
+
+      // Load the auth URL
+      authWindow.loadURL(authUrl)
 
       // Set timeout
       setTimeout(
         () => {
-          if (this.authResolve) {
+          if (this.authResolve && !authWindow.isDestroyed()) {
+            authWindow.close()
             this.authReject?.(new Error('Authentication timeout'))
             this.authResolve = null
             this.authReject = null

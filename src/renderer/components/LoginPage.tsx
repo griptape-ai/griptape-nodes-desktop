@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../utils/utils'
@@ -7,7 +7,7 @@ import animatedNodesSrc from '../../assets/animated_nodes.svg'
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth()
-  const [browserOpened, setBrowserOpened] = useState(false)
+  const [loginInProgress, setLoginInProgress] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [rememberCredentials, setRememberCredentials] = useState(false)
   const [platform, setPlatform] = useState<NodeJS.Platform | null>(null)
@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
   const handleLogin = async () => {
     try {
       setError(null)
-      setBrowserOpened(true)
+      setLoginInProgress(true)
 
       await login()
 
@@ -53,7 +53,7 @@ const LoginPage: React.FC = () => {
       // If user checked "remember credentials", they'll be persisted during onboarding
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Login failed')
-      setBrowserOpened(false)
+      setLoginInProgress(false)
     }
   }
 
@@ -90,33 +90,35 @@ const LoginPage: React.FC = () => {
               <div
                 className={cn(
                   'p-6 rounded-md border',
-                  browserOpened
+                  loginInProgress
                     ? 'bg-green-900/20 border-green-700'
                     : 'bg-sky-900/20 border-sky-700'
                 )}
               >
                 <h3 className="text-white font-medium mb-2 text-lg">
-                  {browserOpened ? 'Browser Opened' : 'Login Required'}
+                  {loginInProgress ? 'Authenticating' : 'Login Required'}
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  {browserOpened
-                    ? 'Complete the login process in your browser.'
+                  {loginInProgress
+                    ? 'Complete the login process in the authentication window.'
                     : 'Please log in with your Griptape account to continue'}
                 </p>
               </div>
 
               <button
                 onClick={handleLogin}
+                disabled={loginInProgress}
                 className={cn(
                   'w-full flex items-center justify-center gap-3',
                   'bg-sky-700 hover:bg-sky-500 active:bg-sky-300',
                   'text-white font-medium text-base',
                   'px-6 py-4 rounded-md',
-                  'transition-colors'
+                  'transition-colors',
+                  loginInProgress && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                <ExternalLink className="w-5 h-5" />
-                Log In with Browser
+                <LogIn className="w-5 h-5" />
+                Log In
               </button>
 
               {/* Credential Storage Checkbox */}
