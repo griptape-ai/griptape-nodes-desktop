@@ -95,7 +95,35 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     logger.info('gtn service start')
     await this.uvService.waitForReady()
     await this.pythonService.waitForReady()
+
+    // Check if GTN already exists before installation
+    const gtnAlreadyExists = this.gtnExecutableExists()
+
     await this.installGtn()
+
+    // Run self-update if GTN already exists
+    if (gtnAlreadyExists) {
+      try {
+        logger.info('GTN already installed, checking for updates...')
+        if (this.engineService) {
+          this.engineService.addLog('stdout', 'Checking for GTN updates...')
+        }
+        await this.selfUpdate()
+        if (this.engineService) {
+          this.engineService.addLog('stdout', 'GTN update check completed')
+        }
+      } catch (error) {
+        // Non-fatal: log error but continue startup
+        logger.error('GTN self-update failed, continuing with existing version:', error)
+        if (this.engineService) {
+          this.engineService.addLog(
+            'stderr',
+            `GTN update failed: ${error}. Continuing with existing version.`
+          )
+        }
+      }
+    }
+
     await this.syncLibraries()
     await this.registerLibraries()
     await this.initialize({
@@ -130,6 +158,52 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       throw new Error('Expected gtnExecutablePath to be ready')
     }
     return this.gtnExecutablePath
+  }
+
+  async selfUpdate(): Promise<void> {
+    logger.info('Running gtn self update')
+
+    // Execute gtn self update and forward logs to engine service if available
+    const child = await this.runGtn(['self', 'update'], { wait: false })
+
+    // Forward logs to engine service for UI display
+    if (this.engineService) {
+      child.stdout?.on('data', (data) => {
+        const lines = data.toString().split('\n')
+        lines.forEach((line: string) => {
+          if (line.trim()) {
+            this.engineService.addLog('stdout', line)
+          }
+        })
+      })
+
+      child.stderr?.on('data', (data) => {
+        const lines = data.toString().split('\n')
+        lines.forEach((line: string) => {
+          if (line.trim()) {
+            this.engineService.addLog('stderr', line)
+          }
+        })
+      })
+    }
+
+    // Wait for the process to complete
+    await new Promise<void>((resolve, reject) => {
+      child.on('exit', (code) => {
+        if (code === 0) {
+          logger.info('gtn self update completed successfully')
+          resolve()
+        } else {
+          const error = new Error(`gtn self update failed with exit code ${code}`)
+          logger.error('gtn self update failed:', error)
+          reject(error)
+        }
+      })
+      child.on('error', (error) => {
+        logger.error('gtn self update error:', error)
+        reject(error)
+      })
+    })
   }
 
   async initialize(options: {
