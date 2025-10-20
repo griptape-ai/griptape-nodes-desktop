@@ -2,19 +2,45 @@ import React, { useState, useEffect } from 'react'
 import { EngineProvider } from '../contexts/EngineContext'
 import Dashboard from '../pages/Dashboard'
 import Engine from '../pages/Engine'
-import Editor from '../pages/Editor'
 import Settings from '../pages/Settings'
 import { Header } from './Header'
 import { EditorWebview } from './EditorWebview'
+import { SystemMonitor } from './SystemMonitor'
 import UpdateProgressNotification from './UpdateProgressNotification'
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
+  const [showSystemMonitor, setShowSystemMonitor] = useState(false)
 
   // Notify main process when page changes
   useEffect(() => {
     window.electronAPI.setCurrentPage(currentPage)
   }, [currentPage])
+
+  // Load system monitor setting on mount
+  useEffect(() => {
+    const loadSetting = async () => {
+      try {
+        const show = await window.settingsAPI.getShowSystemMonitor()
+        setShowSystemMonitor(show)
+      } catch (err) {
+        console.error('Failed to load system monitor setting:', err)
+      }
+    }
+
+    loadSetting()
+
+    // Listen for setting changes from Settings page
+    const handleToggle = (event: CustomEvent) => {
+      setShowSystemMonitor(event.detail)
+    }
+
+    window.addEventListener('system-monitor-toggle', handleToggle as EventListener)
+
+    return () => {
+      window.removeEventListener('system-monitor-toggle', handleToggle as EventListener)
+    }
+  }, [])
 
   const renderContent = () => {
     switch (currentPage) {
@@ -22,8 +48,6 @@ const MainApp: React.FC = () => {
         return <Dashboard onPageChange={setCurrentPage} />
       case 'engine':
         return <Engine />
-      case 'editor':
-        return <Editor />
       case 'settings':
         return <Settings />
       default:
@@ -37,11 +61,17 @@ const MainApp: React.FC = () => {
         {/* Header with navigation */}
         <Header selectedPage={currentPage} onPageChange={setCurrentPage} />
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6">{renderContent()}</main>
+        {/* System Monitor Subheader */}
+        {showSystemMonitor && <SystemMonitor />}
 
-        {/* Persistent Editor Webview - portalled to document.body, overlays when active */}
-        <EditorWebview isVisible={currentPage === 'editor'} />
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto">
+          {/* Normal page content - hidden when editor is active */}
+          {currentPage !== 'editor' && <div className="p-6">{renderContent()}</div>}
+
+          {/* Persistent EditorWebview - always mounted, visibility controlled */}
+          <EditorWebview isVisible={currentPage === 'editor'} />
+        </main>
 
         {/* Update Progress Notification */}
         <UpdateProgressNotification />

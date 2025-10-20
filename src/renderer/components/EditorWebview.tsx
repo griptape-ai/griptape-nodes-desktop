@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react'
-import ReactDOM from 'react-dom'
 
 interface EditorWebviewProps {
   isVisible: boolean
@@ -160,19 +159,15 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
 
   // Show loading state while checking auth
   if (isCheckingAuth) {
-    const content = (
+    return (
       <div
         style={{
-          position: 'fixed',
-          top: '57px',
-          left: 0,
-          right: 0,
-          bottom: 0,
+          width: '100%',
+          height: '100%',
           display: isVisible ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--background)',
-          zIndex: 10
+          backgroundColor: 'var(--background)'
         }}
       >
         <div className="text-center">
@@ -180,24 +175,19 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         </div>
       </div>
     )
-    return ReactDOM.createPortal(content, document.body)
   }
 
   // Show error state
   if (error) {
-    const content = (
+    return (
       <div
         style={{
-          position: 'fixed',
-          top: '57px',
-          left: 0,
-          right: 0,
-          bottom: 0,
+          width: '100%',
+          height: '100%',
           display: isVisible ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--background)',
-          zIndex: 10
+          backgroundColor: 'var(--background)'
         }}
       >
         <div className="text-center max-w-md">
@@ -212,24 +202,19 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         </div>
       </div>
     )
-    return ReactDOM.createPortal(content, document.body)
   }
 
   // Only render webview if auth is ready and we have preload path
   if (!authReady || !preloadPath) {
-    const content = (
+    return (
       <div
         style={{
-          position: 'fixed',
-          top: '57px',
-          left: 0,
-          right: 0,
-          bottom: 0,
+          width: '100%',
+          height: '100%',
           display: isVisible ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--background)',
-          zIndex: 10
+          backgroundColor: 'var(--background)'
         }}
       >
         <div className="text-center">
@@ -237,19 +222,14 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         </div>
       </div>
     )
-    return ReactDOM.createPortal(content, document.body)
   }
 
-  const content = (
+  return (
     <div
       style={{
-        position: 'fixed',
-        top: '57px',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: isVisible ? 'block' : 'none',
-        zIndex: 10
+        width: '100%',
+        height: '100%',
+        display: isVisible ? 'block' : 'none'
       }}
     >
       {/* eslint-disable react/no-unknown-property */}
@@ -266,6 +246,4 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       {/* eslint-enable react/no-unknown-property */}
     </div>
   )
-
-  return ReactDOM.createPortal(content, document.body)
 }

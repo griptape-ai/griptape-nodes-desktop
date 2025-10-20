@@ -32,6 +32,7 @@ const Settings: React.FC = () => {
     type: 'success' | 'error' | 'info'
     text: string
   } | null>(null)
+  const [showSystemMonitor, setShowSystemMonitor] = useState(false)
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -77,6 +78,7 @@ const Settings: React.FC = () => {
     loadEnvironmentInfo()
     loadWorkspaceDirectory()
     loadUpdateInfo()
+    loadSystemMonitorSetting()
     window.griptapeAPI.refreshConfig()
 
     const handleWorkspaceChanged = (event: any, directory: string) => {
@@ -90,6 +92,28 @@ const Settings: React.FC = () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
     }
   }, [loadEnvironmentInfo])
+
+  const loadSystemMonitorSetting = async () => {
+    try {
+      const show = await window.settingsAPI.getShowSystemMonitor()
+      setShowSystemMonitor(show)
+    } catch (err) {
+      console.error('Failed to load system monitor setting:', err)
+    }
+  }
+
+  const handleToggleSystemMonitor = async (checked: boolean) => {
+    setShowSystemMonitor(checked)
+    try {
+      await window.settingsAPI.setShowSystemMonitor(checked)
+      // Emit event so MainApp can update
+      window.dispatchEvent(new CustomEvent('system-monitor-toggle', { detail: checked }))
+    } catch (err) {
+      console.error('Failed to save system monitor setting:', err)
+      // Revert on error
+      setShowSystemMonitor(!checked)
+    }
+  }
 
   const copyApiKey = () => {
     if (apiKey) {
@@ -313,7 +337,7 @@ const Settings: React.FC = () => {
       {/* Appearance Section */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">Appearance</h2>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div>
             <p className="text-sm text-muted-foreground mb-3">Choose your preferred theme</p>
             <div className="grid grid-cols-3 gap-3 max-w-md">
@@ -336,6 +360,27 @@ const Settings: React.FC = () => {
                 )
               })}
             </div>
+          </div>
+
+          {/* System Monitor Toggle */}
+          <div className="pt-4 border-t border-border">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={showSystemMonitor}
+                onChange={(e) => handleToggleSystemMonitor(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium group-hover:text-foreground transition-colors">
+                  Show system monitor
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Display CPU, memory, and GPU utilization in a subheader below the main navigation.
+                  Updates every second.
+                </p>
+              </div>
+            </label>
           </div>
         </div>
       </div>
