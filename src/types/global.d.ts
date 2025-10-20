@@ -269,14 +269,14 @@ declare global {
             total: number
             percentage: number
           }
-          gpu: {
+          gpus: Array<{
             model: string
             usage: number
             memory: {
               used: number
               total: number
             }
-          } | null
+          }>
         }
         error?: string
       }>

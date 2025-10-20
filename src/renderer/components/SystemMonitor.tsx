@@ -11,14 +11,14 @@ interface SystemMetrics {
     total: number
     percentage: number
   }
-  gpu: {
+  gpus: Array<{
     model: string
     usage: number
     memory: {
       used: number
       total: number
     }
-  } | null
+  }>
 }
 
 export function SystemMonitor() {
@@ -75,7 +75,9 @@ export function SystemMonitor() {
         <div className="flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground text-[10px] uppercase tracking-wide">CPU</span>
-            <span className="text-foreground font-semibold">{formatPercentage(metrics.cpu.usage)}</span>
+            <span className="text-foreground font-semibold">
+              {formatPercentage(metrics.cpu.usage)}
+            </span>
           </div>
           <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
             <div
@@ -83,41 +85,39 @@ export function SystemMonitor() {
               style={{ width: `${Math.min(metrics.cpu.usage, 100)}%` }}
             />
           </div>
-          <div className="text-[10px] text-muted-foreground truncate">
-            {metrics.cpu.model}
-          </div>
+          <div className="text-[10px] text-muted-foreground truncate">{metrics.cpu.model}</div>
         </div>
       </div>
 
-      {/* GPU */}
-      {metrics.gpu && (
-        <div className="flex items-center gap-2 flex-1">
+      {/* GPUs */}
+      {metrics.gpus.map((gpu, index) => (
+        <div key={index} className="flex items-center gap-2 flex-1">
           <Gpu className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <div className="flex-1 space-y-0.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground text-[10px] uppercase tracking-wide">GPU</span>
-              {metrics.gpu.usage >= 0 ? (
-                <span className="text-foreground font-semibold">{formatPercentage(metrics.gpu.usage)}</span>
+              <span className="text-muted-foreground text-[10px] uppercase tracking-wide">
+                GPU {metrics.gpus.length > 1 ? index + 1 : ''}
+              </span>
+              {gpu.usage >= 0 ? (
+                <span className="text-foreground font-semibold">{formatPercentage(gpu.usage)}</span>
               ) : (
                 <span className="text-muted-foreground">N/A</span>
               )}
             </div>
-            {metrics.gpu.usage >= 0 ? (
+            {gpu.usage >= 0 ? (
               <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${getBarColor(metrics.gpu.usage)}`}
-                  style={{ width: `${Math.min(metrics.gpu.usage, 100)}%` }}
+                  className={`h-full transition-all duration-300 ${getBarColor(gpu.usage)}`}
+                  style={{ width: `${Math.min(gpu.usage, 100)}%` }}
                 />
               </div>
             ) : (
               <div className="w-full h-1.5" />
             )}
-            <div className="text-[10px] text-muted-foreground truncate">
-              {metrics.gpu.model}
-            </div>
+            <div className="text-[10px] text-muted-foreground truncate">{gpu.model}</div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* RAM */}
       <div className="flex items-center gap-2 flex-1">
@@ -125,7 +125,9 @@ export function SystemMonitor() {
         <div className="flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground text-[10px] uppercase tracking-wide">RAM</span>
-            <span className="text-foreground font-semibold">{formatPercentage(metrics.memory.percentage)}</span>
+            <span className="text-foreground font-semibold">
+              {formatPercentage(metrics.memory.percentage)}
+            </span>
           </div>
           <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
             <div

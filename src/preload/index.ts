@@ -170,7 +170,8 @@ contextBridge.exposeInMainWorld('deviceIdAPI', {
 
 contextBridge.exposeInMainWorld('settingsAPI', {
   getShowSystemMonitor: () => ipcRenderer.invoke('settings:get-show-system-monitor'),
-  setShowSystemMonitor: (show: boolean) => ipcRenderer.invoke('settings:set-show-system-monitor', show)
+  setShowSystemMonitor: (show: boolean) =>
+    ipcRenderer.invoke('settings:set-show-system-monitor', show)
 })
 
 contextBridge.exposeInMainWorld('systemMonitorAPI', {
