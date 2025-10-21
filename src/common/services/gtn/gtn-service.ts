@@ -1,11 +1,19 @@
 import { ChildProcess, spawn } from 'child_process'
+import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as path from 'path'
+import * as os from 'os'
 import { readdir } from 'fs/promises'
 import { collectStdout } from '../../child-process/collect-stdout'
 import { attachOutputForwarder } from '../../child-process/output-forwarder'
 import { getEnv } from '../../config/env'
-import { getCwd, getGtnConfigPath, getGtnExecutablePath, getXdgDataHome } from '../../config/paths'
+import {
+  getCwd,
+  getEnginesJsonPath,
+  getGtnConfigPath,
+  getGtnExecutablePath,
+  getXdgDataHome
+} from '../../config/paths'
 import { logger } from '@/main/utils/logger'
 import { UvService } from '../uv/uv-service'
 import EventEmitter from 'events'
@@ -212,6 +220,30 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     storageBackend?: 'local' | 'gtc'
     bucketName?: string
   }): Promise<void> {
+    // Write engines.json with friendly engine name before running gtn init
+    const enginesJsonPath = getEnginesJsonPath(this.userDataDir)
+    const hostname = os.hostname()
+    const engineName = `Griptape Nodes Desktop - ${hostname}`
+
+    // Generate UUID for engine ID (using crypto.randomUUID() for Node 14.17+)
+    const engineId = crypto.randomUUID()
+    const timestamp = new Date().toISOString()
+
+    const enginesJson = {
+      engines: [
+        {
+          id: engineId,
+          name: engineName,
+          created_at: timestamp
+        }
+      ],
+      default_engine_id: engineId
+    }
+
+    fs.mkdirSync(path.dirname(enginesJsonPath), { recursive: true })
+    fs.writeFileSync(enginesJsonPath, JSON.stringify(enginesJson, null, 2), 'utf8')
+    logger.info(`Created engines.json with engine name: ${engineName}`)
+
     const args = ['init', '--no-interactive']
 
     if (options.apiKey) {

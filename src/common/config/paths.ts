@@ -13,6 +13,10 @@ export function getGtnConfigPath(userDataDir: string): string {
   return path.join(getXdgConfigHome(userDataDir), 'griptape_nodes', 'griptape_nodes_config.json')
 }
 
+export function getEnginesJsonPath(userDataDir: string): string {
+  return path.join(getXdgDataHome(userDataDir), 'griptape_nodes', 'engines.json')
+}
+
 export function getUvInstallDir(userDataPath: string): string {
   return path.join(userDataPath, 'uv')
 }
