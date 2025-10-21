@@ -239,14 +239,15 @@ const Engine: React.FC = () => {
   LogRow.displayName = 'LogRow'
 
   return (
-    <div className="max-w-6xl mx-auto h-full flex flex-col gap-6">
-      {/* Status Card */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Engine Status</h2>
+    <div className="h-full flex flex-col overflow-hidden max-w-6xl mx-auto">
+      {/* Compact Status Bar - Sticky */}
+      <div className="flex-shrink-0 bg-card border-b border-border px-6 py-3 flex items-center justify-between gap-4 mt-6">
+        {/* Left side: Status */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground">Engine</span>
           <div className="flex items-center gap-2">
-            {getStatusIcon(status, 'md')}
-            <span className={`font-medium ${getStatusColor(status)}`}>
+            {getStatusIcon(status, 'sm')}
+            <span className={`text-sm font-medium ${getStatusColor(status)}`}>
               {status === 'ready'
                 ? 'Stopped'
                 : status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
@@ -254,8 +255,8 @@ const Engine: React.FC = () => {
           </div>
         </div>
 
-        {/* Control Buttons */}
-        <div className="flex gap-3">
+        {/* Right side: Control Buttons */}
+        <div className="flex items-center gap-2">
           <button
             onClick={startEngine}
             disabled={
@@ -264,73 +265,70 @@ const Engine: React.FC = () => {
               status === 'not-ready' ||
               status === 'initializing'
             }
-            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Play className="w-4 h-4" />
-            Start Engine
+            <Play className="w-3.5 h-3.5" />
+            Start
           </button>
           <button
             onClick={stopEngine}
             disabled={isLoading || status !== 'running'}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Square className="w-4 h-4" />
-            Stop Engine
+            <Square className="w-3.5 h-3.5" />
+            Stop
           </button>
           <button
             onClick={restartEngine}
             disabled={
               isLoading || status === 'not-ready' || status == 'ready' || status === 'initializing'
             }
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <RotateCcw className="w-4 h-4" />
-            Restart Engine
+            <RotateCcw className="w-3.5 h-3.5" />
+            Restart
           </button>
-        </div>
-
-        {status === 'not-ready' && (
-          <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              The engine is not ready. Please ensure Griptape Nodes is installed and initialized.
-            </p>
-          </div>
-        )}
-
-        {status === 'initializing' && (
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
-              Setting up Griptape Nodes environment...
-            </p>
-            <div className="w-full bg-blue-200 dark:bg-blue-900 rounded-full h-2 overflow-hidden relative">
-              <div
-                className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full absolute"
-                style={{
-                  width: '40%',
-                  animation: 'indeterminate 1.5s ease-in-out infinite'
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Logs Card */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6 flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Engine Logs</h2>
+          <div className="h-5 w-px bg-border mx-1" />
           <button
             onClick={clearLogs}
-            className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
           >
             Clear Logs
           </button>
         </div>
+      </div>
 
-        {/* Logs Container */}
+      {/* Status Messages (if needed) */}
+      {status === 'not-ready' && (
+        <div className="flex-shrink-0 mx-6 mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            The engine is not ready. Please ensure Griptape Nodes is installed and initialized.
+          </p>
+        </div>
+      )}
+
+      {status === 'initializing' && (
+        <div className="flex-shrink-0 mx-6 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+            Setting up Griptape Nodes environment...
+          </p>
+          <div className="w-full bg-blue-200 dark:bg-blue-900 rounded-full h-2 overflow-hidden relative">
+            <div
+              className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full absolute"
+              style={{
+                width: '40%',
+                animation: 'indeterminate 1.5s ease-in-out infinite'
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Logs Container - Scrollable */}
+      <div className="flex-1 min-h-0 px-6 py-4 pb-6">
         <div
           ref={logsContainerRef}
-          className="bg-gray-900 dark:bg-black rounded-lg flex-1 overflow-hidden relative"
+          className="bg-gray-900 dark:bg-black rounded-lg h-full overflow-hidden relative"
         >
           {logs.length === 0 ? (
             <div className="text-gray-500 dark:text-gray-400 text-center py-8">

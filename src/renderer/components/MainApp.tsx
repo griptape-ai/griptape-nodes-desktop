@@ -65,9 +65,9 @@ const MainApp: React.FC = () => {
         {showSystemMonitor && <SystemMonitor />}
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-hidden">
           {/* Normal page content - hidden when editor is active */}
-          {currentPage !== 'editor' && <div className="p-6">{renderContent()}</div>}
+          {currentPage !== 'editor' && renderContent()}
 
           {/* Persistent EditorWebview - always mounted, visibility controlled */}
           <EditorWebview isVisible={currentPage === 'editor'} />
