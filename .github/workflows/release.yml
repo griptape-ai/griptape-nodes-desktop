@@ -70,7 +70,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, macos-13, ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout Repository
@@ -331,7 +331,7 @@ jobs:
         if: env.DONE != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: releases-${{ runner.os }}-${{ runner.arch }}
+          name: releases-${{ env.OS }}-${{ env.ARCH }}
           path: Releases/
 
   create-github-release:
@@ -376,16 +376,18 @@ jobs:
           echo "Release name: $RELEASE_NAME"
 
           # Find the full installers from each platform
-          MACOS_DMG=$(find artifacts/releases-macOS-* -name "GriptapeNodes-*.dmg" | head -1)
-          LINUX_APPIMAGE=$(find artifacts/releases-Linux-* -name "*.AppImage" | head -1)
-          WINDOWS_SETUP=$(find artifacts/releases-Windows-* -name "*-Setup.exe" | head -1)
+          MACOS_ARM64_DMG=$(find artifacts/releases-osx-arm64 -name "GriptapeNodes-*.dmg" 2>/dev/null | head -1)
+          MACOS_X64_DMG=$(find artifacts/releases-osx-x64 -name "GriptapeNodes-*.dmg" 2>/dev/null | head -1)
+          LINUX_APPIMAGE=$(find artifacts/releases-linux-* -name "*.AppImage" 2>/dev/null | head -1)
+          WINDOWS_SETUP=$(find artifacts/releases-win-* -name "*-Setup.exe" 2>/dev/null | head -1)
 
           # Create release notes
           cat > release_notes.md << 'EOF'
           ## Installation
 
           Download the installer for your platform:
-          - **macOS**: Download the .dmg file
+          - **macOS (Apple Silicon)**: Download the osx-arm64 .dmg file
+          - **macOS (Intel)**: Download the osx-x64 .dmg file
           - **Linux**: Download the .AppImage file
           - **Windows**: Download the Setup.exe file
 
@@ -399,7 +401,8 @@ jobs:
             --target "${{ github.sha }}" \
             --title "$RELEASE_NAME" \
             --notes-file release_notes.md \
-            ${MACOS_DMG:+$MACOS_DMG} \
+            ${MACOS_ARM64_DMG:+$MACOS_ARM64_DMG} \
+            ${MACOS_X64_DMG:+$MACOS_X64_DMG} \
             ${LINUX_APPIMAGE:+$LINUX_APPIMAGE} \
             ${WINDOWS_SETUP:+$WINDOWS_SETUP}
 
