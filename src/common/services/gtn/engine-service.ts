@@ -74,6 +74,14 @@ export class EngineService extends EventEmitter<EngineEvents> {
   }
 
   /**
+   * Set engine to error state (used when setup fails)
+   */
+  setError(): void {
+    this.status = 'error'
+    this.emit('engine:status-changed', this.status)
+  }
+
+  /**
    * Get engine logs
    */
   getLogs(): EngineLog[] {
