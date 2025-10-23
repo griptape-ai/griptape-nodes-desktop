@@ -15,6 +15,7 @@ const config: ForgeConfig = {
     asar: true,
     ...(process.platform === 'darwin' && { icon: 'generated/icons/icon.icns' }),
     ...(process.platform === 'win32' && { icon: 'generated/icons/icon.ico' }),
+    ...(process.platform === 'linux' && { icon: 'generated/icons/icon.png' }),
     executableName: 'griptape-nodes-desktop',
     appBundleId: 'ai.griptape.nodes.desktop',
     // protocols: [
