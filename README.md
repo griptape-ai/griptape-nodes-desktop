@@ -1,6 +1,6 @@
 # Griptape Nodes Desktop
 
-A cross-platform desktop application for managing and developing AI workflows with the [Griptape](https://www.griptape.ai/) framework. This Electron-based application provides a local development environment for building, testing, and managing Griptape Nodes workflows with an integrated visual editor.
+A cross-platform desktop application for managing and developing AI workflows with the [Griptape](https://www.griptape.ai/) framework. This Electron-based application provides a local environment for creating, testing, and running Griptape Nodes workflows with the Griptape Nodes integrated visual editor.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Electron](https://img.shields.io/badge/Electron-37.3.1-47848F?logo=electron)](https://www.electronjs.org/)
