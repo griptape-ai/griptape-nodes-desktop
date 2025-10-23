@@ -6,6 +6,7 @@ VelopackApp.build().run()
 
 import path from 'node:path'
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
+import contextMenu from 'electron-context-menu'
 import { getPythonVersion } from '../common/config/versions'
 import { ENV_INFO_NOT_COLLECTED } from '../common/config/constants'
 import { HttpAuthService } from '../common/services/auth/http'
@@ -187,6 +188,19 @@ app.on('ready', async () => {
     BrowserWindow.getAllWindows().forEach((window) => {
       window.webContents.send('workspace-changed', directory)
     })
+  })
+
+  // Enable context menus for webviews (including right-click on images)
+  app.on('web-contents-created', (_event, contents) => {
+    if (contents.getType() === 'webview') {
+      contextMenu({
+        window: contents,
+        showSaveImageAs: true,
+        showCopyImage: true,
+        showCopyImageAddress: true,
+        showInspectElement: !isPackaged()
+      })
+    }
   })
 
   createWindow()
