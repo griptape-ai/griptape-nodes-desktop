@@ -19,6 +19,7 @@ export function Header({ className, selectedPage, onPageChange }: HeaderProps) {
   const profileButtonRef = useRef<HTMLButtonElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -56,7 +57,8 @@ export function Header({ className, selectedPage, onPageChange }: HeaderProps) {
   return (
     <header
       className={cn(
-        'bg-card border-b border-border px-6 py-3 flex items-center gap-6 draggable',
+        'bg-card border-b border-border px-6 py-3 flex items-center gap-6',
+        isWindows ? 'title-bar-overlay' : 'draggable',
         className
       )}
     >

@@ -107,7 +107,8 @@ const createWindow = () => {
     height: 1200,
     minWidth: 1280,
     minHeight: 800,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    titleBarOverlay: process.platform !== 'darwin' ? true : false,
     trafficLightPosition: process.platform === 'darwin' ? { x: 20, y: 18 } : undefined,
     frame: process.platform === 'darwin' ? false : true,
     webPreferences: {
