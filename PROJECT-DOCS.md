@@ -26,7 +26,7 @@ A cross-platform desktop application for managing and developing AI workflows wi
 
 ### Core Functionality
 
-- ✅ **One-Click Setup**: Automated installation of Python, UV, and Griptape Nodes CLI
+- ✅ **One-Click Setup**: Automated installation of Python, UV, and Griptape Nodes Engine
 - ✅ **Onboarding Wizard**: Guided first-time setup with credential storage options
 - ✅ **Engine Management**: Start, stop, and restart the Griptape Nodes engine with real-time logs
 - ✅ **Visual Editor**: Integrated Griptape Nodes web editor running in an embedded webview
