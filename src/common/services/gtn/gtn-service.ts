@@ -107,7 +107,19 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     // Check if GTN already exists before installation
     const gtnAlreadyExists = this.gtnExecutableExists()
 
-    await this.installGtn()
+    try {
+      await this.installGtn()
+    } catch (error) {
+      logger.error('GTN installation failed:', error)
+      if (this.engineService) {
+        this.engineService.addLog(
+          'stderr',
+          `GTN installation failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+        this.engineService.setError()
+      }
+      throw error
+    }
 
     // Run self-update if GTN already exists
     if (gtnAlreadyExists) {
