@@ -18,6 +18,12 @@ const config: ForgeConfig = {
     ...(process.platform === 'linux' && { icon: 'generated/icons/icon.png' }),
     executableName: 'griptape-nodes-desktop',
     appBundleId: 'ai.griptape.nodes.desktop',
+    // Enable long path support on Windows
+    ...(process.platform === 'win32' && {
+      win32metadata: {
+        'application-manifest': 'app.manifest'
+      }
+    }),
     // protocols: [
     //   {
     //     name: 'Griptape Nodes Desktop',
