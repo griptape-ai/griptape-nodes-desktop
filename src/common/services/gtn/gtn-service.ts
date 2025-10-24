@@ -146,11 +146,24 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     await this.syncLibraries()
     await this.registerLibraries()
-    await this.initialize({
-      apiKey: await this.authService.waitForApiKey(),
-      workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
-      storageBackend: 'local'
-    })
+
+    try {
+      await this.initialize({
+        apiKey: await this.authService.waitForApiKey(),
+        workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
+        storageBackend: 'local'
+      })
+    } catch (error) {
+      logger.error('GTN initialization failed:', error)
+      if (this.engineService) {
+        this.engineService.addLog(
+          'stderr',
+          `GTN initialization failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+        this.engineService.setError()
+      }
+      throw error
+    }
 
     this.isReady = true
     this.emit('ready')
