@@ -124,7 +124,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
 
     // NOW set the src to start loading (after listeners are attached)
     console.log('Setting webview src to trigger load')
-    webview.src = 'https://nodes.griptape.ai'
+    webview.src = 'https://nodes.griptape.ai?embedded=true'
 
     setHasInitialized(true)
 
