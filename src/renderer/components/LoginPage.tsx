@@ -9,7 +9,7 @@ const LoginPage: React.FC = () => {
   const { login } = useAuth()
   const [loginInProgress, setLoginInProgress] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [rememberCredentials, setRememberCredentials] = useState(false)
+  const [rememberCredentials, setRememberCredentials] = useState(true)
   const [platform, setPlatform] = useState<NodeJS.Platform | null>(null)
 
   // Load saved credential storage preference and platform on mount
@@ -118,7 +118,7 @@ const LoginPage: React.FC = () => {
                 )}
               >
                 <LogIn className="w-5 h-5" />
-                Log In
+                Login or Sign-Up
               </button>
 
               {/* Credential Storage Checkbox */}
