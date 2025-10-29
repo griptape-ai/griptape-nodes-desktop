@@ -20,7 +20,7 @@ export class OnboardingService {
   }
 
   isCredentialStorageEnabled(): boolean {
-    return this.store.get('credentialStorageEnabled', false)
+    return this.store.get('credentialStorageEnabled', true)
   }
 
   setOnboardingComplete(complete: boolean): void {
