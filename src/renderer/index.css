@@ -115,6 +115,22 @@ select {
   -webkit-app-region: no-drag;
 }
 
+/* Title bar overlay support for Windows */
+.title-bar-overlay {
+  position: fixed;
+  top: 0;
+  left: env(titlebar-area-x, 0);
+  width: env(titlebar-area-width, 100%);
+  height: env(titlebar-area-height, 48px);
+  -webkit-app-region: drag;
+  z-index: 1000;
+}
+
+/* Content should not be covered by the title bar overlay */
+.title-bar-overlay-offset {
+  padding-top: env(titlebar-area-height, 0);
+}
+
 /* Terminal-like scrollbar for logs */
 .terminal-scrollbar::-webkit-scrollbar {
   width: 10px;

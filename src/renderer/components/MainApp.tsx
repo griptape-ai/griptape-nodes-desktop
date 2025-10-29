@@ -11,6 +11,7 @@ import UpdateProgressNotification from './UpdateProgressNotification'
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
+  const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0
 
   // Notify main process when page changes
   useEffect(() => {
@@ -57,7 +58,7 @@ const MainApp: React.FC = () => {
 
   return (
     <EngineProvider>
-      <div className="flex flex-col h-screen bg-background">
+      <div className={`flex flex-col h-screen bg-background ${isWindows ? 'title-bar-overlay-offset' : ''}`}>
         {/* Header with navigation */}
         <Header selectedPage={currentPage} onPageChange={setCurrentPage} />
 
