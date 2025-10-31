@@ -1,6 +1,10 @@
 import { EventEmitter } from 'events'
 import * as si from 'systeminformation'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import { logger } from '@/main/utils/logger'
+
+const execFileAsync = promisify(execFile)
 
 export interface SystemMetrics {
   cpu: {
@@ -53,6 +57,35 @@ export class SystemMonitorService extends EventEmitter {
       }
     } catch (err) {
       logger.error('SystemMonitorService: Failed to load static info:', err)
+    }
+  }
+
+  private async getNvidiaSmiMetrics(): Promise<
+    Array<{
+      utilization: number
+      memoryUsed: number
+      memoryTotal: number
+    }>
+  > {
+    try {
+      // Try to execute nvidia-smi with query format
+      const { stdout } = await execFileAsync('nvidia-smi', [
+        '--query-gpu=utilization.gpu,memory.used,memory.total',
+        '--format=csv,noheader,nounits'
+      ])
+
+      const lines = stdout.trim().split('\n')
+      return lines.map((line) => {
+        const [utilization, memoryUsed, memoryTotal] = line.split(',').map((v) => parseFloat(v.trim()))
+        return {
+          utilization: isNaN(utilization) ? -1 : utilization,
+          memoryUsed: isNaN(memoryUsed) ? -1 : memoryUsed / 1024, // Convert MB to GB
+          memoryTotal: isNaN(memoryTotal) ? -1 : memoryTotal / 1024 // Convert MB to GB
+        }
+      })
+    } catch (err) {
+      logger.debug('SystemMonitorService: nvidia-smi not available:', err)
+      return []
     }
   }
 
@@ -120,6 +153,7 @@ export class SystemMonitorService extends EventEmitter {
       try {
         const graphics = await si.graphics()
         if (graphics.controllers && graphics.controllers.length > 0) {
+          // First, try to get metrics from systeminformation
           graphics.controllers.forEach((gpu, index) => {
             // GPU utilization might not be available on all platforms
             const gpuUsage =
@@ -146,6 +180,29 @@ export class SystemMonitorService extends EventEmitter {
               }
             })
           })
+
+          // If utilization is unavailable (-1) on Windows, try nvidia-smi as fallback
+          const hasUnavailableMetrics = gpuInfos.some((gpu) => gpu.usage === -1)
+          if (hasUnavailableMetrics && process.platform === 'win32') {
+            const nvidiaSmiMetrics = await this.getNvidiaSmiMetrics()
+            if (nvidiaSmiMetrics.length > 0) {
+              // Update GPU metrics with nvidia-smi data
+              nvidiaSmiMetrics.forEach((smiMetric, index) => {
+                if (gpuInfos[index]) {
+                  // Only override if systeminformation data was unavailable
+                  if (gpuInfos[index].usage === -1) {
+                    gpuInfos[index].usage = smiMetric.utilization
+                  }
+                  if (gpuInfos[index].memory.used === -1) {
+                    gpuInfos[index].memory.used = smiMetric.memoryUsed
+                  }
+                  if (gpuInfos[index].memory.total === -1) {
+                    gpuInfos[index].memory.total = smiMetric.memoryTotal
+                  }
+                }
+              })
+            }
+          }
         }
       } catch (err) {
         logger.debug('SystemMonitorService: GPU info not available:', err)
