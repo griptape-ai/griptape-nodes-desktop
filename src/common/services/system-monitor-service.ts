@@ -198,22 +198,31 @@ export class SystemMonitorService extends EventEmitter {
             logger.debug(`SystemMonitorService: nvidia-smi returned ${nvidiaSmiMetrics.length} GPUs`)
 
             if (nvidiaSmiMetrics.length > 0) {
-              // Update GPU metrics with nvidia-smi data
-              nvidiaSmiMetrics.forEach((smiMetric, index) => {
-                logger.debug(`SystemMonitorService: nvidia-smi GPU ${index}: utilization=${smiMetric.utilization}, memUsed=${smiMetric.memoryUsed}, memTotal=${smiMetric.memoryTotal}`)
+              // nvidia-smi only reports NVIDIA GPUs, but systeminformation reports all GPUs
+              // Find NVIDIA GPUs and match them with nvidia-smi data
+              let nvidiaIndex = 0
+              gpuInfos.forEach((gpuInfo, index) => {
+                // Check if this is an NVIDIA GPU by model name
+                const isNvidiaGpu = gpuInfo.model.toLowerCase().includes('nvidia')
 
-                if (gpuInfos[index]) {
+                if (isNvidiaGpu && nvidiaIndex < nvidiaSmiMetrics.length) {
+                  const smiMetric = nvidiaSmiMetrics[nvidiaIndex]
+                  logger.debug(`SystemMonitorService: Matching GPU ${index} (${gpuInfo.model}) with nvidia-smi GPU ${nvidiaIndex}`)
+                  logger.debug(`SystemMonitorService: nvidia-smi data: utilization=${smiMetric.utilization}, memUsed=${smiMetric.memoryUsed}, memTotal=${smiMetric.memoryTotal}`)
+
                   // Only override if systeminformation data was unavailable
-                  if (gpuInfos[index].usage === -1) {
-                    gpuInfos[index].usage = smiMetric.utilization
+                  if (gpuInfo.usage === -1) {
+                    gpuInfo.usage = smiMetric.utilization
                     logger.debug(`SystemMonitorService: Updated GPU ${index} usage to ${smiMetric.utilization}`)
                   }
-                  if (gpuInfos[index].memory.used === -1) {
-                    gpuInfos[index].memory.used = smiMetric.memoryUsed
+                  if (gpuInfo.memory.used === -1) {
+                    gpuInfo.memory.used = smiMetric.memoryUsed
                   }
-                  if (gpuInfos[index].memory.total === -1) {
-                    gpuInfos[index].memory.total = smiMetric.memoryTotal
+                  if (gpuInfo.memory.total === -1) {
+                    gpuInfo.memory.total = smiMetric.memoryTotal
                   }
+
+                  nvidiaIndex++
                 }
               })
             }
