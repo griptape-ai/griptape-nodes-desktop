@@ -68,11 +68,14 @@ export class SystemMonitorService extends EventEmitter {
     }>
   > {
     try {
+      logger.debug('SystemMonitorService: Executing nvidia-smi command')
       // Try to execute nvidia-smi with query format
       const { stdout } = await execFileAsync('nvidia-smi', [
         '--query-gpu=utilization.gpu,memory.used,memory.total',
         '--format=csv,noheader,nounits'
       ])
+
+      logger.debug('SystemMonitorService: nvidia-smi output:', stdout)
 
       const lines = stdout.trim().split('\n')
       return lines.map((line) => {
@@ -84,7 +87,7 @@ export class SystemMonitorService extends EventEmitter {
         }
       })
     } catch (err) {
-      logger.debug('SystemMonitorService: nvidia-smi not available:', err)
+      logger.warn('SystemMonitorService: nvidia-smi failed:', err)
       return []
     }
   }
@@ -152,6 +155,8 @@ export class SystemMonitorService extends EventEmitter {
       const gpuInfos: SystemMetrics['gpus'] = []
       try {
         const graphics = await si.graphics()
+        logger.debug('SystemMonitorService: graphics.controllers:', graphics.controllers?.length || 0)
+
         if (graphics.controllers && graphics.controllers.length > 0) {
           // First, try to get metrics from systeminformation
           graphics.controllers.forEach((gpu, index) => {
@@ -171,6 +176,8 @@ export class SystemMonitorService extends EventEmitter {
                 ? gpu.vram / 1024 // Convert MB to GB
                 : -1
 
+            logger.debug(`SystemMonitorService: GPU ${index} (${gpu.model}): usage=${gpuUsage}, memUsed=${memUsed}, memTotal=${memTotal}`)
+
             gpuInfos.push({
               model: this.gpuModels[index] || 'Unknown',
               usage: gpuUsage,
@@ -183,15 +190,23 @@ export class SystemMonitorService extends EventEmitter {
 
           // If utilization is unavailable (-1) on Windows, try nvidia-smi as fallback
           const hasUnavailableMetrics = gpuInfos.some((gpu) => gpu.usage === -1)
+          logger.debug(`SystemMonitorService: hasUnavailableMetrics=${hasUnavailableMetrics}, platform=${process.platform}`)
+
           if (hasUnavailableMetrics && process.platform === 'win32') {
+            logger.info('SystemMonitorService: Attempting nvidia-smi fallback for GPU metrics')
             const nvidiaSmiMetrics = await this.getNvidiaSmiMetrics()
+            logger.debug(`SystemMonitorService: nvidia-smi returned ${nvidiaSmiMetrics.length} GPUs`)
+
             if (nvidiaSmiMetrics.length > 0) {
               // Update GPU metrics with nvidia-smi data
               nvidiaSmiMetrics.forEach((smiMetric, index) => {
+                logger.debug(`SystemMonitorService: nvidia-smi GPU ${index}: utilization=${smiMetric.utilization}, memUsed=${smiMetric.memoryUsed}, memTotal=${smiMetric.memoryTotal}`)
+
                 if (gpuInfos[index]) {
                   // Only override if systeminformation data was unavailable
                   if (gpuInfos[index].usage === -1) {
                     gpuInfos[index].usage = smiMetric.utilization
+                    logger.debug(`SystemMonitorService: Updated GPU ${index} usage to ${smiMetric.utilization}`)
                   }
                   if (gpuInfos[index].memory.used === -1) {
                     gpuInfos[index].memory.used = smiMetric.memoryUsed
