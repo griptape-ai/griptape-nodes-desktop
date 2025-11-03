@@ -74,7 +74,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
                 <li>
                   Click &quot;Open Editor&quot; to launch the visual workflow editor in your browser
                 </li>
-                <li>Create and test your AI workflows using drag-and-drop nodes</li>
+                <li>
+                  In the editor, look for an engine named &quot;Griptape Nodes Desktop&quot; and click
+                  &quot;Start Session&quot;
+                </li>
+                <li>Pick a template or create a new workflow to start building</li>
                 <li>Your workflows are saved in the workspace directory shown below</li>
               </ol>
             </div>
