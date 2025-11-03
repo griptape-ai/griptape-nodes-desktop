@@ -100,7 +100,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
                   : engineStatus.charAt(0).toUpperCase() + engineStatus.slice(1).replace('-', ' ')}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-3">Manage from the Engine tab</p>
+            <p className="text-xs text-muted-foreground mt-3">
+              Manage from the{' '}
+              <button
+                onClick={() => onPageChange('engine')}
+                className="text-primary hover:underline focus:outline-none focus:underline"
+              >
+                Engine tab
+              </button>
+            </p>
           </div>
 
           <div className="bg-card rounded-lg shadow-sm border border-border p-6">
