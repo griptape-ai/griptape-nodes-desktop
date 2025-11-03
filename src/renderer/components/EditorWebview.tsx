@@ -242,7 +242,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         }}
         partition="editor"
         preload={preloadPath || undefined}
-        allowpopups={true}
+        // @ts-expect-error When boolean, we get `EditorWebview.tsx:236 Received `true` for a non-boolean attribute `allowpopups`.`
+        allowpopups="true"
       />
       {/* eslint-enable react/no-unknown-property */}
     </div>
