@@ -50,14 +50,30 @@ export class SystemMonitorService extends EventEmitter {
     const model = (gpu.model || '').toLowerCase()
 
     // 1. Exclude clearly integrated Intel graphics patterns
-    const integratedPatterns = ['intel hd', 'intel uhd', 'intel iris', 'intel(r) hd', 'intel(r) uhd', 'intel(r) iris']
+    const integratedPatterns = [
+      'intel hd',
+      'intel uhd',
+      'intel iris',
+      'intel(r) hd',
+      'intel(r) uhd',
+      'intel(r) iris'
+    ]
     if (integratedPatterns.some((pattern) => model.includes(pattern))) {
       return false
     }
 
     // 2. Include GPUs from known discrete GPU vendors
     // NVIDIA and AMD cards are typically discrete (especially for compute workloads)
-    const discreteVendorPatterns = ['nvidia', 'geforce', 'quadro', 'tesla', 'amd', 'radeon', 'rx ', 'vega']
+    const discreteVendorPatterns = [
+      'nvidia',
+      'geforce',
+      'quadro',
+      'tesla',
+      'amd',
+      'radeon',
+      'rx ',
+      'vega'
+    ]
     if (discreteVendorPatterns.some((pattern) => model.includes(pattern))) {
       return true
     }
@@ -86,7 +102,9 @@ export class SystemMonitorService extends EventEmitter {
         // Filter to only discrete GPUs
         const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
         this.gpuModels = discreteGpus.map((gpu) => gpu.model || 'Unknown')
-        logger.info(`SystemMonitorService: Found ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`)
+        logger.info(
+          `SystemMonitorService: Found ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`
+        )
       }
     } catch (err) {
       logger.error('SystemMonitorService: Failed to load static info:', err)
@@ -112,7 +130,9 @@ export class SystemMonitorService extends EventEmitter {
 
       const lines = stdout.trim().split('\n')
       return lines.map((line) => {
-        const [utilization, memoryUsed, memoryTotal] = line.split(',').map((v) => parseFloat(v.trim()))
+        const [utilization, memoryUsed, memoryTotal] = line
+          .split(',')
+          .map((v) => parseFloat(v.trim()))
         return {
           utilization: isNaN(utilization) ? -1 : utilization,
           memoryUsed: isNaN(memoryUsed) ? -1 : memoryUsed / 1024, // Convert MB to GB
@@ -188,12 +208,17 @@ export class SystemMonitorService extends EventEmitter {
       const gpuInfos: SystemMetrics['gpus'] = []
       try {
         const graphics = await si.graphics()
-        logger.debug('SystemMonitorService: graphics.controllers:', graphics.controllers?.length || 0)
+        logger.debug(
+          'SystemMonitorService: graphics.controllers:',
+          graphics.controllers?.length || 0
+        )
 
         if (graphics.controllers && graphics.controllers.length > 0) {
           // Filter to only discrete GPUs
           const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
-          logger.debug(`SystemMonitorService: Processing ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`)
+          logger.debug(
+            `SystemMonitorService: Processing ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`
+          )
 
           // First, try to get metrics from systeminformation
           discreteGpus.forEach((gpu, index) => {
@@ -213,7 +238,9 @@ export class SystemMonitorService extends EventEmitter {
                 ? gpu.vram / 1024 // Convert MB to GB
                 : -1
 
-            logger.debug(`SystemMonitorService: GPU ${index} (${gpu.model}): usage=${gpuUsage}, memUsed=${memUsed}, memTotal=${memTotal}`)
+            logger.debug(
+              `SystemMonitorService: GPU ${index} (${gpu.model}): usage=${gpuUsage}, memUsed=${memUsed}, memTotal=${memTotal}`
+            )
 
             gpuInfos.push({
               model: this.gpuModels[index] || 'Unknown',
@@ -227,12 +254,16 @@ export class SystemMonitorService extends EventEmitter {
 
           // If utilization is unavailable (-1) on Windows, try nvidia-smi as fallback
           const hasUnavailableMetrics = gpuInfos.some((gpu) => gpu.usage === -1)
-          logger.debug(`SystemMonitorService: hasUnavailableMetrics=${hasUnavailableMetrics}, platform=${process.platform}`)
+          logger.debug(
+            `SystemMonitorService: hasUnavailableMetrics=${hasUnavailableMetrics}, platform=${process.platform}`
+          )
 
           if (hasUnavailableMetrics && process.platform === 'win32') {
             logger.info('SystemMonitorService: Attempting nvidia-smi fallback for GPU metrics')
             const nvidiaSmiMetrics = await this.getNvidiaSmiMetrics()
-            logger.debug(`SystemMonitorService: nvidia-smi returned ${nvidiaSmiMetrics.length} GPUs`)
+            logger.debug(
+              `SystemMonitorService: nvidia-smi returned ${nvidiaSmiMetrics.length} GPUs`
+            )
 
             if (nvidiaSmiMetrics.length > 0) {
               // nvidia-smi only reports NVIDIA GPUs, but systeminformation reports all GPUs
@@ -244,13 +275,19 @@ export class SystemMonitorService extends EventEmitter {
 
                 if (isNvidiaGpu && nvidiaIndex < nvidiaSmiMetrics.length) {
                   const smiMetric = nvidiaSmiMetrics[nvidiaIndex]
-                  logger.debug(`SystemMonitorService: Matching GPU ${index} (${gpuInfo.model}) with nvidia-smi GPU ${nvidiaIndex}`)
-                  logger.debug(`SystemMonitorService: nvidia-smi data: utilization=${smiMetric.utilization}, memUsed=${smiMetric.memoryUsed}, memTotal=${smiMetric.memoryTotal}`)
+                  logger.debug(
+                    `SystemMonitorService: Matching GPU ${index} (${gpuInfo.model}) with nvidia-smi GPU ${nvidiaIndex}`
+                  )
+                  logger.debug(
+                    `SystemMonitorService: nvidia-smi data: utilization=${smiMetric.utilization}, memUsed=${smiMetric.memoryUsed}, memTotal=${smiMetric.memoryTotal}`
+                  )
 
                   // Only override if systeminformation data was unavailable
                   if (gpuInfo.usage === -1) {
                     gpuInfo.usage = smiMetric.utilization
-                    logger.debug(`SystemMonitorService: Updated GPU ${index} usage to ${smiMetric.utilization}`)
+                    logger.debug(
+                      `SystemMonitorService: Updated GPU ${index} usage to ${smiMetric.utilization}`
+                    )
                   }
                   if (gpuInfo.memory.used === -1) {
                     gpuInfo.memory.used = smiMetric.memoryUsed

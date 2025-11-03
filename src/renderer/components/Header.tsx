@@ -14,7 +14,12 @@ interface HeaderProps {
   showSystemMonitor?: boolean
 }
 
-export function Header({ className, selectedPage, onPageChange, showSystemMonitor = false }: HeaderProps) {
+export function Header({
+  className,
+  selectedPage,
+  onPageChange,
+  showSystemMonitor = false
+}: HeaderProps) {
   const { user, logout } = useAuth()
   const { status } = useEngine()
   const [isProfileOpen, setIsProfileOpen] = useState(false)

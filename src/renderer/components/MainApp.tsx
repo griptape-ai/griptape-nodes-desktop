@@ -58,7 +58,11 @@ const MainApp: React.FC = () => {
     <EngineProvider>
       <div className="flex flex-col h-screen bg-background">
         {/* Header with navigation */}
-        <Header selectedPage={currentPage} onPageChange={setCurrentPage} showSystemMonitor={showSystemMonitor} />
+        <Header
+          selectedPage={currentPage}
+          onPageChange={setCurrentPage}
+          showSystemMonitor={showSystemMonitor}
+        />
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden">

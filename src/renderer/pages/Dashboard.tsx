@@ -75,8 +75,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
                   Click &quot;Open Editor&quot; to launch the visual workflow editor in your browser
                 </li>
                 <li>
-                  In the editor, look for an engine named &quot;Griptape Nodes Desktop&quot; and click
-                  &quot;Start Session&quot;
+                  In the editor, look for an engine named &quot;Griptape Nodes Desktop&quot; and
+                  click &quot;Start Session&quot;
                 </li>
                 <li>Pick a template or create a new workflow to start building</li>
                 <li>Your workflows are saved in the workspace directory shown below</li>
