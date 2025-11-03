@@ -45,6 +45,31 @@ export class SystemMonitorService extends EventEmitter {
     logger.info('SystemMonitorService: Started')
   }
 
+  private isDiscreteGpu(gpu: si.Systeminformation.GraphicsControllerData): boolean {
+    // Filter out integrated graphics based on multiple criteria
+
+    // 1. Check bus type - onboard typically means integrated
+    if (gpu.bus && gpu.bus.toLowerCase() === 'onboard') {
+      return false
+    }
+
+    // 2. Check for Intel integrated graphics patterns
+    const model = (gpu.model || '').toLowerCase()
+    const integratedPatterns = ['intel hd', 'intel uhd', 'intel iris', 'intel(r) hd', 'intel(r) uhd', 'intel(r) iris']
+    if (integratedPatterns.some((pattern) => model.includes(pattern))) {
+      return false
+    }
+
+    // 3. Check VRAM - discrete GPUs have dedicated VRAM
+    // Dynamic VRAM typically indicates integrated graphics sharing system RAM
+    if (gpu.vramDynamic === true) {
+      return false
+    }
+
+    // If it passes all checks, consider it discrete
+    return true
+  }
+
   private async loadStaticInfo() {
     try {
       const cpu = await si.cpu()
@@ -52,8 +77,10 @@ export class SystemMonitorService extends EventEmitter {
 
       const graphics = await si.graphics()
       if (graphics.controllers && graphics.controllers.length > 0) {
-        // Get all GPU models
-        this.gpuModels = graphics.controllers.map((gpu) => gpu.model || 'Unknown')
+        // Filter to only discrete GPUs
+        const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
+        this.gpuModels = discreteGpus.map((gpu) => gpu.model || 'Unknown')
+        logger.info(`SystemMonitorService: Found ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`)
       }
     } catch (err) {
       logger.error('SystemMonitorService: Failed to load static info:', err)
@@ -151,15 +178,19 @@ export class SystemMonitorService extends EventEmitter {
       const memTotalGB = mem.total / (1024 * 1024 * 1024)
       const memPercentage = (mem.active / mem.total) * 100
 
-      // Get GPU info for all GPUs
+      // Get GPU info for discrete GPUs only
       const gpuInfos: SystemMetrics['gpus'] = []
       try {
         const graphics = await si.graphics()
         logger.debug('SystemMonitorService: graphics.controllers:', graphics.controllers?.length || 0)
 
         if (graphics.controllers && graphics.controllers.length > 0) {
+          // Filter to only discrete GPUs
+          const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
+          logger.debug(`SystemMonitorService: Processing ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`)
+
           // First, try to get metrics from systeminformation
-          graphics.controllers.forEach((gpu, index) => {
+          discreteGpus.forEach((gpu, index) => {
             // GPU utilization might not be available on all platforms
             const gpuUsage =
               gpu.utilizationGpu !== undefined && gpu.utilizationGpu !== null
