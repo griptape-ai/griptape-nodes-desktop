@@ -5,7 +5,6 @@ import Engine from '../pages/Engine'
 import Settings from '../pages/Settings'
 import { Header } from './Header'
 import { EditorWebview } from './EditorWebview'
-import { SystemMonitor } from './SystemMonitor'
 import UpdateProgressNotification from './UpdateProgressNotification'
 
 const MainApp: React.FC = () => {
@@ -59,10 +58,7 @@ const MainApp: React.FC = () => {
     <EngineProvider>
       <div className="flex flex-col h-screen bg-background">
         {/* Header with navigation */}
-        <Header selectedPage={currentPage} onPageChange={setCurrentPage} />
-
-        {/* System Monitor Subheader */}
-        {showSystemMonitor && <SystemMonitor />}
+        <Header selectedPage={currentPage} onPageChange={setCurrentPage} showSystemMonitor={showSystemMonitor} />
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden">
