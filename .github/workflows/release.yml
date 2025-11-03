@@ -323,6 +323,23 @@ jobs:
           fi
         shell: bash
 
+      - name: Upload Setup.exe to S3 (Windows only)
+        if: env.DONE != 'true' && runner.os == 'Windows'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          SETUP_FILE="Releases/GriptapeNodes-${VERSION}-${FULL_CHANNEL}-Setup.exe"
+
+          if [ -f "$SETUP_FILE" ]; then
+            echo "Uploading Setup.exe to S3 for channel: $FULL_CHANNEL..."
+            # Upload versioned Setup.exe
+            aws s3 cp "$SETUP_FILE" "s3://griptape-nodes-desktop-releases/${USER_CHANNEL}/GriptapeNodes-${VERSION}-${FULL_CHANNEL}-Setup.exe"
+            # Upload latest Setup.exe (without version number for stable URL)
+            aws s3 cp "$SETUP_FILE" "s3://griptape-nodes-desktop-releases/${USER_CHANNEL}/GriptapeNodes-${FULL_CHANNEL}-Setup.exe"
+          else
+            echo "Warning: Setup.exe file not found: $SETUP_FILE"
+          fi
+        shell: bash
+
       - name: Clean up keychain
         if: runner.os == 'macOS' && always() && steps.install_certs.outcome == 'success'
         run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
