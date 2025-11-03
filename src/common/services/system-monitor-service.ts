@@ -46,28 +46,34 @@ export class SystemMonitorService extends EventEmitter {
   }
 
   private isDiscreteGpu(gpu: si.Systeminformation.GraphicsControllerData): boolean {
-    // Filter out integrated graphics based on multiple criteria
-
-    // 1. Check bus type - onboard typically means integrated
-    if (gpu.bus && gpu.bus.toLowerCase() === 'onboard') {
-      return false
-    }
-
-    // 2. Check for Intel integrated graphics patterns
+    // Filter out integrated graphics, focusing on clear indicators
     const model = (gpu.model || '').toLowerCase()
+
+    // 1. Exclude clearly integrated Intel graphics patterns
     const integratedPatterns = ['intel hd', 'intel uhd', 'intel iris', 'intel(r) hd', 'intel(r) uhd', 'intel(r) iris']
     if (integratedPatterns.some((pattern) => model.includes(pattern))) {
       return false
     }
 
-    // 3. Check VRAM - discrete GPUs have dedicated VRAM
-    // Dynamic VRAM typically indicates integrated graphics sharing system RAM
-    if (gpu.vramDynamic === true) {
+    // 2. Include GPUs from known discrete GPU vendors
+    // NVIDIA and AMD cards are typically discrete (especially for compute workloads)
+    const discreteVendorPatterns = ['nvidia', 'geforce', 'quadro', 'tesla', 'amd', 'radeon', 'rx ', 'vega']
+    if (discreteVendorPatterns.some((pattern) => model.includes(pattern))) {
+      return true
+    }
+
+    // 3. Check bus type - exclude onboard (integrated)
+    if (gpu.bus && gpu.bus.toLowerCase() === 'onboard') {
       return false
     }
 
-    // If it passes all checks, consider it discrete
-    return true
+    // 4. If it has dedicated VRAM (not dynamic), likely discrete
+    if (gpu.vram && gpu.vram > 0 && gpu.vramDynamic !== true) {
+      return true
+    }
+
+    // Default to excluding unknown GPUs to be safe
+    return false
   }
 
   private async loadStaticInfo() {
