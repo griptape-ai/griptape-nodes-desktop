@@ -5,14 +5,16 @@ import { useEngine } from '../contexts/EngineContext'
 import { cn } from '../utils/utils'
 import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip'
 import { getStatusIcon, getStatusTooltip } from '../utils/engineStatusIcons'
+import { SystemMonitorToolbar } from './SystemMonitorToolbar'
 
 interface HeaderProps {
   className?: string
   selectedPage: string
   onPageChange: (page: string) => void
+  showSystemMonitor?: boolean
 }
 
-export function Header({ className, selectedPage, onPageChange }: HeaderProps) {
+export function Header({ className, selectedPage, onPageChange, showSystemMonitor = false }: HeaderProps) {
   const { user, logout } = useAuth()
   const { status } = useEngine()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -91,6 +93,9 @@ export function Header({ className, selectedPage, onPageChange }: HeaderProps) {
           return <div key={item.id}>{button}</div>
         })}
       </nav>
+
+      {/* System Monitor */}
+      <SystemMonitorToolbar show={showSystemMonitor} />
 
       {/* Profile Section */}
       <div className="flex-shrink-0 relative">
