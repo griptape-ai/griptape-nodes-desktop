@@ -242,7 +242,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         }}
         partition="editor"
         preload={preloadPath || undefined}
-        allowpopups="true"
+        allowpopups={true}
       />
       {/* eslint-enable react/no-unknown-property */}
     </div>
