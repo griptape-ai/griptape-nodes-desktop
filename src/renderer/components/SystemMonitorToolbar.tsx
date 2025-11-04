@@ -161,9 +161,11 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
             </div>
           )}
 
-          {/* RAM Mini Bar */}
+          {/* System RAM Mini Bar */}
           <div className="flex items-center gap-1">
-            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">RAM</span>
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">
+              System RAM
+            </span>
             <div className="w-12 bg-muted rounded-full h-1.5 overflow-hidden">
               <div
                 className={`h-full transition-all duration-300 ${getBarColor(metrics.memory.percentage)}`}
@@ -224,14 +226,37 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
                 ) : (
                   <div className="w-full h-2" />
                 )}
+                {gpu.memory.total >= 0 && (
+                  <>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide">VRAM</span>
+                      <span className="text-sm font-semibold">
+                        {formatPercentage((gpu.memory.used / gpu.memory.total) * 100)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${getBarColor((gpu.memory.used / gpu.memory.total) * 100)}`}
+                        style={{
+                          width: `${Math.min((gpu.memory.used / gpu.memory.total) * 100, 100)}%`
+                        }}
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatMemory(gpu.memory.used)} / {formatMemory(gpu.memory.total)}
+                    </div>
+                  </>
+                )}
                 <div className="text-xs text-muted-foreground truncate">{gpu.model}</div>
               </div>
             ))}
 
-            {/* RAM Details */}
+            {/* System RAM Details */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">RAM</span>
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                  System RAM
+                </span>
                 <span className="text-sm font-semibold">
                   {formatPercentage(metrics.memory.percentage)}
                 </span>

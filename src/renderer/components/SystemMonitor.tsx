@@ -114,17 +114,42 @@ export function SystemMonitor() {
             ) : (
               <div className="w-full h-1.5" />
             )}
+            {gpu.memory.total >= 0 && (
+              <div className="flex items-center justify-between gap-2 mt-1">
+                <span className="text-muted-foreground text-[10px] uppercase tracking-wide">VRAM</span>
+                <span className="text-foreground font-semibold text-[10px]">
+                  {formatPercentage((gpu.memory.used / gpu.memory.total) * 100)}
+                </span>
+              </div>
+            )}
+            {gpu.memory.total >= 0 && (
+              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${getBarColor((gpu.memory.used / gpu.memory.total) * 100)}`}
+                  style={{
+                    width: `${Math.min((gpu.memory.used / gpu.memory.total) * 100, 100)}%`
+                  }}
+                />
+              </div>
+            )}
+            {gpu.memory.total >= 0 && (
+              <div className="text-[10px] text-muted-foreground">
+                {formatMemory(gpu.memory.used)} / {formatMemory(gpu.memory.total)}
+              </div>
+            )}
             <div className="text-[10px] text-muted-foreground truncate">{gpu.model}</div>
           </div>
         </div>
       ))}
 
-      {/* RAM */}
+      {/* System RAM */}
       <div className="flex items-center gap-2 flex-1">
         <MemoryStick className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         <div className="flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">RAM</span>
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">
+              System RAM
+            </span>
             <span className="text-foreground font-semibold">
               {formatPercentage(metrics.memory.percentage)}
             </span>
