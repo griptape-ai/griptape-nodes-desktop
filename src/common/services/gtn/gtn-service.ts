@@ -20,6 +20,7 @@ import EventEmitter from 'events'
 import { installGtn } from './install-gtn'
 import { PythonService } from '../python/python-service'
 import { HttpAuthService } from '../auth/http'
+import { OnboardingService } from '../onboarding-service'
 import Store from 'electron-store'
 
 async function findFiles(dir: string, target: string): Promise<string[]> {
@@ -74,7 +75,8 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     private defaultWorkspaceDir: string,
     private uvService: UvService,
     private pythonService: PythonService,
-    private authService: HttpAuthService
+    private authService: HttpAuthService,
+    private onboardingService: OnboardingService
   ) {
     super()
     this.store = new Store({
@@ -148,6 +150,8 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     await this.registerLibraries()
 
     try {
+      // Wait for both API key and workspace setup before initializing
+      await this.onboardingService.waitForWorkspaceSetup()
       await this.initialize({
         apiKey: await this.authService.waitForApiKey(),
         workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,

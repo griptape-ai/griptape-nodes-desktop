@@ -96,7 +96,8 @@ const gtnService = new GtnService(
   gtnDefaultWorkspaceDir,
   uvService,
   pythonService,
-  authService
+  authService,
+  onboardingService
 )
 const engineService = new EngineService(userDataPath, gtnService)
 const updateService = new UpdateService(isPackaged())

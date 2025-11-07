@@ -1,10 +1,16 @@
 import Store from 'electron-store'
+import EventEmitter from 'events'
 import { logger } from '@/main/utils/logger'
 
-export class OnboardingService {
+interface OnboardingServiceEvents {
+  'workspace-setup-complete': []
+}
+
+export class OnboardingService extends EventEmitter<OnboardingServiceEvents> {
   private store: any
 
   constructor() {
+    super()
     // Simple JSON file storage - won't trigger keychain access
     this.store = new Store({
       name: 'onboarding'
@@ -58,6 +64,16 @@ export class OnboardingService {
   setWorkspaceSetupComplete(complete: boolean): void {
     this.store.set('workspaceSetupComplete', complete)
     logger.info('OnboardingService: Workspace setup complete set to', complete)
+    if (complete) {
+      this.emit('workspace-setup-complete')
+    }
+  }
+
+  async waitForWorkspaceSetup(): Promise<void> {
+    if (this.isWorkspaceSetupComplete()) {
+      return Promise.resolve()
+    }
+    return new Promise((resolve) => this.once('workspace-setup-complete', () => resolve()))
   }
 
   completeOnboarding(credentialStorageEnabled: boolean): void {
