@@ -53,26 +53,31 @@ if ($env:WINDOWS_CERT_FILE) {
 }
 
 # Create Velopack package
-$VpkArgs = @(
-    "pack",
-    "--packId", "ai.griptape.nodes.desktop",
-    "--packVersion", (node -p "require('./package.json').version"),
-    "--packDir", "$AppDir",
-    "--packTitle", "Griptape Nodes",
-    "--mainExe", "$MainExe",
-    "--icon", "$IconPath",
-    "--outputDir", "Releases",
-    "--runtime", "$Runtime",
-    "--channel", "$Channel"
-)
-
-# Add signing parameters if available
 if ($SignParams) {
-    $VpkArgs += "--signParams"
-    $VpkArgs += $SignParams
+    Write-Host "Building with code signing..."
+    vpk pack `
+        --packId "ai.griptape.nodes.desktop" `
+        --packVersion (node -p "require('./package.json').version") `
+        --packDir "$AppDir" `
+        --packTitle "Griptape Nodes" `
+        --mainExe "$MainExe" `
+        --icon "$IconPath" `
+        --outputDir "Releases" `
+        --runtime "$Runtime" `
+        --channel "$Channel" `
+        --signParams "$SignParams"
+} else {
+    Write-Host "Building without code signing..."
+    vpk pack `
+        --packId "ai.griptape.nodes.desktop" `
+        --packVersion (node -p "require('./package.json').version") `
+        --packDir "$AppDir" `
+        --packTitle "Griptape Nodes" `
+        --mainExe "$MainExe" `
+        --icon "$IconPath" `
+        --outputDir "Releases" `
+        --runtime "$Runtime" `
+        --channel "$Channel"
 }
-
-# Execute vpk pack
-& vpk $VpkArgs
 
 Write-Host "Velopack build completed for $Runtime"
