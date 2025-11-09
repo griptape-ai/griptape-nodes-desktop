@@ -25,7 +25,6 @@ declare global {
           python: {
             version: string
             executable: string
-            installedPackages?: string[]
           }
           griptapeNodes: {
             path: string
@@ -62,7 +61,6 @@ declare global {
           python: {
             version: string
             executable: string
-            installedPackages?: string[]
           }
           griptapeNodes: {
             path: string
@@ -99,7 +97,6 @@ declare global {
           python: {
             version: string
             executable: string
-            installedPackages?: string[]
           }
           griptapeNodes: {
             path: string

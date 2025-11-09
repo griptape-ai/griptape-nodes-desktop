@@ -867,18 +867,6 @@ const Settings: React.FC = () => {
                       {environmentInfo.python.executable}
                     </code>
                   </p>
-                  {environmentInfo.python.installedPackages && (
-                    <details className="text-sm">
-                      <summary className="font-medium cursor-pointer">
-                        Installed Packages ({environmentInfo.python.installedPackages.length})
-                      </summary>
-                      <div className="mt-2 max-h-40 overflow-y-auto">
-                        <pre className="text-xs bg-background p-2 rounded">
-                          {environmentInfo.python.installedPackages.join('\n')}
-                        </pre>
-                      </div>
-                    </details>
-                  )}
                 </div>
               </div>
 

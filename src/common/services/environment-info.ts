@@ -18,7 +18,6 @@ export interface EnvironmentInfo {
   python: {
     version: string
     executable: string
-    installedPackages?: string[]
   }
   griptapeNodes: {
     path: string
@@ -71,13 +70,11 @@ export class EnvironmentInfoService {
     // Collect Python information
     let pythonVersion = 'Unknown'
     let pythonExecutable = 'Unknown'
-    let installedPackages: string[] = []
 
     try {
       await services.pythonService.waitForReady()
       pythonVersion = await services.pythonService.getPythonVersion()
       pythonExecutable = await services.pythonService.getPythonExecutablePath()
-      installedPackages = await services.pythonService.getInstalledPackages()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       errors.push(`Python: ${message}`)
@@ -128,8 +125,7 @@ export class EnvironmentInfoService {
       build: buildInfo,
       python: {
         version: pythonVersion,
-        executable: pythonExecutable,
-        installedPackages
+        executable: pythonExecutable
       },
       griptapeNodes: {
         path: gtnPath,

@@ -635,14 +635,8 @@ const showAboutDialog = async () => {
   const pythonVersion =
     envInfo?.python?.version?.split('\n')?.[0] || getPythonVersion() || 'Not installed'
   const pythonExecutable = envInfo?.python?.executable || 'Unknown'
-  const pythonPackagesCount = envInfo?.python?.installedPackages?.length || 0
 
-  detailText.push(
-    `Python: ${pythonVersion}`,
-    `Python Executable: ${pythonExecutable}`,
-    `Python Packages: ${pythonPackagesCount} installed`,
-    ''
-  )
+  detailText.push(`Python: ${pythonVersion}`, `Python Executable: ${pythonExecutable}`, '')
 
   // UV information
   const uvVersion = envInfo?.uv?.version || (await uvService.getUvVersion()) || 'Not installed'
