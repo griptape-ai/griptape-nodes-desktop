@@ -53,7 +53,8 @@ async function uninstallGtn(userDataDir: string, uvExecutablePath: string): Prom
 export async function installGtn(
   userDataDir: string,
   uvExecutablePath: string,
-  channel: 'stable' | 'nightly' = 'stable'
+  channel: 'stable' | 'nightly' = 'stable',
+  engineService?: any
 ): Promise<void> {
   if (!fs.existsSync(uvExecutablePath)) {
     throw new Error(`UV executable not found at: ${uvExecutablePath}`)
@@ -87,6 +88,28 @@ export async function installGtn(
     env: getEnv(userDataDir),
     cwd: getCwd(userDataDir)
   })
+
+  // Forward logs to engine service if available
+  if (engineService) {
+    installProcess.stdout?.on('data', (data) => {
+      const lines = data.toString().split('\n')
+      lines.forEach((line: string) => {
+        if (line.trim()) {
+          engineService.addLog('stdout', line)
+        }
+      })
+    })
+
+    installProcess.stderr?.on('data', (data) => {
+      const lines = data.toString().split('\n')
+      lines.forEach((line: string) => {
+        if (line.trim()) {
+          engineService.addLog('stderr', line)
+        }
+      })
+    })
+  }
+
   await attachOutputForwarder(installProcess, {
     logPrefix: 'INSTALL_GTN'
   })

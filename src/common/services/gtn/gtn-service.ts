@@ -189,7 +189,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     logger.info('gtn service installGtn start')
     const uvExecutablePath = await this.uvService.getUvExecutablePath()
     const channel = this.settingsService.getEngineChannel()
-    await installGtn(this.userDataDir, uvExecutablePath, channel)
+    await installGtn(this.userDataDir, uvExecutablePath, channel, this.engineService)
     this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
     logger.info('gtn service installGtn end')
   }
