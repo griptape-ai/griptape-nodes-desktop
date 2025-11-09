@@ -1,7 +1,7 @@
 import Convert from 'ansi-to-html'
 import React, { useEffect, useRef, useMemo, useCallback, memo } from 'react'
 import { List, type RowComponentProps } from 'react-window'
-import { Play, Square, RotateCcw } from 'lucide-react'
+import { Play, Square, RotateCcw, Copy } from 'lucide-react'
 import { useEngine } from '../contexts/EngineContext'
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
 
@@ -130,6 +130,34 @@ const Engine: React.FC = () => {
     // Reduced height for tighter spacing
     return 20
   }, [])
+
+  const copyLogsToClipboard = useCallback(async () => {
+    try {
+      // Strip ANSI codes and format logs as plain text
+      const plainTextLogs = logs
+        .map((log) => {
+          // Remove all ANSI escape codes
+          const cleanMessage = log.message
+            .replace(/\x1b\[[0-9;]*m/g, '')
+            .replace(/\x1b\[\?25[lh]/g, '')
+            .replace(/\x1b\[\d*[A-G]/g, '')
+            .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r(?!\n)/g, '')
+            .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
+            .replace(/\]8;[^;]*;[^\\]+\\([^\]]+?)\]8;;\\?/g, '$1')
+            .replace(/[\x00-\x1F\x7F]/g, '')
+            .trim()
+
+          return `${formatTimestamp(log.timestamp)} | ${cleanMessage}`
+        })
+        .join('\n')
+
+      await navigator.clipboard.writeText(plainTextLogs)
+    } catch (error) {
+      console.error('Failed to copy logs to clipboard:', error)
+    }
+  }, [logs, formatTimestamp])
 
   const LogRow = memo(
     ({ index, style, logs: logList }: RowComponentProps<{ logs: typeof logs }>) => {
@@ -289,6 +317,14 @@ const Engine: React.FC = () => {
             Restart
           </button>
           <div className="h-5 w-px bg-border mx-1" />
+          <button
+            onClick={copyLogsToClipboard}
+            disabled={logs.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Copy Logs
+          </button>
           <button
             onClick={clearLogs}
             className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
