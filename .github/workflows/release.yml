@@ -231,7 +231,7 @@ jobs:
       - name: Install AzureSignTool
         if: env.DONE != 'true' && runner.os == 'Windows'
         run: dotnet tool install -g AzureSignTool
-        
+
       - name: Download previous Velopack releases
         if: env.DONE != 'true'
         run: |
