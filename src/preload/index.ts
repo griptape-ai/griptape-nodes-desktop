@@ -172,7 +172,11 @@ contextBridge.exposeInMainWorld('deviceIdAPI', {
 contextBridge.exposeInMainWorld('settingsAPI', {
   getShowSystemMonitor: () => ipcRenderer.invoke('settings:get-show-system-monitor'),
   setShowSystemMonitor: (show: boolean) =>
-    ipcRenderer.invoke('settings:set-show-system-monitor', show)
+    ipcRenderer.invoke('settings:set-show-system-monitor', show),
+  getEngineChannel: () => ipcRenderer.invoke('settings:get-engine-channel'),
+  setEngineChannel: (channel: 'stable' | 'nightly') =>
+    ipcRenderer.invoke('settings:set-engine-channel', channel),
+  getAvailableEngineChannels: () => ipcRenderer.invoke('settings:get-available-engine-channels')
 })
 
 contextBridge.exposeInMainWorld('systemMonitorAPI', {

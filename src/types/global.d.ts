@@ -256,6 +256,9 @@ declare global {
     settingsAPI: {
       getShowSystemMonitor: () => Promise<boolean>
       setShowSystemMonitor: (show: boolean) => Promise<{ success: boolean }>
+      getEngineChannel: () => Promise<'stable' | 'nightly'>
+      setEngineChannel: (channel: 'stable' | 'nightly') => Promise<{ success: boolean; error?: string }>
+      getAvailableEngineChannels: () => Promise<string[]>
     }
     systemMonitorAPI: {
       getMetrics: () => Promise<{

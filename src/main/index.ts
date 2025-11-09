@@ -97,7 +97,8 @@ const gtnService = new GtnService(
   uvService,
   pythonService,
   authService,
-  onboardingService
+  onboardingService,
+  settingsService
 )
 const engineService = new EngineService(userDataPath, gtnService)
 const updateService = new UpdateService(isPackaged())
@@ -1100,6 +1101,39 @@ const setupIPC = () => {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  })
+
+  // Engine channel handlers
+  ipcMain.handle('settings:get-engine-channel', () => {
+    return settingsService.getEngineChannel()
+  })
+
+  ipcMain.handle('settings:set-engine-channel', async (event, channel: 'stable' | 'nightly') => {
+    try {
+      // Save the preference
+      settingsService.setEngineChannel(channel)
+
+      // Stop the engine before switching
+      await engineService.stopEngine()
+
+      // Switch the channel (uninstall + reinstall)
+      await gtnService.switchChannel(channel)
+
+      // Restart the engine with the new version
+      engineService.restartEngine()
+
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to switch engine channel:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('settings:get-available-engine-channels', () => {
+    return ['stable', 'nightly']
   })
 
   // Update service handlers

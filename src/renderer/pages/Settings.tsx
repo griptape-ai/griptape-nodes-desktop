@@ -33,6 +33,8 @@ const Settings: React.FC = () => {
     text: string
   } | null>(null)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
+  const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
+  const [switchingChannel, setSwitchingChannel] = useState(false)
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -79,6 +81,7 @@ const Settings: React.FC = () => {
     loadWorkspaceDirectory()
     loadUpdateInfo()
     loadSystemMonitorSetting()
+    loadEngineChannel()
     window.griptapeAPI.refreshConfig()
 
     const handleWorkspaceChanged = (event: any, directory: string) => {
@@ -92,6 +95,15 @@ const Settings: React.FC = () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
     }
   }, [loadEnvironmentInfo])
+
+  const loadEngineChannel = async () => {
+    try {
+      const channel = await window.settingsAPI.getEngineChannel()
+      setEngineChannel(channel)
+    } catch (err) {
+      console.error('Failed to load engine channel:', err)
+    }
+  }
 
   const loadSystemMonitorSetting = async () => {
     try {
@@ -244,6 +256,42 @@ const Settings: React.FC = () => {
       console.error('Failed to check for updates:', err)
     } finally {
       setCheckingForUpdates(false)
+    }
+  }
+
+  const handleEngineChannelChange = async (newChannel: 'stable' | 'nightly') => {
+    setSwitchingChannel(true)
+    setEngineUpdateMessage({
+      type: 'info',
+      text: `Switching to ${newChannel} channel...`
+    })
+
+    try {
+      const result = await window.settingsAPI.setEngineChannel(newChannel)
+      if (result && result.success) {
+        setEngineChannel(newChannel)
+        setEngineUpdateMessage({
+          type: 'success',
+          text: `Successfully switched to ${newChannel} channel! Engine is restarting...`
+        })
+        // Refresh environment info to show new version after restart
+        setTimeout(() => {
+          handleRefreshEnvironmentInfo()
+        }, 3000)
+      } else {
+        setEngineUpdateMessage({
+          type: 'error',
+          text: `Failed to switch channel: ${result?.error || 'Unknown error'}`
+        })
+      }
+    } catch (err) {
+      console.error('Failed to switch engine channel:', err)
+      setEngineUpdateMessage({
+        type: 'error',
+        text: `Failed to switch channel: ${err instanceof Error ? err.message : 'Unknown error'}`
+      })
+    } finally {
+      setSwitchingChannel(false)
     }
   }
 
@@ -473,6 +521,28 @@ const Settings: React.FC = () => {
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h2 className="text-lg font-semibold mb-4">Engine Updates</h2>
           <div className="space-y-4">
+            {/* Engine Channel Selector */}
+            <div>
+              <p className="text-sm font-medium mb-2">Engine Channel</p>
+              <select
+                value={engineChannel}
+                onChange={(e) => handleEngineChannelChange(e.target.value as 'stable' | 'nightly')}
+                disabled={switchingChannel || upgradingEngine}
+                className={cn(
+                  'w-full px-3 py-2 text-sm rounded-md',
+                  'bg-background border border-input',
+                  'focus:outline-none focus:ring-2 focus:ring-ring',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                <option value="stable">Stable (PyPI releases)</option>
+                <option value="nightly">Nightly (Latest development build)</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Stable: Official releases from PyPI. Nightly: Latest development build from GitHub (may be unstable).
+              </p>
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Current Engine Version</p>

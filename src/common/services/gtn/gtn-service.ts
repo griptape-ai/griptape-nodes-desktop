@@ -21,6 +21,7 @@ import { installGtn } from './install-gtn'
 import { PythonService } from '../python/python-service'
 import { HttpAuthService } from '../auth/http'
 import { OnboardingService } from '../onboarding-service'
+import { SettingsService } from '../settings-service'
 import Store from 'electron-store'
 
 async function findFiles(dir: string, target: string): Promise<string[]> {
@@ -76,7 +77,8 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     private uvService: UvService,
     private pythonService: PythonService,
     private authService: HttpAuthService,
-    private onboardingService: OnboardingService
+    private onboardingService: OnboardingService,
+    private settingsService: SettingsService
   ) {
     super()
     this.store = new Store({
@@ -184,7 +186,8 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   async installGtn() {
     logger.info('gtn service installGtn start')
     const uvExecutablePath = await this.uvService.getUvExecutablePath()
-    await installGtn(this.userDataDir, uvExecutablePath)
+    const channel = this.settingsService.getEngineChannel()
+    await installGtn(this.userDataDir, uvExecutablePath, channel)
     this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
     logger.info('gtn service installGtn end')
   }
@@ -469,32 +472,77 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     const uvExecutablePath = await this.uvService.getUvExecutablePath()
     const env = getEnv(this.userDataDir)
     const cwd = getCwd(this.userDataDir)
+    const channel = this.settingsService.getEngineChannel()
 
-    logger.info('Running uv tool upgrade griptape-nodes')
-    const upgradeProcess = spawn(uvExecutablePath, ['tool', 'upgrade', 'griptape-nodes'], {
+    if (channel === 'nightly') {
+      // For nightly, we need to reinstall from GitHub to get the latest
+      logger.info('Upgrading nightly channel - reinstalling from GitHub')
+      await installGtn(this.userDataDir, uvExecutablePath, 'nightly')
+    } else {
+      // For stable, use uv tool upgrade
+      logger.info('Running uv tool upgrade griptape-nodes')
+      const upgradeProcess = spawn(uvExecutablePath, ['tool', 'upgrade', 'griptape-nodes'], {
+        env,
+        cwd
+      })
+
+      attachOutputForwarder(upgradeProcess, { logPrefix: 'UPGRADE_GTN' })
+
+      // Wait for upgrade to complete
+      await new Promise<void>((resolve, reject) => {
+        upgradeProcess.on('exit', (code) => {
+          if (code === 0) {
+            logger.info('gtn service upgradeGtn completed successfully')
+            resolve()
+          } else {
+            const error = new Error(`GTN upgrade failed with exit code ${code}`)
+            logger.error('gtn service upgradeGtn failed:', error)
+            reject(error)
+          }
+        })
+        upgradeProcess.on('error', (error) => {
+          logger.error('gtn service upgradeGtn error:', error)
+          reject(error)
+        })
+      })
+    }
+  }
+
+  async switchChannel(channel: 'stable' | 'nightly'): Promise<void> {
+    logger.info(`Switching engine channel to: ${channel}`)
+    await this.waitForReady()
+
+    const uvExecutablePath = await this.uvService.getUvExecutablePath()
+    const env = getEnv(this.userDataDir)
+    const cwd = getCwd(this.userDataDir)
+
+    // Uninstall current version
+    logger.info('Uninstalling current GTN version')
+    const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
       env,
       cwd
     })
 
-    attachOutputForwarder(upgradeProcess, { logPrefix: 'UPGRADE_GTN' })
-
-    // Wait for upgrade to complete
-    await new Promise<void>((resolve, reject) => {
-      upgradeProcess.on('exit', (code) => {
+    await new Promise<void>((resolve, _reject) => {
+      uninstallProcess.on('exit', (code) => {
         if (code === 0) {
-          logger.info('gtn service upgradeGtn completed successfully')
+          logger.info('Successfully uninstalled GTN')
           resolve()
         } else {
-          const error = new Error(`GTN upgrade failed with exit code ${code}`)
-          logger.error('gtn service upgradeGtn failed:', error)
-          reject(error)
+          logger.warn(`Uninstall returned exit code ${code}, continuing with install`)
+          resolve() // Continue even if uninstall fails
         }
       })
-      upgradeProcess.on('error', (error) => {
-        logger.error('gtn service upgradeGtn error:', error)
-        reject(error)
+      uninstallProcess.on('error', (error) => {
+        logger.warn('Uninstall error, continuing with install:', error)
+        resolve() // Continue even if uninstall fails
       })
     })
+
+    // Install new channel version
+    logger.info(`Installing GTN from ${channel} channel`)
+    await installGtn(this.userDataDir, uvExecutablePath, channel)
+    logger.info(`Successfully switched to ${channel} channel`)
   }
 
   gtnExecutableExists(): boolean {

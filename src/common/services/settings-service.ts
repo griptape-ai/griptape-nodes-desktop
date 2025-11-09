@@ -23,4 +23,13 @@ export class SettingsService {
     this.store.set('showSystemMonitor', show)
     logger.info('SettingsService: showSystemMonitor set to', show)
   }
+
+  getEngineChannel(): 'stable' | 'nightly' {
+    return this.store.get('engineChannel', 'stable')
+  }
+
+  setEngineChannel(channel: 'stable' | 'nightly'): void {
+    this.store.set('engineChannel', channel)
+    logger.info('SettingsService: engineChannel set to', channel)
+  }
 }

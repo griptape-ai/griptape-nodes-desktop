@@ -50,7 +50,11 @@ async function uninstallGtn(userDataDir: string, uvExecutablePath: string): Prom
   }
 }
 
-export async function installGtn(userDataDir: string, uvExecutablePath: string): Promise<void> {
+export async function installGtn(
+  userDataDir: string,
+  uvExecutablePath: string,
+  channel: 'stable' | 'nightly' = 'stable'
+): Promise<void> {
   if (!fs.existsSync(uvExecutablePath)) {
     throw new Error(`UV executable not found at: ${uvExecutablePath}`)
   }
@@ -61,7 +65,25 @@ export async function installGtn(userDataDir: string, uvExecutablePath: string):
     await uninstallGtn(userDataDir, uvExecutablePath)
   }
 
-  const installProcess = spawn(uvExecutablePath, ['tool', 'install', '--quiet', 'griptape-nodes'], {
+  // Build install command based on channel
+  let installArgs: string[]
+  if (channel === 'nightly') {
+    installArgs = [
+      'tool',
+      'install',
+      'git+https://github.com/griptape-ai/griptape-nodes.git@latest',
+      '--reinstall',
+      '--force',
+      '--python',
+      '3.12'
+    ]
+    logger.info('Installing GTN from nightly channel (GitHub latest)')
+  } else {
+    installArgs = ['tool', 'install', '--quiet', 'griptape-nodes']
+    logger.info('Installing GTN from stable channel (PyPI)')
+  }
+
+  const installProcess = spawn(uvExecutablePath, installArgs, {
     env: getEnv(userDataDir),
     cwd: getCwd(userDataDir)
   })
