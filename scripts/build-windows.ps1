@@ -32,7 +32,7 @@ Write-Host "App directory: $AppDir"
 
 
 # Create Velopack package
-if ($env:AZURE_KEY_VAULT_CERTIFICATE) {
+if ($env:AZURE_KEY_VAULT_CERTIFICATE_NAME) {
     Write-Host "Building with code signing..."
     vpk pack `
         --packId "ai.griptape.nodes.desktop" `
