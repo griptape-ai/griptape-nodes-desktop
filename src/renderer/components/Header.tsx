@@ -53,11 +53,15 @@ export function Header({
     setIsProfileOpen(false)
   }
 
+  const handleSettings = () => {
+    onPageChange('settings')
+    setIsProfileOpen(false)
+  }
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'engine', label: 'Engine', icon: Layers, showStatus: true },
-    { id: 'editor', label: 'Editor', icon: Code },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'editor', label: 'Editor', icon: Code }
   ]
 
   return (
@@ -122,6 +126,13 @@ export function Header({
             ref={profileMenuRef}
             className="absolute top-full right-0 mt-2 bg-popover border border-border rounded-md shadow-lg p-1 z-50 min-w-[160px]"
           >
+            <button
+              onClick={handleSettings}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors whitespace-nowrap"
+            >
+              <Settings className="w-4 h-4" />
+              <span>App Settings</span>
+            </button>
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded transition-colors whitespace-nowrap"

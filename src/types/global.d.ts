@@ -214,6 +214,8 @@ declare global {
       getPlatform: () => Promise<NodeJS.Platform>
       restartApp: () => Promise<void>
       setCurrentPage: (page: string) => void
+      onNavigateToSettings: (callback: () => void) => void
+      removeNavigateToSettings: (callback: () => void) => void
     }
     electron: {
       getPreloadPath: () => string

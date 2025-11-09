@@ -41,6 +41,19 @@ const MainApp: React.FC = () => {
     }
   }, [])
 
+  // Listen for navigate to settings from native menu
+  useEffect(() => {
+    const handleNavigateToSettings = () => {
+      setCurrentPage('settings')
+    }
+
+    window.electronAPI.onNavigateToSettings(handleNavigateToSettings)
+
+    return () => {
+      window.electronAPI.removeNavigateToSettings(handleNavigateToSettings)
+    }
+  }, [])
+
   const renderContent = () => {
     switch (currentPage) {
       case 'dashboard':

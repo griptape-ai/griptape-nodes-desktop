@@ -138,7 +138,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   getPlatform: () => ipcRenderer.invoke('get-platform'),
   restartApp: () => ipcRenderer.invoke('app:restart'),
-  setCurrentPage: (page: string) => ipcRenderer.send('app:set-current-page', page)
+  setCurrentPage: (page: string) => ipcRenderer.send('app:set-current-page', page),
+  onNavigateToSettings: (callback: () => void) => {
+    ipcRenderer.on('navigate-to-settings', callback)
+  },
+  removeNavigateToSettings: (callback: () => void) => {
+    ipcRenderer.removeListener('navigate-to-settings', callback)
+  }
 })
 
 contextBridge.exposeInMainWorld('onboardingAPI', {

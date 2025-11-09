@@ -499,6 +499,16 @@ const createMenu = (getCurrentPage: () => string) => {
     click: async () => await showAboutDialog()
   }
 
+  const appSettingsItem = {
+    label: 'App Settings',
+    click: () => {
+      const focusedWindow = BrowserWindow.getFocusedWindow()
+      if (focusedWindow) {
+        focusedWindow.webContents.send('navigate-to-settings')
+      }
+    }
+  }
+
   // Build template based on platform
   const template: any[] = []
 
@@ -511,12 +521,22 @@ const createMenu = (getCurrentPage: () => string) => {
         { type: 'separator' },
         checkForUpdatesItem,
         { type: 'separator' },
+        appSettingsItem,
+        { type: 'separator' },
         { role: 'hide' },
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
         { role: 'quit' }
       ]
+    })
+  }
+
+  // Windows/Linux: Add File menu with App Settings
+  if (process.platform !== 'darwin') {
+    template.push({
+      label: 'File',
+      submenu: [appSettingsItem]
     })
   }
 
