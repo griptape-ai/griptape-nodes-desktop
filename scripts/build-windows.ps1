@@ -30,30 +30,21 @@ Write-Host "Building for runtime: $Runtime"
 Write-Host "Packaged directory: $PackagedDir"
 Write-Host "App directory: $AppDir"
 
-# Check for code signing certificate
-$SignParams = $null
-if ($env:WINDOWS_CERT_FILE) {
-    Write-Host "Code signing certificate found, will sign binaries"
 
-    # Convert to absolute path
-    $CertPath = [System.IO.Path]::GetFullPath($env:WINDOWS_CERT_FILE)
-
-    # Build signtool parameters
-    # Note: Velopack expects signtool args without the initial "sign" command
-    $SignParams = "/f `"$CertPath`" /tr http://timestamp.digicert.com /td sha256 /fd sha256 /d `"Griptape Nodes`""
-
-    # Add password parameter if password is provided and non-empty
-    if ($env:WINDOWS_CERT_PASSWORD -and $env:WINDOWS_CERT_PASSWORD -ne "") {
-        $SignParams = "/f `"$CertPath`" /p `"$env:WINDOWS_CERT_PASSWORD`" /tr http://timestamp.digicert.com /td sha256 /fd sha256 /d `"Griptape Nodes`""
-    }
-
-    Write-Host "Sign parameters configured"
-} else {
-    Write-Host "WARNING: No code signing certificate found (WINDOWS_CERT_FILE not set). Build will not be signed."
+# Clean up non-Windows native modules
+# This cannot be signed by AzureSignTool and cause the command to fail, so
+# let's remove them.
+Write-Host "Removing non-Windows native modules..."
+$removedCount = 0
+Get-ChildItem -Path "$AppDir" -Recurse -Include "*_linux_*.node","*_darwin_*.node","*_osx.node" | ForEach-Object {
+    Write-Host "  Removing: $($_.FullName)"
+    Remove-Item $_.FullName -Force
+    $removedCount++
 }
+Write-Host "Removed $removedCount non-Windows native module(s)"
 
 # Create Velopack package
-if ($SignParams) {
+if ($env:AZURE_KEY_VAULT_CERTIFICATE_NAME) {
     Write-Host "Building with code signing..."
     vpk pack `
         --packId "ai.griptape.nodes.desktop" `
@@ -65,7 +56,9 @@ if ($SignParams) {
         --outputDir "Releases" `
         --runtime "$Runtime" `
         --channel "$Channel" `
-        --signParams "$SignParams"
+        --verbose `
+        --signTemplate "AzureSignTool sign -s -kvu $env:AZURE_KEY_VAULT_URI -kvc $env:AZURE_KEY_VAULT_CERTIFICATE_NAME -kvi $env:AZURE_KEY_VAULT_CLIENT_ID -kvs $env:AZURE_KEY_VAULT_CLIENT_SECRET -kvt $env:AZURE_KEY_VAULT_TENANT_ID -tr http://timestamp.globalsign.com/tsa/r6advanced1 -td sha256 -fd sha256 {{file}}"
+
 } else {
     Write-Host "Building without code signing..."
     vpk pack `
