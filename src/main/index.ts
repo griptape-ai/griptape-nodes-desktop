@@ -505,7 +505,7 @@ const createMenu = (getCurrentPage: () => string) => {
   // Build template based on platform
   const template: any[] = []
 
-  // macOS: Include app menu with About, Check for Updates, and Quit
+  // macOS: Include app menu with About, Check for Updates, Hide, and Quit
   if (process.platform === 'darwin') {
     template.push({
       label: app.getName(),
@@ -513,6 +513,10 @@ const createMenu = (getCurrentPage: () => string) => {
         aboutMenuItem,
         { type: 'separator' },
         checkForUpdatesItem,
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
         { type: 'separator' },
         { role: 'quit' }
       ]
