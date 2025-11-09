@@ -35,6 +35,7 @@ const Settings: React.FC = () => {
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
   const [switchingChannel, setSwitchingChannel] = useState(false)
+  const [isUpgradePending, setIsUpgradePending] = useState(false)
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -95,6 +96,14 @@ const Settings: React.FC = () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
     }
   }, [loadEnvironmentInfo])
+
+  // Auto-refresh environment info when engine starts after upgrade/channel switch
+  useEffect(() => {
+    if (status === 'running' && isUpgradePending) {
+      handleRefreshEnvironmentInfo()
+      setIsUpgradePending(false)
+    }
+  }, [status, isUpgradePending, handleRefreshEnvironmentInfo])
 
   const loadEngineChannel = async () => {
     try {
@@ -261,6 +270,7 @@ const Settings: React.FC = () => {
 
   const handleEngineChannelChange = async (newChannel: 'stable' | 'nightly') => {
     setSwitchingChannel(true)
+    setIsUpgradePending(true)
     setEngineUpdateMessage({
       type: 'info',
       text: `Switching to ${newChannel} channel...`
@@ -274,15 +284,12 @@ const Settings: React.FC = () => {
           type: 'success',
           text: `Successfully switched to ${newChannel} channel! Engine is restarting...`
         })
-        // Refresh environment info to show new version after restart
-        setTimeout(() => {
-          handleRefreshEnvironmentInfo()
-        }, 3000)
       } else {
         setEngineUpdateMessage({
           type: 'error',
           text: `Failed to switch channel: ${result?.error || 'Unknown error'}`
         })
+        setIsUpgradePending(false)
       }
     } catch (err) {
       console.error('Failed to switch engine channel:', err)
@@ -290,6 +297,7 @@ const Settings: React.FC = () => {
         type: 'error',
         text: `Failed to switch channel: ${err instanceof Error ? err.message : 'Unknown error'}`
       })
+      setIsUpgradePending(false)
     } finally {
       setSwitchingChannel(false)
     }
@@ -297,6 +305,7 @@ const Settings: React.FC = () => {
 
   const handleUpgradeEngine = async () => {
     setUpgradingEngine(true)
+    setIsUpgradePending(true)
     setEngineUpdateMessage(null)
 
     const wasRunning = status === 'running'
@@ -332,8 +341,6 @@ const Settings: React.FC = () => {
           type: 'success',
           text: 'Engine upgraded successfully!'
         })
-        // Refresh environment info to show new version
-        await handleRefreshEnvironmentInfo()
 
         // Always start/restart the engine after upgrade
         setEngineUpdateMessage({
@@ -362,6 +369,7 @@ const Settings: React.FC = () => {
           type: 'error',
           text: `Upgrade failed: ${result?.error || 'Unknown error'}`
         })
+        setIsUpgradePending(false)
       }
     } catch (err) {
       console.error('Failed to upgrade engine:', err)
@@ -369,6 +377,7 @@ const Settings: React.FC = () => {
         type: 'error',
         text: 'Failed to upgrade engine'
       })
+      setIsUpgradePending(false)
     } finally {
       setUpgradingEngine(false)
     }
