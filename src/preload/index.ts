@@ -55,7 +55,8 @@ contextBridge.exposeInMainWorld('oauthAPI', {
   refreshToken: (refreshToken: string) => ipcRenderer.invoke('auth:refresh-token', refreshToken),
   willPromptForKeychain: () => ipcRenderer.invoke('auth:will-prompt-keychain'),
   hasExistingEncryptedStore: () => ipcRenderer.invoke('auth:has-existing-encrypted-store'),
-  loadFromPersistentStore: () => ipcRenderer.invoke('auth:load-from-persistent-store')
+  loadFromPersistentStore: () => ipcRenderer.invoke('auth:load-from-persistent-store'),
+  notifyTokensUpdated: () => ipcRenderer.invoke('auth:notify-tokens-updated')
 })
 
 contextBridge.exposeInMainWorld('engineAPI', {

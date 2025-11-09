@@ -37,6 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [tokens, setTokens] = useState<AuthTokens | null>(null)
   const [apiKey, setApiKey] = useState<string | null>(null)
+  const [expiresAt, setExpiresAt] = useState<number | null>(null)
 
   useEffect(() => {
     // Check for stored authentication on app start
@@ -64,9 +65,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             expires_in: 86400
           }
 
+          const mockExpiresAt = Math.floor(Date.now() / 1000) + 86400
           setUser(mockUser)
           setTokens(mockTokens)
           setApiKey(devApiKey)
+          setExpiresAt(mockExpiresAt)
           setIsAuthenticated(true)
           setIsLoading(false)
           return
@@ -99,9 +102,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
               if (refreshResult.success && refreshResult.tokens) {
                 console.log('Token refresh successful')
+                const newExpiresAt = Math.floor(Date.now() / 1000) + (refreshResult.tokens.expires_in || 86400)
                 setTokens(refreshResult.tokens)
                 setUser(result.user)
                 setApiKey(result.apiKey)
+                setExpiresAt(newExpiresAt)
                 setIsAuthenticated(true)
 
                 // Report usage metrics when token refresh is successful
@@ -123,6 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setTokens(result.tokens)
             setUser(result.user)
             setApiKey(result.apiKey)
+            setExpiresAt(expiresAt || null)
             setIsAuthenticated(true)
 
             // Report usage metrics when authentication is successful
@@ -137,6 +143,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     checkStoredAuth()
   }, [])
+
+  // Automatic token refresh
+  useEffect(() => {
+    if (!isAuthenticated || !tokens?.refresh_token || !expiresAt) {
+      return
+    }
+
+    const refreshTokens = async () => {
+      try {
+        console.log('Auto-refreshing tokens...')
+        const refreshResult = await window.oauthAPI.refreshToken(tokens.refresh_token!)
+
+        if (refreshResult.success && refreshResult.tokens) {
+          console.log('Auto token refresh successful')
+          const newExpiresAt = Math.floor(Date.now() / 1000) + (refreshResult.tokens.expires_in || 86400)
+          setTokens(refreshResult.tokens)
+          setExpiresAt(newExpiresAt)
+
+          // Notify main process that tokens were updated so it can broadcast to webviews
+          await window.oauthAPI.notifyTokensUpdated()
+        } else {
+          console.error('Auto token refresh failed:', refreshResult.error)
+        }
+      } catch (error) {
+        console.error('Error during auto token refresh:', error)
+      }
+    }
+
+    // Check every minute if tokens need refreshing
+    const checkInterval = setInterval(() => {
+      const currentTime = Math.floor(Date.now() / 1000)
+      const timeUntilExpiry = expiresAt - currentTime
+      const fiveMinutes = 5 * 60
+
+      // Refresh if within 5 minutes of expiration
+      if (timeUntilExpiry <= fiveMinutes && timeUntilExpiry > 0) {
+        console.log(`Tokens expiring in ${Math.floor(timeUntilExpiry / 60)} minutes, refreshing...`)
+        refreshTokens()
+      }
+    }, 60 * 1000) // Check every minute
+
+    return () => {
+      clearInterval(checkInterval)
+    }
+  }, [isAuthenticated, tokens, expiresAt])
 
   const reportUsageMetrics = async () => {
     try {
@@ -180,9 +231,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           expires_in: 86400
         }
 
+        const mockExpiresAt = Math.floor(Date.now() / 1000) + 86400
         setUser(mockUser)
         setTokens(mockTokens)
         setApiKey(devApiKey)
+        setExpiresAt(mockExpiresAt)
         setIsAuthenticated(true)
         setIsLoading(false) // Make sure loading is false
         return
@@ -192,9 +245,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await window.oauthAPI.login()
 
       if (result.success && result.tokens && result.user) {
+        const newExpiresAt = Math.floor(Date.now() / 1000) + (result.tokens.expires_in || 86400)
         setTokens(result.tokens)
         setUser(result.user)
         setApiKey(result.apiKey || null)
+        setExpiresAt(newExpiresAt)
         setIsAuthenticated(true)
         // Storage is handled by the backend (electron-store)
 
@@ -217,6 +272,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setTokens(null)
     setUser(null)
     setApiKey(null)
+    setExpiresAt(null)
     setIsAuthenticated(false)
   }
 

@@ -176,6 +176,7 @@ declare global {
       }>
       willPromptForKeychain: () => Promise<boolean>
       loadFromPersistentStore: () => Promise<{ success: boolean }>
+      notifyTokensUpdated: () => Promise<void>
     }
     engineAPI: {
       getStatus: () => Promise<EngineStatus>

@@ -401,6 +401,33 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     this.workspaceDirectory = config?.workspace_directory
   }
 
+  async updateApiKey(apiKey: string) {
+    await this.waitForReady()
+    const gtnConfigPath = getGtnConfigPath(this.userDataDir)
+
+    if (!fs.existsSync(gtnConfigPath)) {
+      logger.warn('GTN config file does not exist, cannot update API key')
+      return
+    }
+
+    try {
+      const data = fs.readFileSync(gtnConfigPath, 'utf8')
+      const config = JSON.parse(data)
+
+      // Update the API key in the config
+      if (!config.gt_cloud) {
+        config.gt_cloud = {}
+      }
+      config.gt_cloud.api_key = apiKey
+
+      // Write the updated config back
+      fs.writeFileSync(gtnConfigPath, JSON.stringify(config, null, 2), 'utf8')
+      logger.info('Updated API key in GTN config')
+    } catch (error) {
+      logger.error('Failed to update API key in GTN config:', error)
+    }
+  }
+
   async runGtn(
     args: string[] = [],
     options?: { forward_logs?: boolean; wait?: boolean }

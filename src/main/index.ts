@@ -931,6 +931,30 @@ const setupIPC = () => {
     return await authService.refreshTokens(refreshToken)
   })
 
+  // Handle notification that tokens were updated (for broadcasting to webviews)
+  ipcMain.handle('auth:notify-tokens-updated', async () => {
+    const credentials = authService.getStoredCredentials()
+    if (credentials && credentials.tokens) {
+      // Update GTN config with new API key if it exists
+      if (credentials.apiKey) {
+        try {
+          await gtnService.updateApiKey(credentials.apiKey)
+        } catch (error) {
+          logger.error('Failed to update GTN API key:', error)
+        }
+      }
+
+      // Broadcast to all windows that tokens have been updated
+      BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send('auth:tokens-updated', {
+          tokens: credentials.tokens,
+          expiresAt: credentials.expiresAt,
+          apiKey: credentials.apiKey
+        })
+      })
+    }
+  })
+
   // Handle environment variable requests
   ipcMain.handle('get-env-var', (event, key: string) => {
     return process.env[key] || null

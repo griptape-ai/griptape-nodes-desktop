@@ -58,3 +58,43 @@ try {
 } catch (err) {
   console.error('Failed to inject auth in webview preload:', err)
 }
+
+// Listen for token updates from main process and update localStorage
+ipcRenderer.on('auth:tokens-updated', (event, data) => {
+  try {
+    console.log('Received token update in webview, updating localStorage...')
+
+    const { tokens, expiresAt } = data
+
+    // Get the stored auth data to preserve user info
+    const auth0Key =
+      '@@auth0spajs@@::bK5Fijuoy90ftmcwVUZABA5THOZyzHnH::https://cloud.griptape.ai/api::openid profile email offline_access'
+
+    const existingData = localStorage.getItem(auth0Key)
+    if (!existingData) {
+      console.warn('No existing auth data found in localStorage, cannot update tokens')
+      return
+    }
+
+    const existingEntry = JSON.parse(existingData)
+
+    // Update the tokens while preserving other data
+    const updatedEntry = {
+      ...existingEntry,
+      body: {
+        ...existingEntry.body,
+        access_token: tokens.access_token,
+        id_token: tokens.id_token,
+        refresh_token: tokens.refresh_token,
+        expires_in: tokens.expires_in || 86400,
+        token_type: tokens.token_type || 'Bearer'
+      },
+      expiresAt
+    }
+
+    localStorage.setItem(auth0Key, JSON.stringify(updatedEntry))
+    console.log('✅ Tokens updated in webview localStorage')
+  } catch (err) {
+    console.error('Failed to update tokens in webview:', err)
+  }
+})
