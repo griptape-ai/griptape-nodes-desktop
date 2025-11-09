@@ -99,6 +99,11 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
   setWorkspace: (directory: string) => ipcRenderer.invoke('gtn:set-workspace', directory),
   selectDirectory: () => ipcRenderer.invoke('gtn:select-directory'),
   refreshConfig: () => ipcRenderer.invoke('gtn:refresh-config'),
+  reconfigureEngine: (config: {
+    workspaceDirectory: string
+    advancedLibrary: boolean
+    cloudLibrary: boolean
+  }) => ipcRenderer.invoke('gtn:reconfigure-engine', config),
   upgrade: () => ipcRenderer.invoke('gtn:upgrade'),
   forceReinstall: () => ipcRenderer.invoke('gtn:force-reinstall'),
   getVersion: () => ipcRenderer.invoke('gtn:get-version'),

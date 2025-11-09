@@ -1157,6 +1157,43 @@ const setupIPC = () => {
 
   ipcMain.handle('gtn:refresh-config', () => gtnService.refreshConfig())
 
+  ipcMain.handle(
+    'gtn:reconfigure-engine',
+    async (
+      event,
+      config: {
+        workspaceDirectory: string
+        advancedLibrary: boolean
+        cloudLibrary: boolean
+      }
+    ) => {
+      logger.info('Reconfiguring engine with new workspace/library preferences')
+
+      // Stop engine
+      await engineService.stopEngine()
+
+      // Update preferences in onboarding service
+      onboardingService.setAdvancedLibraryEnabled(config.advancedLibrary)
+      onboardingService.setCloudLibraryEnabled(config.cloudLibrary)
+      gtnService.workspaceDirectory = config.workspaceDirectory
+
+      // Re-initialize with new configuration
+      const apiKey = await authService.waitForApiKey()
+      await gtnService.initialize({
+        apiKey,
+        workspaceDirectory: config.workspaceDirectory,
+        storageBackend: 'local',
+        advancedLibrary: config.advancedLibrary,
+        cloudLibrary: config.cloudLibrary
+      })
+
+      // Restart engine
+      await engineService.startEngine()
+
+      logger.info('Engine reconfiguration complete')
+    }
+  )
+
   ipcMain.handle('gtn:upgrade', async () => {
     try {
       await gtnService.upgradeGtn()

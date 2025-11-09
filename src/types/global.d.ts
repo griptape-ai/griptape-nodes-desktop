@@ -203,6 +203,11 @@ declare global {
       setWorkspace: (directory: string) => Promise<{ success: boolean; error?: string }>
       selectDirectory: () => Promise<string | null>
       refreshConfig: () => Promise<void>
+      reconfigureEngine: (config: {
+        workspaceDirectory: string
+        advancedLibrary: boolean
+        cloudLibrary: boolean
+      }) => Promise<void>
       upgrade: () => Promise<{ success: boolean; error?: string }>
       getVersion: () => Promise<{ success: boolean; version?: string; error?: string }>
       onWorkspaceChanged: (callback: (event: any, directory: string) => void) => void
