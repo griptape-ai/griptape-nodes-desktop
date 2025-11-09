@@ -8,7 +8,8 @@ import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
-  const { status, isUpgradePending, setIsUpgradePending, operationMessage, setOperationMessage } = useEngine()
+  const { status, isUpgradePending, setIsUpgradePending, operationMessage, setOperationMessage } =
+    useEngine()
   const { theme, setTheme } = useTheme()
   const [environmentInfo, setEnvironmentInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -115,7 +116,13 @@ const Settings: React.FC = () => {
 
       return () => clearTimeout(timeoutId)
     }
-  }, [status, isUpgradePending, handleRefreshEnvironmentInfo, setIsUpgradePending, setOperationMessage])
+  }, [
+    status,
+    isUpgradePending,
+    handleRefreshEnvironmentInfo,
+    setIsUpgradePending,
+    setOperationMessage
+  ])
 
   const loadEngineChannel = async () => {
     try {

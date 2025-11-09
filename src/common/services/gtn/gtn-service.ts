@@ -300,11 +300,17 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     // Add library flags based on user preferences
     if (options.advancedLibrary !== undefined) {
-      args.push(options.advancedLibrary ? '--register-advanced-library' : '--no-register-advanced-library')
+      args.push(
+        options.advancedLibrary ? '--register-advanced-library' : '--no-register-advanced-library'
+      )
     }
 
     if (options.cloudLibrary !== undefined) {
-      args.push(options.cloudLibrary ? '--register-griptape-cloud-library' : '--no-register-griptape-cloud-library')
+      args.push(
+        options.cloudLibrary
+          ? '--register-griptape-cloud-library'
+          : '--no-register-griptape-cloud-library'
+      )
     }
 
     // Log the command without exposing the API key

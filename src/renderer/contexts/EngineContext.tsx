@@ -197,7 +197,19 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
       clearLogs,
       refreshStatus
     }),
-    [status, logs, isLoading, isUpgradePending, operationMessage, startEngine, stopEngine, restartEngine, clearLogs, refreshStatus, clearOperationMessage]
+    [
+      status,
+      logs,
+      isLoading,
+      isUpgradePending,
+      operationMessage,
+      startEngine,
+      stopEngine,
+      restartEngine,
+      clearLogs,
+      refreshStatus,
+      clearOperationMessage
+    ]
   )
 
   return <EngineContext.Provider value={contextValue}>{children}</EngineContext.Provider>

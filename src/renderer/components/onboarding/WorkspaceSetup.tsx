@@ -3,11 +3,7 @@ import { Folder, CheckCircle } from 'lucide-react'
 import { cn } from '../../utils/utils'
 
 interface WorkspaceSetupProps {
-  onComplete: (
-    workspaceDirectory: string,
-    advancedLibrary: boolean,
-    cloudLibrary: boolean
-  ) => void
+  onComplete: (workspaceDirectory: string, advancedLibrary: boolean, cloudLibrary: boolean) => void
 }
 
 const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
