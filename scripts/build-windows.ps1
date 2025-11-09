@@ -44,16 +44,8 @@ if ($env:AZURE_KEY_VAULT_CERTIFICATE_NAME) {
         --outputDir "Releases" `
         --runtime "$Runtime" `
         --channel "$Channel" `
-        --signTemplate "AzureSignTool sign
-              -kvu $env:AZURE_KEY_VAULT_URI
-              -kvc $env:AZURE_KEY_VAULT_CERTIFICATE_NAME
-              -kvi $env:AZURE_KEY_VAULT_CLIENT_ID
-              -kvs $env:AZURE_KEY_VAULT_CLIENT_SECRET
-              -kvt $env:AZURE_KEY_VAULT_TENANT_ID
-              -tr http://timestamp.globalsign.com/tsa/r6advanced1
-              -td sha256
-              -fd sha256
-              {{file}}"
+        --verbose `
+        --signTemplate "AzureSignTool sign -kvu $env:AZURE_KEY_VAULT_URI -kvc $env:AZURE_KEY_VAULT_CERTIFICATE_NAME -kvi $env:AZURE_KEY_VAULT_CLIENT_ID -kvs $env:AZURE_KEY_VAULT_CLIENT_SECRET -kvt $env:AZURE_KEY_VAULT_TENANT_ID -tr http://timestamp.globalsign.com/tsa/r6advanced1 -td sha256 -fd sha256 {{file}}"
 
 } else {
     Write-Host "Building without code signing..."
