@@ -32,4 +32,13 @@ export class SettingsService {
     this.store.set('engineChannel', channel)
     logger.info('SettingsService: engineChannel set to', channel)
   }
+
+  isChannelSwitchInProgress(): boolean {
+    return this.store.get('channelSwitchInProgress', false)
+  }
+
+  setChannelSwitchInProgress(inProgress: boolean): void {
+    this.store.set('channelSwitchInProgress', inProgress)
+    logger.info('SettingsService: channelSwitchInProgress set to', inProgress)
+  }
 }
