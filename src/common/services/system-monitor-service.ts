@@ -208,17 +208,10 @@ export class SystemMonitorService extends EventEmitter {
       const gpuInfos: SystemMetrics['gpus'] = []
       try {
         const graphics = await si.graphics()
-        logger.debug(
-          'SystemMonitorService: graphics.controllers:',
-          graphics.controllers?.length || 0
-        )
 
         if (graphics.controllers && graphics.controllers.length > 0) {
           // Filter to only discrete GPUs
           const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
-          logger.debug(
-            `SystemMonitorService: Processing ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`
-          )
 
           // First, try to get metrics from systeminformation
           discreteGpus.forEach((gpu, index) => {
@@ -254,9 +247,6 @@ export class SystemMonitorService extends EventEmitter {
 
           // If utilization is unavailable (-1) on Windows, try nvidia-smi as fallback
           const hasUnavailableMetrics = gpuInfos.some((gpu) => gpu.usage === -1)
-          logger.debug(
-            `SystemMonitorService: hasUnavailableMetrics=${hasUnavailableMetrics}, platform=${process.platform}`
-          )
 
           if (hasUnavailableMetrics && process.platform === 'win32') {
             logger.info('SystemMonitorService: Attempting nvidia-smi fallback for GPU metrics')
