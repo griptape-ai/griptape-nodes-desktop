@@ -8,7 +8,7 @@ import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
-  const { status, isUpgradePending, setIsUpgradePending } = useEngine()
+  const { status, isUpgradePending, setIsUpgradePending, operationMessage, setOperationMessage } = useEngine()
   const { theme, setTheme } = useTheme()
   const [environmentInfo, setEnvironmentInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -28,10 +28,6 @@ const Settings: React.FC = () => {
   const [channelError, setChannelError] = useState<boolean>(false)
   const [channelsError, setChannelsError] = useState<boolean>(false)
   const [upgradingEngine, setUpgradingEngine] = useState(false)
-  const [engineUpdateMessage, setEngineUpdateMessage] = useState<{
-    type: 'success' | 'error' | 'info'
-    text: string
-  } | null>(null)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
   const [switchingChannel, setSwitchingChannel] = useState(false)
@@ -99,10 +95,21 @@ const Settings: React.FC = () => {
   // Auto-refresh environment info when engine starts after upgrade/channel switch
   useEffect(() => {
     if (status === 'running' && isUpgradePending) {
-      handleRefreshEnvironmentInfo()
-      setIsUpgradePending(false)
+      // Wait for engine to fully stabilize before refreshing
+      const timeoutId = setTimeout(async () => {
+        await handleRefreshEnvironmentInfo()
+        setOperationMessage({ type: 'success', text: 'Operation completed successfully!' })
+        setIsUpgradePending(false)
+
+        // Auto-clear success message after 5 seconds
+        setTimeout(() => {
+          setOperationMessage(null)
+        }, 5000)
+      }, 2000)
+
+      return () => clearTimeout(timeoutId)
     }
-  }, [status, isUpgradePending, handleRefreshEnvironmentInfo])
+  }, [status, isUpgradePending, handleRefreshEnvironmentInfo, setIsUpgradePending, setOperationMessage])
 
   const loadEngineChannel = async () => {
     try {
@@ -270,7 +277,8 @@ const Settings: React.FC = () => {
   const handleEngineChannelChange = async (newChannel: 'stable' | 'nightly') => {
     setSwitchingChannel(true)
     setIsUpgradePending(true)
-    setEngineUpdateMessage({
+    setOperationMessage(null)
+    setOperationMessage({
       type: 'info',
       text: `Switching to ${newChannel} channel...`
     })
@@ -279,14 +287,12 @@ const Settings: React.FC = () => {
       const result = await window.settingsAPI.setEngineChannel(newChannel)
       if (result && result.success) {
         setEngineChannel(newChannel)
-        setEngineUpdateMessage({
-          type: 'success',
+        setOperationMessage({
+          type: 'info',
           text: `Successfully switched to ${newChannel} channel! Engine is restarting...`
         })
-        // Refresh environment info after channel switch completes
-        await handleRefreshEnvironmentInfo()
       } else {
-        setEngineUpdateMessage({
+        setOperationMessage({
           type: 'error',
           text: `Failed to switch channel: ${result?.error || 'Unknown error'}`
         })
@@ -294,7 +300,7 @@ const Settings: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to switch engine channel:', err)
-      setEngineUpdateMessage({
+      setOperationMessage({
         type: 'error',
         text: `Failed to switch channel: ${err instanceof Error ? err.message : 'Unknown error'}`
       })
@@ -307,24 +313,25 @@ const Settings: React.FC = () => {
   const handleUpgradeEngine = async () => {
     setUpgradingEngine(true)
     setIsUpgradePending(true)
-    setEngineUpdateMessage(null)
+    setOperationMessage(null)
 
     const wasRunning = status === 'running'
 
     try {
       // Stop engine if running
       if (wasRunning) {
-        setEngineUpdateMessage({
+        setOperationMessage({
           type: 'info',
           text: 'Stopping engine...'
         })
         const stopResult = await window.engineAPI.stop()
         if (!stopResult || !stopResult.success) {
-          setEngineUpdateMessage({
+          setOperationMessage({
             type: 'error',
             text: `Failed to stop engine: ${stopResult?.error || 'Unknown error'}`
           })
           setUpgradingEngine(false)
+          setIsUpgradePending(false)
           return
         }
         // Wait a moment for engine to fully stop
@@ -332,19 +339,14 @@ const Settings: React.FC = () => {
       }
 
       // Upgrade engine
-      setEngineUpdateMessage({
+      setOperationMessage({
         type: 'info',
         text: 'Upgrading engine...'
       })
       const result = await window.griptapeAPI.upgrade()
       if (result && result.success) {
-        setEngineUpdateMessage({
-          type: 'success',
-          text: 'Engine upgraded successfully!'
-        })
-
         // Always start/restart the engine after upgrade
-        setEngineUpdateMessage({
+        setOperationMessage({
           type: 'info',
           text: wasRunning
             ? 'Engine upgraded successfully! Restarting engine...'
@@ -352,23 +354,15 @@ const Settings: React.FC = () => {
         })
         await new Promise((resolve) => setTimeout(resolve, 1000))
         const startResult = await window.engineAPI.start()
-        if (startResult && startResult.success) {
-          setEngineUpdateMessage({
-            type: 'success',
-            text: wasRunning
-              ? 'Engine upgraded and restarted successfully!'
-              : 'Engine upgraded and started successfully!'
-          })
-          // Refresh environment info after upgrade completes
-          await handleRefreshEnvironmentInfo()
-        } else {
-          setEngineUpdateMessage({
+        if (!startResult || !startResult.success) {
+          setOperationMessage({
             type: 'error',
             text: `Engine upgraded but failed to ${wasRunning ? 'restart' : 'start'}: ${startResult?.error || 'Unknown error'}`
           })
+          setIsUpgradePending(false)
         }
       } else {
-        setEngineUpdateMessage({
+        setOperationMessage({
           type: 'error',
           text: `Upgrade failed: ${result?.error || 'Unknown error'}`
         })
@@ -376,7 +370,7 @@ const Settings: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to upgrade engine:', err)
-      setEngineUpdateMessage({
+      setOperationMessage({
         type: 'error',
         text: 'Failed to upgrade engine'
       })
@@ -578,19 +572,19 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Update Message */}
-            {engineUpdateMessage && (
+            {operationMessage && (
               <div
                 className={cn(
                   'p-3 rounded-md border',
-                  engineUpdateMessage.type === 'success' &&
+                  operationMessage.type === 'success' &&
                     'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-500',
-                  engineUpdateMessage.type === 'error' &&
+                  operationMessage.type === 'error' &&
                     'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-500',
-                  engineUpdateMessage.type === 'info' &&
+                  operationMessage.type === 'info' &&
                     'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500'
                 )}
               >
-                <p className="text-sm font-medium">{engineUpdateMessage.text}</p>
+                <p className="text-sm font-medium">{operationMessage.text}</p>
               </div>
             )}
 

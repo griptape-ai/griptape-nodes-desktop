@@ -9,12 +9,20 @@ import React, {
 } from 'react'
 import type { EngineStatus, EngineLog } from '@/types/global'
 
+export interface OperationMessage {
+  type: 'success' | 'error' | 'info'
+  text: string
+}
+
 interface EngineContextType {
   status: EngineStatus
   logs: EngineLog[]
   isLoading: boolean
   isUpgradePending: boolean
+  operationMessage: OperationMessage | null
   setIsUpgradePending: (pending: boolean) => void
+  setOperationMessage: (message: OperationMessage | null) => void
+  clearOperationMessage: () => void
   startEngine: () => Promise<void>
   stopEngine: () => Promise<void>
   restartEngine: () => Promise<void>
@@ -41,6 +49,7 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
   const [logs, setLogs] = useState<EngineLog[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUpgradePending, setIsUpgradePending] = useState(false)
+  const [operationMessage, setOperationMessage] = useState<OperationMessage | null>(null)
   const maxLogSize = 1000 // Keep last 1000 log entries (matching main process limit)
 
   // Fetch initial status and logs
@@ -168,20 +177,27 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
     }
   }, [])
 
+  const clearOperationMessage = useCallback(() => {
+    setOperationMessage(null)
+  }, [])
+
   const contextValue = useMemo(
     () => ({
       status,
       logs,
       isLoading,
       isUpgradePending,
+      operationMessage,
       setIsUpgradePending,
+      setOperationMessage,
+      clearOperationMessage,
       startEngine,
       stopEngine,
       restartEngine,
       clearLogs,
       refreshStatus
     }),
-    [status, logs, isLoading, isUpgradePending, startEngine, stopEngine, restartEngine, clearLogs, refreshStatus]
+    [status, logs, isLoading, isUpgradePending, operationMessage, startEngine, stopEngine, restartEngine, clearLogs, refreshStatus, clearOperationMessage]
   )
 
   return <EngineContext.Provider value={contextValue}>{children}</EngineContext.Provider>
