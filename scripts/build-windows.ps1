@@ -36,7 +36,7 @@ Write-Host "App directory: $AppDir"
 # let's remove them.
 Write-Host "Removing non-Windows native modules..."
 $removedCount = 0
-Get-ChildItem -Path "$AppDir" -Recurse -Include "*_linux_*.node","*_darwin_*.node" | ForEach-Object {
+Get-ChildItem -Path "$AppDir" -Recurse -Include "*_linux_*.node","*_darwin_*.node","*_osx.node" | ForEach-Object {
     Write-Host "  Removing: $($_.FullName)"
     Remove-Item $_.FullName -Force
     $removedCount++
