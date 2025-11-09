@@ -102,7 +102,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
               if (refreshResult.success && refreshResult.tokens) {
                 console.log('Token refresh successful')
-                const newExpiresAt = Math.floor(Date.now() / 1000) + (refreshResult.tokens.expires_in || 86400)
+                const newExpiresAt =
+                  Math.floor(Date.now() / 1000) + (refreshResult.tokens.expires_in || 86400)
                 setTokens(refreshResult.tokens)
                 setUser(result.user)
                 setApiKey(result.apiKey)
@@ -157,7 +158,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (refreshResult.success && refreshResult.tokens) {
           console.log('Auto token refresh successful')
-          const newExpiresAt = Math.floor(Date.now() / 1000) + (refreshResult.tokens.expires_in || 86400)
+          const newExpiresAt =
+            Math.floor(Date.now() / 1000) + (refreshResult.tokens.expires_in || 86400)
           setTokens(refreshResult.tokens)
           setExpiresAt(newExpiresAt)
 

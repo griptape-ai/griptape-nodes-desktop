@@ -324,9 +324,7 @@ const Engine: React.FC = () => {
             onClick={copyLogsToClipboard}
             disabled={logs.length === 0}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-              isCopied
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-gray-600 hover:bg-gray-700'
+              isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'
             }`}
           >
             {isCopied ? (

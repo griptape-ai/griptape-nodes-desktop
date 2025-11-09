@@ -286,10 +286,7 @@ app.on('ready', async () => {
 
         // Add standard editing options if there's selected text
         if (params.selectionText) {
-          menuItems.push(
-            { role: 'copy' },
-            { type: 'separator' }
-          )
+          menuItems.push({ role: 'copy' }, { type: 'separator' })
         }
 
         // Add standard editing options for input fields

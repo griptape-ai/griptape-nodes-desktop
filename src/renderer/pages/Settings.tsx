@@ -548,7 +548,8 @@ const Settings: React.FC = () => {
                 <option value="nightly">Nightly (Latest development build)</option>
               </select>
               <p className="text-xs text-muted-foreground mt-1">
-                Stable: Official releases from PyPI. Nightly: Latest development build from GitHub (may be unstable).
+                Stable: Official releases from PyPI. Nightly: Latest development build from GitHub
+                (may be unstable).
               </p>
             </div>
 
