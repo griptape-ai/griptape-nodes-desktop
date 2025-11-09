@@ -252,13 +252,13 @@ const Engine: React.FC = () => {
       return (
         <div
           style={style}
-          className="flex items-center px-4 hover:bg-gray-100 dark:hover:bg-gray-800 overflow-hidden"
+          className="flex items-start px-4 hover:bg-gray-100 dark:hover:bg-gray-800"
         >
-          <span className="text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0 font-mono text-xs">
+          <span className="text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0 font-mono text-xs pt-0.5">
             {formatTimestamp(log.timestamp)}
           </span>
           <span
-            className={`flex-1 font-mono text-sm leading-tight whitespace-pre overflow-hidden ${
+            className={`flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-all ${
               log.type === 'stderr' ? 'text-red-600 dark:text-red-400' : ''
             }`}
             dangerouslySetInnerHTML={processedMessage}
@@ -377,7 +377,7 @@ const Engine: React.FC = () => {
       {status === 'error' && (
         <div className="flex-shrink-0 mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">Error</p>
-          <p className="text-sm text-red-800 dark:text-red-200 mb-2">
+          <p className="text-sm text-red-800 dark:text-red-200 mb-2 whitespace-pre-wrap break-words font-mono">
             {(() => {
               // Find the most recent stderr log entry
               const lastError = [...logs]
@@ -425,7 +425,7 @@ const Engine: React.FC = () => {
               rowHeight={getItemSize}
               rowProps={{ logs }}
               onScroll={handleScroll}
-              className="terminal-scrollbar"
+              className="terminal-scrollbar h-full w-full"
               style={{
                 backgroundColor: 'rgb(17 24 39)',
                 color: '#e5e7eb'
