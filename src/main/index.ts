@@ -1163,9 +1163,9 @@ const setupIPC = () => {
       await gtnService.switchChannel(channel)
 
       // Restart the engine with the new version
-      engineService.restartEngine()
+      await engineService.restartEngine()
 
-      // Clear the in-progress flag after restart is initiated
+      // Clear the in-progress flag after restart is complete
       settingsService.setChannelSwitchInProgress(false)
 
       return { success: true }

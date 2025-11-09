@@ -97,6 +97,12 @@ const Settings: React.FC = () => {
     if (status === 'running' && isUpgradePending) {
       // Wait for engine to fully stabilize before refreshing
       const timeoutId = setTimeout(async () => {
+        // Guard against refreshing during channel switch
+        const isChannelSwitching = await window.settingsAPI.isChannelSwitchInProgress()
+        if (isChannelSwitching) {
+          return
+        }
+
         await handleRefreshEnvironmentInfo()
         setOperationMessage({ type: 'success', text: 'Operation completed successfully!' })
         setIsUpgradePending(false)
