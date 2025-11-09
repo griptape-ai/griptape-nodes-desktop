@@ -1,7 +1,7 @@
 import Convert from 'ansi-to-html'
-import React, { useEffect, useRef, useMemo, useCallback, memo } from 'react'
+import React, { useEffect, useRef, useMemo, useCallback, memo, useState } from 'react'
 import { List, type RowComponentProps } from 'react-window'
-import { Play, Square, RotateCcw, Copy } from 'lucide-react'
+import { Play, Square, RotateCcw, Copy, Check } from 'lucide-react'
 import { useEngine } from '../contexts/EngineContext'
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
 
@@ -33,6 +33,7 @@ const ansiConverter = new Convert({
 
 const Engine: React.FC = () => {
   const { status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs } = useEngine()
+  const [isCopied, setIsCopied] = useState(false)
   const listRef = useRef<any>(null)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const wasAtBottomRef = useRef(true)
@@ -154,6 +155,8 @@ const Engine: React.FC = () => {
         .join('\n')
 
       await navigator.clipboard.writeText(plainTextLogs)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 2000)
     } catch (error) {
       console.error('Failed to copy logs to clipboard:', error)
     }
@@ -320,10 +323,23 @@ const Engine: React.FC = () => {
           <button
             onClick={copyLogsToClipboard}
             disabled={logs.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+              isCopied
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-gray-600 hover:bg-gray-700'
+            }`}
           >
-            <Copy className="w-3.5 h-3.5" />
-            Copy Logs
+            {isCopied ? (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                Copy Logs
+              </>
+            )}
           </button>
           <button
             onClick={clearLogs}
