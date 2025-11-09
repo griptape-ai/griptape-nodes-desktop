@@ -9,8 +9,14 @@ import WorkspaceSetup from '../components/onboarding/WorkspaceSetup'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
-  const { status, isUpgradePending, setIsUpgradePending, operationMessage, setOperationMessage, reinstallEngine } =
-    useEngine()
+  const {
+    status,
+    isUpgradePending,
+    setIsUpgradePending,
+    operationMessage,
+    setOperationMessage,
+    reinstallEngine
+  } = useEngine()
   const { theme, setTheme } = useTheme()
   const [environmentInfo, setEnvironmentInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -216,7 +222,10 @@ const Settings: React.FC = () => {
     cloudLibrary: boolean
   ) => {
     setReconfiguringEngine(true)
-    setOperationMessage({ type: 'info', text: 'Reconfiguring engine with new workspace and library settings...' })
+    setOperationMessage({
+      type: 'info',
+      text: 'Reconfiguring engine with new workspace and library settings...'
+    })
     try {
       await window.griptapeAPI.reconfigureEngine({
         workspaceDirectory,
@@ -229,7 +238,10 @@ const Settings: React.FC = () => {
       setTimeout(() => setOperationMessage(null), 3000)
     } catch (err) {
       console.error('Failed to reconfigure engine:', err)
-      setOperationMessage({ type: 'error', text: 'Failed to reconfigure engine. Please try again.' })
+      setOperationMessage({
+        type: 'error',
+        text: 'Failed to reconfigure engine. Please try again.'
+      })
       setTimeout(() => setOperationMessage(null), 5000)
     } finally {
       setReconfiguringEngine(false)
@@ -544,7 +556,8 @@ const Settings: React.FC = () => {
                 Re-configure Engine
               </button>
               <p className="text-xs text-muted-foreground mt-2">
-                Re-run the workspace setup wizard to change workspace location and library preferences
+                Re-run the workspace setup wizard to change workspace location and library
+                preferences
               </p>
             </div>
           </div>
@@ -984,12 +997,7 @@ const Settings: React.FC = () => {
                 disabled={reconfiguringEngine}
                 className="text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -1013,11 +1021,13 @@ const Settings: React.FC = () => {
               Reinstall Engine Components?
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              This will completely reinstall the Python environment, UV package manager, and Griptape Nodes engine.
-              Use this if the engine is failing to start or behaving unexpectedly.
+              This will completely reinstall the Python environment, UV package manager, and
+              Griptape Nodes engine. Use this if the engine is failing to start or behaving
+              unexpectedly.
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              <strong>What will be preserved:</strong> Your workspace, API key, and library preferences.
+              <strong>What will be preserved:</strong> Your workspace, API key, and library
+              preferences.
             </p>
             <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3 mb-4">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">

@@ -19,22 +19,18 @@ export function attachOutputForwarder(
 
     // stdout
     if (child.stdout) {
-      readline
-        .createInterface({ input: child.stdout })
-        .on('line', (line) => {
-          logger.info(`[${logPrefix}] ${line}`)
-          stdoutLines.push(line)
-        })
+      readline.createInterface({ input: child.stdout }).on('line', (line) => {
+        logger.info(`[${logPrefix}] ${line}`)
+        stdoutLines.push(line)
+      })
     }
 
     // stderr
     if (child.stderr) {
-      readline
-        .createInterface({ input: child.stderr })
-        .on('line', (line) => {
-          logger.error(`[${errorPrefix}] ${line}`)
-          stderrLines.push(line)
-        })
+      readline.createInterface({ input: child.stderr }).on('line', (line) => {
+        logger.error(`[${errorPrefix}] ${line}`)
+        stderrLines.push(line)
+      })
     }
 
     child.on('close', (code) => {
