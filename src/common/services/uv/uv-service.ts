@@ -48,6 +48,26 @@ export class UvService extends EventEmitter<UvServiceEvents> {
     logger.info('uv service installUv end')
   }
 
+  async reinstall(): Promise<void> {
+    logger.info('uv service reinstall start')
+    this.isReady = false
+
+    // Remove UV directory
+    const uvDir = this.userDataDir + '/uv'
+    if (fs.existsSync(uvDir)) {
+      logger.info('Removing UV directory')
+      fs.rmSync(uvDir, { recursive: true, force: true })
+    }
+
+    // Reinstall UV
+    await installUv(this.userDataDir)
+    this.uvExecutablePath = getUvExecutablePath(this.userDataDir)
+
+    this.isReady = true
+    this.emit('ready')
+    logger.info('uv service reinstall end')
+  }
+
   async getUvVersion(): Promise<string> {
     await this.waitForReady()
     if (!this.uvVersion) {

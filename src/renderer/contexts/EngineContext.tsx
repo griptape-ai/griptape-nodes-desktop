@@ -26,6 +26,7 @@ interface EngineContextType {
   startEngine: () => Promise<void>
   stopEngine: () => Promise<void>
   restartEngine: () => Promise<void>
+  reinstallEngine: () => Promise<void>
   clearLogs: () => Promise<void>
   refreshStatus: () => Promise<void>
 }
@@ -159,6 +160,31 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
     }
   }, [])
 
+  const reinstallEngine = useCallback(async () => {
+    setIsLoading(true)
+    setOperationMessage({ type: 'info', text: 'Reinstalling engine stack...' })
+    try {
+      const result = await window.engineAPI.reinstall()
+      if (result.success) {
+        setOperationMessage({ type: 'success', text: 'Engine stack reinstalled successfully' })
+      } else {
+        console.error('Failed to reinstall engine:', result.error)
+        setOperationMessage({
+          type: 'error',
+          text: `Failed to reinstall engine: ${result.error}`
+        })
+      }
+    } catch (error) {
+      console.error('Error reinstalling engine:', error)
+      setOperationMessage({
+        type: 'error',
+        text: `Error reinstalling engine: ${error instanceof Error ? error.message : String(error)}`
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   const clearLogs = useCallback(async () => {
     try {
       await window.engineAPI.clearLogs()
@@ -194,6 +220,7 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
       startEngine,
       stopEngine,
       restartEngine,
+      reinstallEngine,
       clearLogs,
       refreshStatus
     }),
@@ -206,6 +233,7 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
       startEngine,
       stopEngine,
       restartEngine,
+      reinstallEngine,
       clearLogs,
       refreshStatus,
       clearOperationMessage

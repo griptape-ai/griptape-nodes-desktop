@@ -621,4 +621,37 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   gtnExecutableExists(): boolean {
     return !!this.gtnExecutablePath && fs.existsSync(this.gtnExecutablePath)
   }
+
+  async reinstall(): Promise<void> {
+    logger.info('gtn service reinstall start')
+    this.isReady = false
+
+    // Use forceReinstallGtn to reinstall GTN
+    await this.forceReinstallGtn()
+
+    // Run initialize to configure GTN with user settings
+    try {
+      await this.initialize({
+        apiKey: await this.authService.waitForApiKey(),
+        workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
+        storageBackend: 'local',
+        advancedLibrary: this.onboardingService.isAdvancedLibraryEnabled(),
+        cloudLibrary: this.onboardingService.isCloudLibraryEnabled()
+      })
+    } catch (error) {
+      logger.error('GTN initialization failed during reinstall:', error)
+      if (this.engineService) {
+        this.engineService.addLog(
+          'stderr',
+          `GTN initialization failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+        this.engineService.setError()
+      }
+      throw error
+    }
+
+    this.isReady = true
+    this.emit('ready')
+    logger.info('gtn service reinstall end')
+  }
 }

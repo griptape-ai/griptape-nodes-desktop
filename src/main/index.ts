@@ -710,6 +710,53 @@ const setupKeyboardShortcuts = (mainWindow: BrowserWindow) => {
 
 let ipcInitialized = false
 
+/**
+ * Orchestrates a full stack reinstall of UV, Python, and GTN
+ * Preserves user settings during the process
+ */
+async function reinstallFullStack(): Promise<void> {
+  logger.info('Starting full stack reinstall')
+
+  // Stop engine first
+  logger.info('Stopping engine...')
+  engineService.addLog('stdout', 'Stopping engine for reinstall...')
+  await engineService.stopEngine()
+
+  // Set engine to initializing state
+  engineService.setInitializing()
+
+  try {
+    // Reinstall UV
+    logger.info('Reinstalling UV...')
+    engineService.addLog('stdout', 'Reinstalling UV package manager...')
+    await uvService.reinstall()
+    engineService.addLog('stdout', 'UV reinstalled successfully')
+
+    // Reinstall Python
+    logger.info('Reinstalling Python...')
+    engineService.addLog('stdout', 'Reinstalling Python...')
+    await pythonService.reinstall()
+    engineService.addLog('stdout', 'Python reinstalled successfully')
+
+    // Reinstall GTN (includes initialization with user settings)
+    logger.info('Reinstalling GTN...')
+    engineService.addLog('stdout', 'Reinstalling Griptape Nodes engine...')
+    await gtnService.reinstall()
+    engineService.addLog('stdout', 'Griptape Nodes engine reinstalled successfully')
+
+    engineService.addLog('stdout', 'Full stack reinstall completed successfully')
+    logger.info('Full stack reinstall completed successfully')
+  } catch (error) {
+    logger.error('Full stack reinstall failed:', error)
+    engineService.addLog(
+      'stderr',
+      `Reinstall failed: ${error instanceof Error ? error.message : String(error)}`
+    )
+    engineService.setError()
+    throw error
+  }
+}
+
 const setupIPC = () => {
   // Only set up IPC handlers once
   if (ipcInitialized) {
@@ -1051,6 +1098,19 @@ const setupIPC = () => {
       return { success: true }
     } catch (error) {
       logger.error('Failed to restart engine:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('engine:reinstall', async () => {
+    try {
+      await reinstallFullStack()
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to reinstall engine:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

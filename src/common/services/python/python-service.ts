@@ -7,6 +7,7 @@ import { logger } from '@/main/utils/logger'
 import EventEmitter from 'events'
 import { UvService } from '../uv/uv-service'
 import { findPythonExecutablePath, installPython } from './install-python'
+import * as fs from 'fs'
 
 interface PythonServiceEvents {
   ready: []
@@ -46,6 +47,27 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
     await installPython(this.userDataDir, uvExecutablePath)
     this.pythonExecutablePath = await findPythonExecutablePath(this.userDataDir, uvExecutablePath)
     logger.info('python service installPython end')
+  }
+
+  async reinstall(): Promise<void> {
+    logger.info('python service reinstall start')
+    this.isReady = false
+
+    // Remove Python directory
+    const pythonDir = this.userDataDir + '/python'
+    if (fs.existsSync(pythonDir)) {
+      logger.info('Removing Python directory')
+      fs.rmSync(pythonDir, { recursive: true, force: true })
+    }
+
+    // Reinstall Python
+    const uvExecutablePath = await this.uvService.getUvExecutablePath()
+    await installPython(this.userDataDir, uvExecutablePath)
+    this.pythonExecutablePath = await findPythonExecutablePath(this.userDataDir, uvExecutablePath)
+
+    this.isReady = true
+    this.emit('ready')
+    logger.info('python service reinstall end')
   }
 
   async getPythonExecutablePath(): Promise<string> {

@@ -1,4 +1,4 @@
-import { Moon, Sun, Monitor } from 'lucide-react'
+import { Moon, Sun, Monitor, RefreshCw, ChevronDown } from 'lucide-react'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useEngine } from '../contexts/EngineContext'
@@ -8,7 +8,7 @@ import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
-  const { status, isUpgradePending, setIsUpgradePending, operationMessage, setOperationMessage } =
+  const { status, isUpgradePending, setIsUpgradePending, operationMessage, setOperationMessage, reinstallEngine } =
     useEngine()
   const { theme, setTheme } = useTheme()
   const [environmentInfo, setEnvironmentInfo] = useState<any>(null)
@@ -32,6 +32,8 @@ const Settings: React.FC = () => {
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
   const [switchingChannel, setSwitchingChannel] = useState(false)
+  const [showReinstallDialog, setShowReinstallDialog] = useState(false)
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -393,6 +395,16 @@ const Settings: React.FC = () => {
     }
   }
 
+  const handleReinstallConfirm = useCallback(async () => {
+    setShowReinstallDialog(false)
+    setIsUpgradePending(true)
+    await reinstallEngine()
+    // Refresh environment info after reinstall completes
+    setTimeout(() => {
+      handleRefreshEnvironmentInfo()
+    }, 2000)
+  }, [reinstallEngine, setIsUpgradePending, handleRefreshEnvironmentInfo])
+
   const themeOptions = [
     { value: 'light', label: 'Light', icon: Sun },
     { value: 'dark', label: 'Dark', icon: Moon },
@@ -606,6 +618,48 @@ const Settings: React.FC = () => {
               Click &ldquo;Update Engine&rdquo; to upgrade to the latest version. The engine will be
               automatically stopped and restarted during the upgrade.
             </p>
+
+            {/* Advanced/Troubleshooting Collapsible Section */}
+            <div className="pt-4 border-t border-border">
+              <button
+                onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <span className="text-sm font-medium">Advanced Options</span>
+                <ChevronDown
+                  className={cn(
+                    'w-4 h-4 transition-transform',
+                    showAdvancedOptions && 'transform rotate-180'
+                  )}
+                />
+              </button>
+
+              {showAdvancedOptions && (
+                <div className="mt-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                    Troubleshooting
+                  </p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                    If the engine is failing to start or behaving unexpectedly, you can perform a
+                    full reinstallation of the Python environment and engine components. Your
+                    settings will be preserved.
+                  </p>
+                  <button
+                    onClick={() => setShowReinstallDialog(true)}
+                    disabled={upgradingEngine || isUpgradePending}
+                    className={cn(
+                      'flex items-center gap-1.5 px-4 py-2 text-sm rounded-md',
+                      'bg-orange-500 text-white',
+                      'hover:bg-orange-600 transition-colors',
+                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Reinstall Engine Components
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -872,6 +926,44 @@ const Settings: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Reinstall Confirmation Dialog */}
+      {showReinstallDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              Reinstall Engine Components?
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              This will completely reinstall the Python environment, UV package manager, and Griptape Nodes engine.
+              Use this if the engine is failing to start or behaving unexpectedly.
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              <strong>What will be preserved:</strong> Your workspace, API key, and library preferences.
+            </p>
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3 mb-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>Warning:</strong> The engine will be stopped during this process. Any
+                running workflows will be interrupted.
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowReinstallDialog(false)}
+                className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReinstallConfirm}
+                className="px-4 py-2 text-sm bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+              >
+                Reinstall
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
