@@ -99,6 +99,7 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
   selectDirectory: () => ipcRenderer.invoke('gtn:select-directory'),
   refreshConfig: () => ipcRenderer.invoke('gtn:refresh-config'),
   upgrade: () => ipcRenderer.invoke('gtn:upgrade'),
+  forceReinstall: () => ipcRenderer.invoke('gtn:force-reinstall'),
   getVersion: () => ipcRenderer.invoke('gtn:get-version'),
   checkForEngineUpdate: () => ipcRenderer.invoke('gtn:check-for-engine-update'),
   onWorkspaceChanged: (callback: (event: any, directory: string) => void) => {
@@ -162,7 +163,13 @@ contextBridge.exposeInMainWorld('onboardingAPI', {
     ipcRenderer.invoke('onboarding:set-keychain-verification-seen', seen),
   isWorkspaceSetupComplete: () => ipcRenderer.invoke('onboarding:is-workspace-setup-complete'),
   setWorkspaceSetupComplete: (complete: boolean) =>
-    ipcRenderer.invoke('onboarding:set-workspace-setup-complete', complete)
+    ipcRenderer.invoke('onboarding:set-workspace-setup-complete', complete),
+  isAdvancedLibraryEnabled: () => ipcRenderer.invoke('onboarding:is-advanced-library-enabled'),
+  setAdvancedLibraryEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('onboarding:set-advanced-library-enabled', enabled),
+  isCloudLibraryEnabled: () => ipcRenderer.invoke('onboarding:is-cloud-library-enabled'),
+  setCloudLibraryEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('onboarding:set-cloud-library-enabled', enabled)
 })
 
 contextBridge.exposeInMainWorld('usageMetricsAPI', {
@@ -182,7 +189,8 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   getEngineChannel: () => ipcRenderer.invoke('settings:get-engine-channel'),
   setEngineChannel: (channel: 'stable' | 'nightly') =>
     ipcRenderer.invoke('settings:set-engine-channel', channel),
-  getAvailableEngineChannels: () => ipcRenderer.invoke('settings:get-available-engine-channels')
+  getAvailableEngineChannels: () => ipcRenderer.invoke('settings:get-available-engine-channels'),
+  isChannelSwitchInProgress: () => ipcRenderer.invoke('settings:is-channel-switch-in-progress')
 })
 
 contextBridge.exposeInMainWorld('systemMonitorAPI', {

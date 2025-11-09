@@ -1110,6 +1110,27 @@ const setupIPC = () => {
     }
   })
 
+  ipcMain.handle('gtn:force-reinstall', async () => {
+    try {
+      // Stop the engine before reinstalling
+      await engineService.stopEngine()
+
+      // Force reinstall GTN
+      await gtnService.forceReinstallGtn()
+
+      // Restart the engine with the reinstalled version
+      engineService.restartEngine()
+
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to force reinstall GTN:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
   ipcMain.handle('gtn:get-version', async () => {
     try {
       await gtnService.waitForReady()
@@ -1131,8 +1152,9 @@ const setupIPC = () => {
 
   ipcMain.handle('settings:set-engine-channel', async (event, channel: 'stable' | 'nightly') => {
     try {
-      // Save the preference
+      // Save the preference and mark channel switch as in progress
       settingsService.setEngineChannel(channel)
+      settingsService.setChannelSwitchInProgress(true)
 
       // Stop the engine before switching
       await engineService.stopEngine()
@@ -1143,14 +1165,23 @@ const setupIPC = () => {
       // Restart the engine with the new version
       engineService.restartEngine()
 
+      // Clear the in-progress flag after restart is initiated
+      settingsService.setChannelSwitchInProgress(false)
+
       return { success: true }
     } catch (error) {
       logger.error('Failed to switch engine channel:', error)
+      // Clear the in-progress flag on error
+      settingsService.setChannelSwitchInProgress(false)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  })
+
+  ipcMain.handle('settings:is-channel-switch-in-progress', () => {
+    return settingsService.isChannelSwitchInProgress()
   })
 
   ipcMain.handle('settings:get-available-engine-channels', () => {
@@ -1222,6 +1253,24 @@ const setupIPC = () => {
 
   ipcMain.handle('onboarding:set-workspace-setup-complete', (event, complete: boolean) => {
     onboardingService.setWorkspaceSetupComplete(complete)
+    return { success: true }
+  })
+
+  ipcMain.handle('onboarding:is-advanced-library-enabled', () => {
+    return onboardingService.isAdvancedLibraryEnabled()
+  })
+
+  ipcMain.handle('onboarding:set-advanced-library-enabled', (event, enabled: boolean) => {
+    onboardingService.setAdvancedLibraryEnabled(enabled)
+    return { success: true }
+  })
+
+  ipcMain.handle('onboarding:is-cloud-library-enabled', () => {
+    return onboardingService.isCloudLibraryEnabled()
+  })
+
+  ipcMain.handle('onboarding:set-cloud-library-enabled', (event, enabled: boolean) => {
+    onboardingService.setCloudLibraryEnabled(enabled)
     return { success: true }
   })
 

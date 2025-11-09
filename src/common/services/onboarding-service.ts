@@ -76,6 +76,24 @@ export class OnboardingService extends EventEmitter<OnboardingServiceEvents> {
     return new Promise((resolve) => this.once('workspace-setup-complete', () => resolve()))
   }
 
+  isAdvancedLibraryEnabled(): boolean {
+    return this.store.get('advancedLibraryEnabled', false)
+  }
+
+  setAdvancedLibraryEnabled(enabled: boolean): void {
+    this.store.set('advancedLibraryEnabled', enabled)
+    logger.info('OnboardingService: Advanced library enabled set to', enabled)
+  }
+
+  isCloudLibraryEnabled(): boolean {
+    return this.store.get('cloudLibraryEnabled', false)
+  }
+
+  setCloudLibraryEnabled(enabled: boolean): void {
+    this.store.set('cloudLibraryEnabled', enabled)
+    logger.info('OnboardingService: Cloud library enabled set to', enabled)
+  }
+
   completeOnboarding(credentialStorageEnabled: boolean): void {
     this.setCredentialStorageEnabled(credentialStorageEnabled)
     this.setOnboardingComplete(true)
@@ -88,6 +106,8 @@ export class OnboardingService extends EventEmitter<OnboardingServiceEvents> {
     this.store.set('keychainAccessGranted', false)
     this.store.set('keychainVerificationSeen', false)
     this.store.set('workspaceSetupComplete', false)
+    this.store.set('advancedLibraryEnabled', false)
+    this.store.set('cloudLibraryEnabled', false)
     logger.info('OnboardingService: Onboarding state reset')
   }
 }

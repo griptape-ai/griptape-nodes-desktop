@@ -3,11 +3,17 @@ import { Folder, CheckCircle } from 'lucide-react'
 import { cn } from '../../utils/utils'
 
 interface WorkspaceSetupProps {
-  onComplete: (workspaceDirectory: string) => void
+  onComplete: (
+    workspaceDirectory: string,
+    advancedLibrary: boolean,
+    cloudLibrary: boolean
+  ) => void
 }
 
 const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
   const [workspaceDirectory, setWorkspaceDirectory] = useState<string>('')
+  const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
+  const [cloudLibrary, setCloudLibrary] = useState<boolean>(false)
   const [isCompleting, setIsCompleting] = useState(false)
 
   useEffect(() => {
@@ -43,7 +49,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
 
     setIsCompleting(true)
     try {
-      await onComplete(workspaceDirectory)
+      await onComplete(workspaceDirectory, advancedLibrary, cloudLibrary)
     } catch (error) {
       console.error('Failed to complete setup:', error)
       setIsCompleting(false)
@@ -108,6 +114,60 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
               <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
               <span>The directory will be created if it doesn&apos;t exist</span>
             </p>
+          </div>
+        </div>
+
+        {/* Library options */}
+        <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">Optional Libraries</label>
+            <p className="text-xs text-gray-400">
+              Install additional libraries to extend Griptape Nodes capabilities
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={advancedLibrary}
+                onChange={(e) => setAdvancedLibrary(e.target.checked)}
+                className={cn(
+                  'mt-0.5 w-4 h-4 rounded border-gray-600',
+                  'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
+                  'bg-gray-900 cursor-pointer'
+                )}
+              />
+              <div className="flex-1 space-y-1">
+                <span className="text-sm text-gray-200 group-hover:text-white transition-colors">
+                  Install Advanced Image Library
+                </span>
+                <p className="text-xs text-gray-400">
+                  Advanced image processing nodes (requires specific models to function)
+                </p>
+              </div>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={cloudLibrary}
+                onChange={(e) => setCloudLibrary(e.target.checked)}
+                className={cn(
+                  'mt-0.5 w-4 h-4 rounded border-gray-600',
+                  'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
+                  'bg-gray-900 cursor-pointer'
+                )}
+              />
+              <div className="flex-1 space-y-1">
+                <span className="text-sm text-gray-200 group-hover:text-white transition-colors">
+                  Install Griptape Cloud Library
+                </span>
+                <p className="text-xs text-gray-400">
+                  Nodes for integrating with Griptape Cloud services
+                </p>
+              </div>
+            </label>
           </div>
         </div>
 

@@ -157,7 +157,9 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       await this.initialize({
         apiKey: await this.authService.waitForApiKey(),
         workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
-        storageBackend: 'local'
+        storageBackend: 'local',
+        advancedLibrary: this.onboardingService.isAdvancedLibraryEnabled(),
+        cloudLibrary: this.onboardingService.isCloudLibraryEnabled()
       })
     } catch (error) {
       logger.error('GTN initialization failed:', error)
@@ -251,6 +253,8 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     workspaceDirectory?: string
     storageBackend?: 'local' | 'gtc'
     bucketName?: string
+    advancedLibrary?: boolean
+    cloudLibrary?: boolean
   }): Promise<void> {
     // Write engines.json with friendly engine name before running gtn init
     const enginesJsonPath = getEnginesJsonPath(this.userDataDir)
@@ -292,6 +296,15 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     if (options.storageBackend === 'gtc' && options.bucketName) {
       args.push('--bucket-name', options.bucketName)
+    }
+
+    // Add library flags based on user preferences
+    if (options.advancedLibrary !== undefined) {
+      args.push(options.advancedLibrary ? '--register-advanced-library' : '--no-register-advanced-library')
+    }
+
+    if (options.cloudLibrary !== undefined) {
+      args.push(options.cloudLibrary ? '--register-griptape-cloud-library' : '--no-register-griptape-cloud-library')
     }
 
     // Log the command without exposing the API key
@@ -542,7 +555,61 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     // Install new channel version
     logger.info(`Installing GTN from ${channel} channel`)
     await installGtn(this.userDataDir, uvExecutablePath, channel)
+
+    // Refresh cached executable path after reinstallation
+    this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
     logger.info(`Successfully switched to ${channel} channel`)
+  }
+
+  async forceReinstallGtn(): Promise<void> {
+    logger.info('Force reinstalling GTN')
+
+    const uvExecutablePath = await this.uvService.getUvExecutablePath()
+    const env = getEnv(this.userDataDir)
+    const cwd = getCwd(this.userDataDir)
+    const channel = this.settingsService.getEngineChannel()
+
+    // Attempt to uninstall current version
+    logger.info('Uninstalling current GTN version (if exists)')
+    const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
+      env,
+      cwd
+    })
+
+    await new Promise<void>((resolve) => {
+      uninstallProcess.on('exit', (code) => {
+        if (code === 0) {
+          logger.info('Successfully uninstalled GTN')
+        } else {
+          logger.warn(`Uninstall returned exit code ${code}, continuing with install`)
+        }
+        resolve()
+      })
+      uninstallProcess.on('error', (error) => {
+        logger.warn('Uninstall error, continuing with install:', error)
+        resolve()
+      })
+    })
+
+    // Clear the UV tool environment directory if it exists and is corrupted
+    const gtnToolPath = path.join(this.userDataDir, 'uv-tools', 'griptape-nodes')
+    if (fs.existsSync(gtnToolPath)) {
+      try {
+        logger.info('Removing corrupted GTN tool directory')
+        fs.rmSync(gtnToolPath, { recursive: true, force: true })
+        logger.info('Successfully removed corrupted GTN tool directory')
+      } catch (error) {
+        logger.warn('Failed to remove GTN tool directory, continuing with install:', error)
+      }
+    }
+
+    // Reinstall with force flags
+    logger.info(`Reinstalling GTN from ${channel} channel`)
+    await installGtn(this.userDataDir, uvExecutablePath, channel)
+
+    // Refresh cached executable path
+    this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
+    logger.info('Successfully force reinstalled GTN')
   }
 
   gtnExecutableExists(): boolean {

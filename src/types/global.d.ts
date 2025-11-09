@@ -243,6 +243,10 @@ declare global {
       setKeychainVerificationSeen: (seen: boolean) => Promise<{ success: boolean }>
       isWorkspaceSetupComplete: () => Promise<boolean>
       setWorkspaceSetupComplete: (complete: boolean) => Promise<{ success: boolean }>
+      isAdvancedLibraryEnabled: () => Promise<boolean>
+      setAdvancedLibraryEnabled: (enabled: boolean) => Promise<{ success: boolean }>
+      isCloudLibraryEnabled: () => Promise<boolean>
+      setCloudLibraryEnabled: (enabled: boolean) => Promise<{ success: boolean }>
     }
     usageMetricsAPI: {
       reportLaunch: () => Promise<{ success: boolean; error?: string }>
@@ -263,6 +267,7 @@ declare global {
         channel: 'stable' | 'nightly'
       ) => Promise<{ success: boolean; error?: string }>
       getAvailableEngineChannels: () => Promise<string[]>
+      isChannelSwitchInProgress: () => Promise<boolean>
     }
     systemMonitorAPI: {
       getMetrics: () => Promise<{
