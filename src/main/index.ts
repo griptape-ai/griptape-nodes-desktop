@@ -5,8 +5,8 @@ import { VelopackApp } from 'velopack'
 VelopackApp.build().run()
 
 import path from 'node:path'
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
-import contextMenu from 'electron-context-menu'
+import fs from 'node:fs'
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell, net, clipboard } from 'electron'
 import { getPythonVersion } from '../common/config/versions'
 import { ENV_INFO_NOT_COLLECTED } from '../common/config/constants'
 import { HttpAuthService } from '../common/services/auth/http'
@@ -194,12 +194,141 @@ app.on('ready', async () => {
   // Enable context menus for webviews (including right-click on images)
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() === 'webview') {
-      contextMenu({
-        window: contents,
-        showSaveImageAs: true,
-        showCopyImage: true,
-        showCopyImageAddress: true,
-        showInspectElement: !isPackaged()
+      // Handle context menu for webviews manually to ensure image saving works
+      contents.on('context-menu', (_event, params) => {
+        const menuItems: Electron.MenuItemConstructorOptions[] = []
+
+        // If right-clicking on an image, add image-specific options
+        if (params.mediaType === 'image' && params.srcURL) {
+          menuItems.push({
+            label: 'Save Image As...',
+            click: async () => {
+              try {
+                const imageUrl = params.srcURL
+                const mainWindow = BrowserWindow.getAllWindows()[0]
+
+                if (!mainWindow) {
+                  logger.error('No main window found for save dialog')
+                  return
+                }
+
+                // Extract filename from URL or use default
+                const urlPath = new URL(imageUrl).pathname
+                const defaultFilename = path.basename(urlPath) || 'image.png'
+
+                // Show save dialog
+                const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+                  defaultPath: defaultFilename,
+                  filters: [
+                    { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] },
+                    { name: 'All Files', extensions: ['*'] }
+                  ]
+                })
+
+                if (canceled || !filePath) {
+                  return
+                }
+
+                // Download the image
+                logger.info('Downloading image from:', imageUrl, 'to:', filePath)
+
+                const request = net.request(imageUrl)
+                const chunks: Buffer[] = []
+
+                request.on('response', (response) => {
+                  response.on('data', (chunk) => {
+                    chunks.push(Buffer.from(chunk))
+                  })
+
+                  response.on('end', () => {
+                    const imageBuffer = Buffer.concat(chunks)
+                    fs.writeFile(filePath, imageBuffer, (err: Error) => {
+                      if (err) {
+                        logger.error('Failed to save image:', err)
+                        dialog.showErrorBox('Save Failed', `Failed to save image: ${err.message}`)
+                      } else {
+                        logger.info('Image saved successfully to:', filePath)
+                      }
+                    })
+                  })
+                })
+
+                request.on('error', (err) => {
+                  logger.error('Failed to download image:', err)
+                  dialog.showErrorBox('Download Failed', `Failed to download image: ${err.message}`)
+                })
+
+                request.end()
+              } catch (err) {
+                logger.error('Error in Save Image As handler:', err)
+                dialog.showErrorBox('Error', `An error occurred: ${err}`)
+              }
+            }
+          })
+
+          menuItems.push({
+            label: 'Copy Image',
+            click: () => {
+              contents.copyImageAt(params.x, params.y)
+            }
+          })
+
+          menuItems.push({
+            label: 'Copy Image Address',
+            click: () => {
+              clipboard.writeText(params.srcURL)
+            }
+          })
+
+          menuItems.push({ type: 'separator' })
+        }
+
+        // Add standard editing options if there's selected text
+        if (params.selectionText) {
+          menuItems.push(
+            { role: 'copy' },
+            { type: 'separator' }
+          )
+        }
+
+        // Add standard editing options for input fields
+        if (params.isEditable) {
+          menuItems.push(
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            { type: 'separator' },
+            { role: 'selectAll' }
+          )
+        }
+
+        // Add reload option
+        menuItems.push({
+          label: 'Reload',
+          click: () => {
+            contents.reload()
+          }
+        })
+
+        // Add inspect element in development mode
+        if (!isPackaged()) {
+          menuItems.push({ type: 'separator' })
+          menuItems.push({
+            label: 'Inspect Element',
+            click: () => {
+              contents.inspectElement(params.x, params.y)
+            }
+          })
+        }
+
+        // Only show menu if there are items
+        if (menuItems.length > 0) {
+          const menu = Menu.buildFromTemplate(menuItems)
+          menu.popup()
+        }
       })
     }
   })
