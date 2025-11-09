@@ -13,6 +13,8 @@ interface EngineContextType {
   status: EngineStatus
   logs: EngineLog[]
   isLoading: boolean
+  isUpgradePending: boolean
+  setIsUpgradePending: (pending: boolean) => void
   startEngine: () => Promise<void>
   stopEngine: () => Promise<void>
   restartEngine: () => Promise<void>
@@ -38,6 +40,7 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
   const [status, setStatus] = useState<EngineStatus>('not-ready')
   const [logs, setLogs] = useState<EngineLog[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isUpgradePending, setIsUpgradePending] = useState(false)
   const maxLogSize = 1000 // Keep last 1000 log entries (matching main process limit)
 
   // Fetch initial status and logs
@@ -170,13 +173,15 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
       status,
       logs,
       isLoading,
+      isUpgradePending,
+      setIsUpgradePending,
       startEngine,
       stopEngine,
       restartEngine,
       clearLogs,
       refreshStatus
     }),
-    [status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs, refreshStatus]
+    [status, logs, isLoading, isUpgradePending, startEngine, stopEngine, restartEngine, clearLogs, refreshStatus]
   )
 
   return <EngineContext.Provider value={contextValue}>{children}</EngineContext.Provider>

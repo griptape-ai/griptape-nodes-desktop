@@ -8,7 +8,7 @@ import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
-  const { status } = useEngine()
+  const { status, isUpgradePending, setIsUpgradePending } = useEngine()
   const { theme, setTheme } = useTheme()
   const [environmentInfo, setEnvironmentInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -35,7 +35,6 @@ const Settings: React.FC = () => {
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
   const [switchingChannel, setSwitchingChannel] = useState(false)
-  const [isUpgradePending, setIsUpgradePending] = useState(false)
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -284,6 +283,8 @@ const Settings: React.FC = () => {
           type: 'success',
           text: `Successfully switched to ${newChannel} channel! Engine is restarting...`
         })
+        // Refresh environment info after channel switch completes
+        await handleRefreshEnvironmentInfo()
       } else {
         setEngineUpdateMessage({
           type: 'error',
@@ -358,6 +359,8 @@ const Settings: React.FC = () => {
               ? 'Engine upgraded and restarted successfully!'
               : 'Engine upgraded and started successfully!'
           })
+          // Refresh environment info after upgrade completes
+          await handleRefreshEnvironmentInfo()
         } else {
           setEngineUpdateMessage({
             type: 'error',
