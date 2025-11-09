@@ -228,24 +228,10 @@ jobs:
           # create notarytool profile using keychain
           xcrun notarytool store-credentials --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" --keychain "$KEYCHAIN_PATH" velopack-profile
 
-      - name: Install Windows code signing certificate
-        id: install_windows_cert
-        if: env.DONE != 'true' && runner.os == 'Windows' && env.WINDOWS_CERT_P12 != ''
-        env:
-          WINDOWS_CERT_P12: ${{ secrets.WINDOWS_CERT_P12 }}
-        shell: bash
-        run: |
-          # Create certificate path variable
-          CERTIFICATE_PATH=$RUNNER_TEMP/windows-cert.pfx
-
-          # Decode and save certificate from secret
-          echo -n "$WINDOWS_CERT_P12" | base64 --decode > $CERTIFICATE_PATH
-
-          # Export path for use in subsequent steps
-          echo "WINDOWS_CERT_FILE=$CERTIFICATE_PATH" >> $GITHUB_ENV
-
-          echo "Windows code signing certificate installed"
-
+      - name: Install AzureSignTool
+        if: env.DONE != 'true' && runner.os == 'Windows'
+        run: dotnet tool install -g AzureSignTool
+        
       - name: Download previous Velopack releases
         if: env.DONE != 'true'
         run: |
@@ -272,7 +258,11 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_KEY_VAULT_CERTIFICATE_NAME: ${{ secrets.AZURE_KEY_VAULT_CERTIFICATE }}
+          AZURE_KEY_VAULT_CLIENT_ID: ${{ secrets.AZURE_KEY_VAULT_CLIENT_ID }}
+          AZURE_KEY_VAULT_CLIENT_SECRET: ${{ secrets.AZURE_KEY_VAULT_CLIENT_SECRET }}
+          AZURE_KEY_VAULT_TENANT_ID: ${{ secrets.AZURE_KEY_VAULT_TENANT_ID }}
 
       - name: Retrieve notarization logs on failure
         if: failure() && runner.os == 'macOS' && env.DONE != 'true'
