@@ -374,6 +374,39 @@ const Engine: React.FC = () => {
         </div>
       )}
 
+      {status === 'error' && (
+        <div className="flex-shrink-0 mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">Error</p>
+          <p className="text-sm text-red-800 dark:text-red-200 mb-2">
+            {(() => {
+              // Find the most recent stderr log entry
+              const lastError = [...logs]
+                .reverse()
+                .find((log) => log.type === 'stderr' && log.message.trim())
+              if (lastError) {
+                // Clean ANSI codes for display
+                const cleanMessage = lastError.message
+                  .replace(/\x1b\[[0-9;]*m/g, '')
+                  .replace(/\x1b\[\?25[lh]/g, '')
+                  .replace(/\x1b\[\d*[A-G]/g, '')
+                  .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+                  .replace(/\r\n/g, '\n')
+                  .replace(/\r(?!\n)/g, '')
+                  .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
+                  .replace(/\]8;[^;]*;[^\\]+\\([^\]]+?)\]8;;\\?/g, '$1')
+                  .replace(/[\x00-\x1F\x7F]/g, '')
+                  .trim()
+                return cleanMessage
+              }
+              return 'An error occurred during engine initialization.'
+            })()}
+          </p>
+          <p className="text-xs text-red-700 dark:text-red-300">
+            Check the logs below for details.
+          </p>
+        </div>
+      )}
+
       {/* Logs Container - Scrollable */}
       <div className="flex-1 min-h-0 px-6 py-4 pb-6">
         <div
