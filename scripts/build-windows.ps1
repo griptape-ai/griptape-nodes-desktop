@@ -31,6 +31,18 @@ Write-Host "Packaged directory: $PackagedDir"
 Write-Host "App directory: $AppDir"
 
 
+# Clean up non-Windows native modules
+# This cannot be signed by AzureSignTool and cause the command to fail, so
+# let's remove them.
+Write-Host "Removing non-Windows native modules..."
+$removedCount = 0
+Get-ChildItem -Path "$AppDir" -Recurse -Include "*_linux_*.node","*_darwin_*.node" | ForEach-Object {
+    Write-Host "  Removing: $($_.FullName)"
+    Remove-Item $_.FullName -Force
+    $removedCount++
+}
+Write-Host "Removed $removedCount non-Windows native module(s)"
+
 # Create Velopack package
 if ($env:AZURE_KEY_VAULT_CERTIFICATE_NAME) {
     Write-Host "Building with code signing..."
