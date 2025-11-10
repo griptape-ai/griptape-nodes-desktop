@@ -1041,6 +1041,9 @@ const setupIPC = () => {
   // Handle Auth Login
   ipcMain.handle('auth:login', () => authService.login())
 
+  // Handle Auth Cancel
+  ipcMain.handle('auth:cancel', () => authService.cancelLogin())
+
   // Handle Auth Token Refresh
   ipcMain.handle('auth:refresh-token', async (event, refreshToken: string) => {
     return await authService.refreshTokens(refreshToken)

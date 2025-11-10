@@ -28,6 +28,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   private server: Server | null = null
   private authResolve: ((value: any) => void) | null = null
   private authReject: ((reason?: any) => void) | null = null
+  private authWindow: BrowserWindow | null = null
   private store: Store<AuthData>
 
   constructor() {
@@ -332,18 +333,22 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         `state=${state}&` +
         `scope=openid%20profile%20email%20offline_access`
 
-      // Create a modal authentication window
+      // Create an authentication window
+      // Using modal:false instead of modal:true to fix macOS close button visibility issue
+      // (Electron bug where modal windows don't show close buttons with custom parent title bars)
       const mainWindow = BrowserWindow.getAllWindows()[0]
-      const authWindow = new BrowserWindow({
+      this.authWindow = new BrowserWindow({
         width: 500,
         height: 700,
-        modal: true,
+        modal: false,
         parent: mainWindow,
+        alwaysOnTop: true, // Keep auth window visible above parent
         center: true,
         resizable: false,
         minimizable: false,
         maximizable: false,
         fullscreenable: false,
+        closable: true,
         title: 'Log In to Griptape',
         webPreferences: {
           nodeIntegration: false,
@@ -353,7 +358,17 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       })
 
       // Remove menu bar
-      authWindow.setMenuBarVisibility(false)
+      this.authWindow.setMenuBarVisibility(false)
+
+      // Add ESC key handler
+      this.authWindow.webContents.on('before-input-event', (event, input) => {
+        if (input.key === 'Escape' && input.type === 'keyDown') {
+          event.preventDefault()
+          if (this.authWindow && !this.authWindow.isDestroyed()) {
+            this.authWindow.close()
+          }
+        }
+      })
 
       // Track whether we're processing an auth callback
       let isProcessingCallback = false
@@ -383,8 +398,8 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
           }
 
           // Close the auth window after handling
-          if (!authWindow.isDestroyed()) {
-            authWindow.close()
+          if (this.authWindow && !this.authWindow.isDestroyed()) {
+            this.authWindow.close()
           }
 
           return true
@@ -392,34 +407,36 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         return false
       }
 
-      authWindow.webContents.on('will-redirect', (event, url) => {
+      this.authWindow.webContents.on('will-redirect', (event, url) => {
         if (handleAuthCallback(url)) {
           event.preventDefault()
         }
       })
 
-      authWindow.webContents.on('did-navigate', (event, url) => {
+      this.authWindow.webContents.on('did-navigate', (event, url) => {
         handleAuthCallback(url)
       })
 
       // Handle window close (user cancelled)
-      authWindow.on('closed', () => {
+      this.authWindow.on('closed', () => {
         // Only reject if we're not processing a callback (i.e., user manually closed the window)
         if (this.authResolve && !isProcessingCallback) {
           this.authReject?.(new Error('Authentication cancelled'))
           this.authResolve = null
           this.authReject = null
         }
+        // Clear the window reference
+        this.authWindow = null
       })
 
       // Load the auth URL
-      authWindow.loadURL(authUrl)
+      this.authWindow.loadURL(authUrl)
 
       // Set timeout
       setTimeout(
         () => {
-          if (this.authResolve && !authWindow.isDestroyed()) {
-            authWindow.close()
+          if (this.authResolve && this.authWindow && !this.authWindow.isDestroyed()) {
+            this.authWindow.close()
             this.authReject?.(new Error('Authentication timeout'))
             this.authResolve = null
             this.authReject = null
@@ -428,6 +445,13 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         5 * 60 * 1000
       ) // 5 minutes
     })
+  }
+
+  cancelLogin(): void {
+    logger.info('Cancelling authentication')
+    if (this.authWindow && !this.authWindow.isDestroyed()) {
+      this.authWindow.close()
+    }
   }
 
   private async handleAuthCode(code: string, state: string) {

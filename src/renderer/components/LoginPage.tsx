@@ -1,4 +1,4 @@
-import { LogIn } from 'lucide-react'
+import { LogIn, X } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../utils/utils'
@@ -57,6 +57,16 @@ const LoginPage: React.FC = () => {
     }
   }
 
+  const handleCancel = async () => {
+    try {
+      await window.oauthAPI.cancel()
+      setLoginInProgress(false)
+      setError(null)
+    } catch (error) {
+      console.error('Failed to cancel login:', error)
+    }
+  }
+
   const openExternalLink = (url: string) => {
     if (window.electronAPI?.openExternal) {
       window.electronAPI.openExternal(url)
@@ -105,21 +115,40 @@ const LoginPage: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                onClick={handleLogin}
-                disabled={loginInProgress}
-                className={cn(
-                  'w-full flex items-center justify-center gap-3',
-                  'bg-sky-700 hover:bg-sky-500 active:bg-sky-300',
-                  'text-white font-medium text-base',
-                  'px-6 py-4 rounded-md',
-                  'transition-colors',
-                  loginInProgress && 'opacity-50 cursor-not-allowed'
+              <div className="flex gap-3">
+                <button
+                  onClick={handleLogin}
+                  disabled={loginInProgress}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-3',
+                    'bg-sky-700 hover:bg-sky-500 active:bg-sky-300',
+                    'text-white font-medium text-base',
+                    'px-6 py-4 rounded-md',
+                    'transition-colors',
+                    loginInProgress && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  <LogIn className="w-5 h-5" />
+                  Login or Sign-Up
+                </button>
+
+                {loginInProgress && (
+                  <button
+                    onClick={handleCancel}
+                    className={cn(
+                      'flex items-center justify-center gap-2',
+                      'bg-red-700 hover:bg-red-500 active:bg-red-300',
+                      'text-white font-medium text-base',
+                      'px-6 py-4 rounded-md',
+                      'transition-colors'
+                    )}
+                    title="Cancel authentication"
+                  >
+                    <X className="w-5 h-5" />
+                    Cancel
+                  </button>
                 )}
-              >
-                <LogIn className="w-5 h-5" />
-                Login or Sign-Up
-              </button>
+              </div>
 
               {/* Credential Storage Checkbox */}
               <div className="space-y-3">

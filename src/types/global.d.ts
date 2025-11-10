@@ -144,6 +144,7 @@ declare global {
       logout: () => Promise<{
         success: boolean
       }>
+      cancel: () => Promise<void>
       checkAuth: () => Promise<{
         isAuthenticated: boolean
         apiKey?: string

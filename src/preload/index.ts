@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('pythonAPI', {
 contextBridge.exposeInMainWorld('oauthAPI', {
   login: () => ipcRenderer.invoke('auth:login'),
   logout: () => ipcRenderer.invoke('auth:logout'),
+  cancel: () => ipcRenderer.invoke('auth:cancel'),
   checkAuth: () => ipcRenderer.invoke('auth:check'),
   refreshToken: (refreshToken: string) => ipcRenderer.invoke('auth:refresh-token', refreshToken),
   willPromptForKeychain: () => ipcRenderer.invoke('auth:will-prompt-keychain'),

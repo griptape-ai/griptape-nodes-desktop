@@ -32,6 +32,11 @@ export class CustomAuthService {
     throw new Error('Custom OAuth not yet implemented')
   }
 
+  cancelLogin(): void {
+    // No-op for custom auth service since login is not yet implemented
+    // When implemented, this should close any auth windows/dialogs
+  }
+
   // Get stored credentials
   getStoredCredentials(): AuthData | null {
     const apiKey = this.store.get('apiKey')
