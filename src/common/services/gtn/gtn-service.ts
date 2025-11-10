@@ -472,6 +472,17 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     const env = getEnv(this.userDataDir)
     const cwd = getCwd(this.userDataDir)
     const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], { env, cwd })
+
+    // Always attach cleanup handler to prevent process leaks
+    const cleanupProcess = () => {
+      child.removeAllListeners()
+      child.stdout?.removeAllListeners()
+      child.stderr?.removeAllListeners()
+    }
+
+    child.once('exit', cleanupProcess)
+    child.once('error', cleanupProcess)
+
     if (forward_logs) {
       attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0, 10) })
     }
