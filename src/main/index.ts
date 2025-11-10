@@ -59,6 +59,15 @@ if (!isPackaged()) {
   const devLogsPath = path.join(app.getAppPath(), '_logs')
   app.setPath('logs', devLogsPath)
   logger.info('Development mode: logs set to', devLogsPath)
+} else if (process.platform === 'win32') {
+  // On Windows, use Local AppData for userData (binaries, Python, UV, GTN)
+  // This prevents large binaries and virtual environments from syncing via Roaming profiles
+  const appName = 'GriptapeNodes'
+  const appData = app.getPath('appData')
+  const localAppData = appData.replace('Roaming', 'Local')
+  const localUserDataPath = path.join(localAppData, appName)
+  app.setPath('userData', localUserDataPath)
+  logger.info('Windows: userData set to Local AppData:', localUserDataPath)
 }
 
 // Initialize services with proper paths
