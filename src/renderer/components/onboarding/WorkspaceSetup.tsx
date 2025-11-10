@@ -136,7 +136,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
               />
               <div className="flex-1 space-y-1">
                 <span className="text-sm text-gray-200 group-hover:text-white transition-colors">
-                  Install Advanced Image Library
+                  Install Advanced Media Library
                 </span>
                 <p className="text-xs text-gray-400">
                   Advanced image processing nodes (requires specific models to function)
