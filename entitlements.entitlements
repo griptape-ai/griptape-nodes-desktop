@@ -27,5 +27,13 @@
     <!-- Allow spawning subprocess (for python/uv) -->
     <key>com.apple.security.inherit</key>
     <true/>
+
+    <!-- Camera access for webcam nodes -->
+    <key>com.apple.security.device.camera</key>
+    <true/>
+
+    <!-- Microphone access for audio nodes -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
 </dict>
 </plist>

@@ -195,6 +195,50 @@ app.on('ready', async () => {
   // Enable context menus for webviews (including right-click on images)
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() === 'webview') {
+      // Handle permission requests for camera, microphone, etc.
+      contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowedPermissions = ['media', 'mediaKeySystem']
+
+        if (allowedPermissions.includes(permission)) {
+          // Verify this is our trusted origin
+          const url = webContents.getURL()
+          const isGriptapeOrigin =
+            url.includes('nodes.griptape.ai') || url.includes('app.nodes.griptape.ai')
+
+          if (isGriptapeOrigin) {
+            logger.info(`Auto-granting ${permission} permission for trusted Griptape origin: ${url}`)
+            callback(true)
+          } else {
+            logger.warn(`Denying ${permission} permission for untrusted origin: ${url}`)
+            callback(false)
+          }
+        } else {
+          logger.warn(`Denying ${permission} permission for webview`)
+          callback(false)
+        }
+      })
+
+      // Handle permission checks (runs before requests)
+      contents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+        const allowedPermissions = ['media', 'mediaKeySystem']
+
+        if (allowedPermissions.includes(permission)) {
+          const isGriptapeOrigin =
+            requestingOrigin.includes('nodes.griptape.ai') ||
+            requestingOrigin.includes('app.nodes.griptape.ai')
+
+          if (isGriptapeOrigin) {
+            logger.info(`Permission check passed for ${permission} from ${requestingOrigin}`)
+            return true
+          } else {
+            logger.warn(`Permission check denied for ${permission} from ${requestingOrigin}`)
+            return false
+          }
+        }
+
+        return false
+      })
+
       // Handle context menu for webviews manually to ensure image saving works
       contents.on('context-menu', (_event, params) => {
         const menuItems: Electron.MenuItemConstructorOptions[] = []

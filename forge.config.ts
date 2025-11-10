@@ -18,6 +18,14 @@ const config: ForgeConfig = {
     ...(process.platform === 'linux' && { icon: 'generated/icons/icon.png' }),
     executableName: 'griptape-nodes-desktop',
     appBundleId: 'ai.griptape.nodes.desktop',
+    ...(process.platform === 'darwin' && {
+      extendInfo: {
+        NSCameraUsageDescription:
+          'Griptape Nodes uses your camera for video-based AI workflows and visual input processing.',
+        NSMicrophoneUsageDescription:
+          'Griptape Nodes uses your microphone for audio-based AI workflows and voice input processing.'
+      }
+    }),
     // protocols: [
     //   {
     //     name: 'Griptape Nodes Desktop',
