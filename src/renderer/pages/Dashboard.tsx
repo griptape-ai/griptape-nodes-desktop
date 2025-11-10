@@ -142,7 +142,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
               {loadingWorkspace ? 'Loading...' : workspaceDir || 'Not configured'}
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">Manage from the Settings tab</p>
+          <p className="text-xs text-muted-foreground">
+            Manage from{' '}
+            <button
+              onClick={() => onPageChange('settings')}
+              className="text-primary hover:underline focus:outline-none focus:underline"
+            >
+              App Settings
+            </button>
+          </p>
         </div>
       </div>
     </div>
