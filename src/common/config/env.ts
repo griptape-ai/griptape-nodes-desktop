@@ -19,6 +19,7 @@ export function getEnv(userDataDir: string) {
     UV_PYTHON_INSTALL_REGISTRY: '0',
     UV_NO_PROGRESS: '1',
     XDG_CONFIG_HOME: getXdgConfigHome(userDataDir),
-    XDG_DATA_HOME: getXdgDataHome(userDataDir)
+    XDG_DATA_HOME: getXdgDataHome(userDataDir),
+    GTN_CONFIG_LOG_LEVEL: 'DEBUG'
   }
 }
