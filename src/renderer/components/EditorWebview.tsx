@@ -95,9 +95,11 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       const url = e.url
 
       try {
-        // Check if URL is external (different domain from nodes.griptape.ai)
+        // Check if URL is external (different domain from nodes.griptape.ai or app.nodes.griptape.ai)
         const urlObj = new URL(url)
-        const isExternal = !urlObj.hostname.includes('nodes.griptape.ai')
+        const isExternal =
+          !urlObj.hostname.includes('nodes.griptape.ai') &&
+          !urlObj.hostname.includes('app.nodes.griptape.ai')
 
         if (isExternal) {
           e.preventDefault()
@@ -124,7 +126,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
 
     // NOW set the src to start loading (after listeners are attached)
     console.log('Setting webview src to trigger load')
-    webview.src = 'https://nodes.griptape.ai?embedded=true'
+    webview.src = 'https://app.nodes.griptape.ai?embedded=true'
 
     setHasInitialized(true)
 
