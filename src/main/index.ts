@@ -206,7 +206,9 @@ app.on('ready', async () => {
             url.includes('nodes.griptape.ai') || url.includes('app.nodes.griptape.ai')
 
           if (isGriptapeOrigin) {
-            logger.info(`Auto-granting ${permission} permission for trusted Griptape origin: ${url}`)
+            logger.info(
+              `Auto-granting ${permission} permission for trusted Griptape origin: ${url}`
+            )
             callback(true)
           } else {
             logger.warn(`Denying ${permission} permission for untrusted origin: ${url}`)
