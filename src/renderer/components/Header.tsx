@@ -67,7 +67,7 @@ export function Header({
   return (
     <header
       className={cn(
-        'bg-card border-b border-border px-6 py-3 flex items-center gap-6 draggable',
+        'bg-card border-b border-border px-6 py-2 flex items-center gap-4 draggable',
         className
       )}
     >
@@ -79,12 +79,12 @@ export function Header({
             <button
               onClick={() => onPageChange(item.id)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-md transition-colors',
+                'flex items-center gap-2 px-4 py-1.5 rounded-md transition-colors',
                 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                 selectedPage === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground'
               )}
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
+              <Icon className="w-4 h-4 flex-shrink-0" />
               <span className="text-sm font-medium">{item.label}</span>
               {item.showStatus && (
                 <Tooltip delayDuration={500}>
@@ -111,9 +111,9 @@ export function Header({
         <button
           ref={profileButtonRef}
           onClick={() => setIsProfileOpen(!isProfileOpen)}
-          className="flex items-center gap-2 hover:bg-sidebar-accent rounded-md px-3 py-2 transition-colors"
+          className="flex items-center gap-2 hover:bg-sidebar-accent rounded-md px-3 py-1.5 transition-colors"
         >
-          <User2 className="w-5 h-5 flex-shrink-0" />
+          <User2 className="w-4 h-4 flex-shrink-0" />
           <span className="text-sm truncate max-w-[150px]">
             {user?.name || user?.email || 'User'}
           </span>
