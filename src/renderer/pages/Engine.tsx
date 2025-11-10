@@ -258,7 +258,7 @@ const Engine: React.FC = () => {
             {formatTimestamp(log.timestamp)}
           </span>
           <span
-            className={`flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-all ${
+            className={`flex-1 font-mono text-sm leading-tight whitespace-pre overflow-x-auto ${
               log.type === 'stderr' ? 'text-red-600 dark:text-red-400' : ''
             }`}
             dangerouslySetInnerHTML={processedMessage}
