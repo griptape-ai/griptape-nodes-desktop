@@ -463,6 +463,18 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
 
+    // On Windows, ensure the engine is fully stopped before running GTN commands
+    // to prevent file locking issues with .pyd files
+    if (process.platform === 'win32' && this.engineService) {
+      const engineStatus = this.engineService.status
+      if (engineStatus === 'running' || engineStatus === 'initializing') {
+        logger.info('[GTN] Stopping engine before running GTN command to prevent file locks')
+        await this.engineService.stopEngine()
+        // Give Windows extra time to release file handles
+        await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+    }
+
     const env = getEnv(this.userDataDir)
     const cwd = getCwd(this.userDataDir)
     const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], { env, cwd })

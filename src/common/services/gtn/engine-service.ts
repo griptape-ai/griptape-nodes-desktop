@@ -315,16 +315,47 @@ export class EngineService extends EventEmitter<EngineEvents> {
       // Set status to ready so that the exit handler doesn't try to restart.
       this.setEngineStatus('ready')
     }
-    // Try graceful shutdown first with SIGTERM.
-    if (this.engineProcess) {
-      // Let process exit event handle the clean up.
-      this.engineProcess.kill('SIGTERM')
+
+    if (!this.engineProcess) {
+      return
     }
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-    // Force kill with SIGKILL if process still exists after grace period.
+
+    // Create a promise that resolves when the process actually exits
+    const processExitPromise = new Promise<void>((resolve) => {
+      if (!this.engineProcess) {
+        resolve()
+        return
+      }
+
+      // Listen for the process exit event
+      this.engineProcess.once('exit', () => {
+        logger.info('[ENGINE] Process confirmed exited')
+        resolve()
+      })
+    })
+
+    // Try graceful shutdown first with SIGTERM.
+    logger.info('[ENGINE] Sending SIGTERM for graceful shutdown')
+    this.engineProcess.kill('SIGTERM')
+
+    // Wait up to 3 seconds for graceful shutdown
+    const gracefulShutdown = Promise.race([
+      processExitPromise,
+      new Promise<void>((resolve) => setTimeout(resolve, 3000))
+    ])
+
+    await gracefulShutdown
+
+    // If process still exists after grace period, force kill with SIGKILL
     if (this.engineProcess) {
-      // Let process exit event handle the clean up.
+      logger.info('[ENGINE] Graceful shutdown timeout, sending SIGKILL')
       this.engineProcess.kill('SIGKILL')
+
+      // Wait for force kill to complete (with 5 second timeout)
+      await Promise.race([
+        processExitPromise,
+        new Promise<void>((resolve) => setTimeout(resolve, 5000))
+      ])
     }
   }
 
