@@ -319,7 +319,13 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     if (apiKeyIndex !== -1 && apiKeyIndex + 1 < sanitizedArgs.length) {
       sanitizedArgs[apiKeyIndex + 1] = '[REDACTED]'
     }
-    logger.info('Running gtn init with args:', sanitizedArgs.join(' '))
+    const sanitizedCommand = `gtn ${sanitizedArgs.join(' ')}`
+    logger.info('Running gtn init with args:', sanitizedCommand)
+
+    // Forward init command to engine service for UI display
+    if (this.engineService) {
+      this.engineService.addLog('stdout', `Running: ${sanitizedCommand}`)
+    }
 
     // Execute gtn init and forward logs to engine service if available
     const child = await this.runGtn(args, { wait: false })

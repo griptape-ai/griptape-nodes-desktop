@@ -9,7 +9,7 @@ interface WorkspaceSetupProps {
 const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
   const [workspaceDirectory, setWorkspaceDirectory] = useState<string>('')
   const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
-  const [cloudLibrary, setCloudLibrary] = useState<boolean>(false)
+  const [cloudLibrary, setCloudLibrary] = useState<boolean>(true)
   const [isCompleting, setIsCompleting] = useState(false)
 
   useEffect(() => {

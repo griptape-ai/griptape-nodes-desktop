@@ -82,17 +82,17 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
     cloudLibrary: boolean
   ) => {
     try {
-      // Mark workspace setup as complete
-      await window.onboardingAPI.setWorkspaceSetupComplete(true)
-
       // Set the workspace directory preference (GTN will pick it up during initialization)
       if (workspaceDirectory) {
         await window.griptapeAPI.setWorkspacePreference(workspaceDirectory)
       }
 
-      // Set library preferences (GTN will pick them up during initialization)
+      // Set library preferences BEFORE marking setup complete (GTN will pick them up during initialization)
       await window.onboardingAPI.setAdvancedLibraryEnabled(advancedLibrary)
       await window.onboardingAPI.setCloudLibraryEnabled(cloudLibrary)
+
+      // Mark workspace setup as complete (this triggers GtnService to read the preferences)
+      await window.onboardingAPI.setWorkspaceSetupComplete(true)
 
       // Notify App component that wizard is complete
       onOnboardingComplete()
