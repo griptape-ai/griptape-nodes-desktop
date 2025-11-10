@@ -156,6 +156,7 @@ Onboarding state tracked in OnboardingService using electron-store.
 
 - `EnableCookieEncryption` fuse is disabled to prevent keychain prompts on first launch
 - **CRITICAL**: All BrowserWindows and webviews MUST use in-memory partitions (e.g., `partition: 'main'` NOT `partition: 'persist:name'`)
+- **EXCEPTION**: The editor webview uses `partition: 'persist:editor'` to preserve user settings (UI preferences, editor state) across app restarts. This is acceptable since sensitive auth data is managed separately via electron-store with safeStorage
 - Explicit credential storage uses electron-store with safeStorage when user opts in
 
 ### Custom URL Schemes
