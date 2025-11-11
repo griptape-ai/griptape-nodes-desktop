@@ -16,6 +16,11 @@ export function collectStdout(child: ChildProcess): Promise<string> {
     child.on('error', (err) => reject(err))
 
     child.on('close', (code) => {
+      // Clean up listeners to allow process to exit
+      child.stdout?.removeAllListeners()
+      child.stderr?.removeAllListeners()
+      child.removeAllListeners()
+
       if (code === 0) {
         resolve(stdout.trim())
       } else {

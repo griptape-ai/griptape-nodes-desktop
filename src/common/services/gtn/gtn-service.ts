@@ -232,6 +232,11 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     // Wait for the process to complete
     await new Promise<void>((resolve, reject) => {
       child.on('exit', (code) => {
+        // Clean up listeners to allow process to exit
+        child.stdout?.removeAllListeners()
+        child.stderr?.removeAllListeners()
+        child.removeAllListeners()
+
         if (code === 0) {
           logger.info('gtn self update completed successfully')
           resolve()
@@ -242,6 +247,11 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         }
       })
       child.on('error', (error) => {
+        // Clean up listeners on error too
+        child.stdout?.removeAllListeners()
+        child.stderr?.removeAllListeners()
+        child.removeAllListeners()
+
         logger.error('gtn self update error:', error)
         reject(error)
       })
@@ -354,13 +364,25 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     // Wait for the process to complete
     await new Promise<void>((resolve, reject) => {
       child.on('exit', (code) => {
+        // Clean up listeners to allow process to exit
+        child.stdout?.removeAllListeners()
+        child.stderr?.removeAllListeners()
+        child.removeAllListeners()
+
         if (code === 0) {
           resolve()
         } else {
           reject(new Error(`gtn init failed with exit code ${code}`))
         }
       })
-      child.on('error', reject)
+      child.on('error', (error) => {
+        // Clean up listeners on error too
+        child.stdout?.removeAllListeners()
+        child.stderr?.removeAllListeners()
+        child.removeAllListeners()
+
+        reject(error)
+      })
     })
   }
 

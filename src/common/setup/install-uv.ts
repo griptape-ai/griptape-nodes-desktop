@@ -1,4 +1,4 @@
-import { ChildProcess, exec, spawn } from 'child_process'
+import { ChildProcess, spawn } from 'child_process'
 import { attachOutputForwarder } from '../../common/child-process/output-forwarder'
 import { getCwd, getUvInstallDir } from '../../common/config/paths'
 
@@ -28,17 +28,15 @@ function spawnWindows(userDataDir: string, uvInstallDir: string): ChildProcess {
       // from powershell 7, but the default installed version of powershell.exe is 5,
       // then we will get a bunch of errors relating to import failures of core powershell
       // modules.
-      env: {}
+      env: {},
+      windowsHide: true
     }
   )
 }
 
 function spawnUnix(userDataDir: string, uvInstallDir: string): ChildProcess {
-  return exec(
-    `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`,
-    {
-      cwd: getCwd(userDataDir),
-      env: {}
-    }
-  )
+  return spawn('sh', ['-c', `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`], {
+    cwd: getCwd(userDataDir),
+    env: {}
+  })
 }

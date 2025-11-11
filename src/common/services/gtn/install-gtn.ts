@@ -48,6 +48,11 @@ async function uninstallGtn(userDataDir: string, uvExecutablePath: string): Prom
     // Uninstall might fail if the environment is too corrupted, which is fine
     // The install process should still work
     logger.warn('Uninstall failed, but continuing with install:', error)
+  } finally {
+    // Clean up listeners to allow process to exit
+    uninstallProcess.stdout?.removeAllListeners()
+    uninstallProcess.stderr?.removeAllListeners()
+    uninstallProcess.removeAllListeners()
   }
 }
 
@@ -112,7 +117,14 @@ export async function installGtn(
     })
   }
 
-  await attachOutputForwarder(installProcess, {
-    logPrefix: 'INSTALL_GTN'
-  })
+  try {
+    await attachOutputForwarder(installProcess, {
+      logPrefix: 'INSTALL_GTN'
+    })
+  } finally {
+    // Clean up listeners to allow process to exit
+    installProcess.stdout?.removeAllListeners()
+    installProcess.stderr?.removeAllListeners()
+    installProcess.removeAllListeners()
+  }
 }

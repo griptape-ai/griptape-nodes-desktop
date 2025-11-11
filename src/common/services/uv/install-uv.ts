@@ -1,4 +1,4 @@
-import { ChildProcess, exec, spawn } from 'child_process'
+import { ChildProcess, spawn } from 'child_process'
 import { attachOutputForwarder } from '../../child-process/output-forwarder'
 import { getUvInstallDir } from '../../config/paths'
 import { getCwd } from '../../config/paths'
@@ -37,14 +37,11 @@ function spawnWindows(userDataDir: string, uvInstallDir: string): ChildProcess {
 }
 
 function spawnUnix(userDataDir: string, uvInstallDir: string): ChildProcess {
-  return exec(
-    `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`,
-    {
-      env: {
-        ...getEnv(userDataDir),
-        PATH: '/usr/bin:/bin' // A minimal path that should work on unix.
-      },
-      cwd: getCwd(userDataDir)
-    }
-  )
+  return spawn('sh', ['-c', `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`], {
+    env: {
+      ...getEnv(userDataDir),
+      PATH: '/usr/bin:/bin' // A minimal path that should work on unix.
+    },
+    cwd: getCwd(userDataDir)
+  })
 }
