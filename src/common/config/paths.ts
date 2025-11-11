@@ -6,6 +6,11 @@ export function getXdgConfigHome(userDataPath: string): string {
 }
 
 export function getXdgDataHome(userDataPath: string): string {
+  // On Windows, use Local instead of Roaming for data that shouldn't sync
+  if (process.platform === 'win32') {
+    const localDataPath = userDataPath.replace('Roaming', 'Local')
+    return path.join(localDataPath, 'xdg_data_home')
+  }
   return path.join(userDataPath, 'xdg_data_home')
 }
 
