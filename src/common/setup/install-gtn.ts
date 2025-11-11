@@ -10,11 +10,11 @@ export async function installGtn(userDataDir: string): Promise<void> {
     throw new Error(`UV executable not found at: ${uvExecutablePath}`)
   }
 
-  const installProcess = spawn(uvExecutablePath, ['tool', 'install', '--quiet', 'griptape-nodes'], {
-    cwd: getCwd(userDataDir),
-    env: getEnv(userDataDir)
-  })
-  await attachOutputForwarder(installProcess, {
-    logPrefix: 'INSTALL_GTN'
-  })
+  // const installProcess = spawn(uvExecutablePath, ['tool', 'install', '--quiet', 'griptape-nodes'], {
+  //   cwd: getCwd(userDataDir),
+  //   env: getEnv(userDataDir)
+  // })
+  // await attachOutputForwarder(installProcess, {
+  //   logPrefix: 'INSTALL_GTN'
+  // })
 }

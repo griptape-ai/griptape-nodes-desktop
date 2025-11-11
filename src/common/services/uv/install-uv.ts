@@ -14,34 +14,36 @@ export async function installUv(userDataDir: string): Promise<void> {
 }
 
 function spawnWindows(userDataDir: string, uvInstallDir: string): ChildProcess {
-  return spawn(
-    'powershell.exe',
-    [
-      '-ExecutionPolicy',
-      'ByPass',
-      '-c',
-      `$env:UV_UNMANAGED_INSTALL = "${uvInstallDir}";irm https://astral.sh/uv/install.ps1 | iex`
-    ],
-    {
-      // Important! We must not use the default value of `process.env`. If we do,
-      // then we may indavertently inherit incorrect powershell module paths from
-      // a parent process. For example if we are in development mode and run `npm start`
-      // from powershell 7, but the default installed version of powershell.exe is 5,
-      // then we will get a bunch of errors relating to import failures of core powershell
-      // modules.
-      env: {},
-      cwd: getCwd(userDataDir),
-      windowsHide: true
-    }
-  )
+  // return spawn(
+  //   'powershell.exe',
+  //   [
+  //     '-ExecutionPolicy',
+  //     'ByPass',
+  //     '-c',
+  //     `$env:UV_UNMANAGED_INSTALL = "${uvInstallDir}";irm https://astral.sh/uv/install.ps1 | iex`
+  //   ],
+  //   {
+  //     // Important! We must not use the default value of `process.env`. If we do,
+  //     // then we may indavertently inherit incorrect powershell module paths from
+  //     // a parent process. For example if we are in development mode and run `npm start`
+  //     // from powershell 7, but the default installed version of powershell.exe is 5,
+  //     // then we will get a bunch of errors relating to import failures of core powershell
+  //     // modules.
+  //     env: {},
+  //     cwd: getCwd(userDataDir),
+  //     windowsHide: true
+  //   }
+  // )
+  return {} as ChildProcess
 }
 
 function spawnUnix(userDataDir: string, uvInstallDir: string): ChildProcess {
-  return spawn('sh', ['-c', `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`], {
-    env: {
-      ...getEnv(userDataDir),
-      PATH: '/usr/bin:/bin' // A minimal path that should work on unix.
-    },
-    cwd: getCwd(userDataDir)
-  })
+  // return spawn('sh', ['-c', `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`], {
+  //   env: {
+  //     ...getEnv(userDataDir),
+  //     PATH: '/usr/bin:/bin' // A minimal path that should work on unix.
+  //   },
+  //   cwd: getCwd(userDataDir)
+  // })
+  return {} as ChildProcess
 }

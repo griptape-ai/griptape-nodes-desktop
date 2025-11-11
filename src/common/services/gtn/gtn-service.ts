@@ -493,11 +493,12 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     const env = getEnv(this.userDataDir)
     const cwd = getCwd(this.userDataDir)
-    const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], {
-      env,
-      cwd,
-      windowsHide: true
-    })
+    // const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], {
+    //   env,
+    //   cwd,
+    //   windowsHide: true
+    // })
+    const child = {} as ChildProcess
     if (forward_logs) {
       attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0, 10) })
     }
@@ -532,11 +533,12 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     } else {
       // For stable, use uv tool upgrade
       logger.info('Running uv tool upgrade griptape-nodes')
-      const upgradeProcess = spawn(uvExecutablePath, ['tool', 'upgrade', 'griptape-nodes'], {
-        env,
-        cwd,
-        windowsHide: true
-      })
+      // const upgradeProcess = spawn(uvExecutablePath, ['tool', 'upgrade', 'griptape-nodes'], {
+      //   env,
+      //   cwd,
+      //   windowsHide: true
+      // })
+      const upgradeProcess = {} as ChildProcess
 
       attachOutputForwarder(upgradeProcess, { logPrefix: 'UPGRADE_GTN' })
 
@@ -570,11 +572,12 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     // Uninstall current version
     logger.info('Uninstalling current GTN version')
-    const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
-      env,
-      cwd,
-      windowsHide: true
-    })
+    // const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
+    //   env,
+    //   cwd,
+    //   windowsHide: true
+    // })
+    const uninstallProcess = {} as ChildProcess
 
     await new Promise<void>((resolve, _reject) => {
       uninstallProcess.on('exit', (code) => {
@@ -611,11 +614,12 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     // Attempt to uninstall current version
     logger.info('Uninstalling current GTN version (if exists)')
-    const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
-      env,
-      cwd,
-      windowsHide: true
-    })
+    // const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
+    //   env,
+    //   cwd,
+    //   windowsHide: true
+    // })
+    const uninstallProcess = {} as ChildProcess
 
     await new Promise<void>((resolve) => {
       uninstallProcess.on('exit', (code) => {

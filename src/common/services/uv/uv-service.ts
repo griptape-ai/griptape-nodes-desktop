@@ -87,7 +87,8 @@ export class UvService extends EventEmitter<UvServiceEvents> {
     const executablePath = getUvExecutablePath(this.userDataDir)
     const env = getEnv(this.userDataDir)
     const cwd = getCwd(this.userDataDir)
-    const child = spawn(executablePath, args, { cwd, env })
+    // const child = spawn(executablePath, args, { cwd, env })
+    const child = {} as ChildProcess
     attachOutputForwarder(child, { logPrefix: `uv ${args.join(' ')}` })
     return collectStdout(child)
   }

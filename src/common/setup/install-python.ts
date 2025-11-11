@@ -11,11 +11,11 @@ export async function installPython(userDataDir: string): Promise<void> {
     throw new Error(`UV executable not found at: ${uvExecutablePath}`)
   }
 
-  const uvProcess = spawn(uvExecutablePath, ['python', 'install', getPythonVersion()], {
-    cwd: getCwd(userDataDir),
-    env: getEnv(userDataDir)
-  })
-  await attachOutputForwarder(uvProcess, {
-    logPrefix: 'INSTALL_PYTHON'
-  })
+  // const uvProcess = spawn(uvExecutablePath, ['python', 'install', getPythonVersion()], {
+  //   cwd: getCwd(userDataDir),
+  //   env: getEnv(userDataDir)
+  // })
+  // await attachOutputForwarder(uvProcess, {
+  //   logPrefix: 'INSTALL_PYTHON'
+  // })
 }

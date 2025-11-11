@@ -33,27 +33,27 @@ function isGtnEnvironmentCorrupted(userDataDir: string): boolean {
 async function uninstallGtn(userDataDir: string, uvExecutablePath: string): Promise<void> {
   logger.info('Attempting to uninstall corrupted GTN environment')
 
-  const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
-    env: getEnv(userDataDir),
-    cwd: getCwd(userDataDir),
-    windowsHide: true
-  })
+  // const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
+  //   env: getEnv(userDataDir),
+  //   cwd: getCwd(userDataDir),
+  //   windowsHide: true
+  // })
 
-  try {
-    await attachOutputForwarder(uninstallProcess, {
-      logPrefix: 'UNINSTALL_GTN'
-    })
-    logger.info('Successfully uninstalled corrupted GTN environment')
-  } catch (error) {
-    // Uninstall might fail if the environment is too corrupted, which is fine
-    // The install process should still work
-    logger.warn('Uninstall failed, but continuing with install:', error)
-  } finally {
-    // Clean up listeners to allow process to exit
-    uninstallProcess.stdout?.removeAllListeners()
-    uninstallProcess.stderr?.removeAllListeners()
-    uninstallProcess.removeAllListeners()
-  }
+  // try {
+  //   await attachOutputForwarder(uninstallProcess, {
+  //     logPrefix: 'UNINSTALL_GTN'
+  //   })
+  //   logger.info('Successfully uninstalled corrupted GTN environment')
+  // } catch (error) {
+  //   // Uninstall might fail if the environment is too corrupted, which is fine
+  //   // The install process should still work
+  //   logger.warn('Uninstall failed, but continuing with install:', error)
+  // } finally {
+  //   // Clean up listeners to allow process to exit
+  //   uninstallProcess.stdout?.removeAllListeners()
+  //   uninstallProcess.stderr?.removeAllListeners()
+  //   uninstallProcess.removeAllListeners()
+  // }
 }
 
 export async function installGtn(
@@ -90,41 +90,41 @@ export async function installGtn(
     logger.info('Installing GTN from stable channel (PyPI)')
   }
 
-  const installProcess = spawn(uvExecutablePath, installArgs, {
-    env: getEnv(userDataDir),
-    cwd: getCwd(userDataDir),
-    windowsHide: true
-  })
+  // const installProcess = spawn(uvExecutablePath, installArgs, {
+  //   env: getEnv(userDataDir),
+  //   cwd: getCwd(userDataDir),
+  //   windowsHide: true
+  // })
 
-  // Forward logs to engine service if available
-  if (engineService) {
-    installProcess.stdout?.on('data', (data) => {
-      const lines = data.toString().split('\n')
-      lines.forEach((line: string) => {
-        if (line.trim()) {
-          engineService.addLog('stdout', line)
-        }
-      })
-    })
+  // // Forward logs to engine service if available
+  // if (engineService) {
+  //   installProcess.stdout?.on('data', (data) => {
+  //     const lines = data.toString().split('\n')
+  //     lines.forEach((line: string) => {
+  //       if (line.trim()) {
+  //         engineService.addLog('stdout', line)
+  //       }
+  //     })
+  //   })
 
-    installProcess.stderr?.on('data', (data) => {
-      const lines = data.toString().split('\n')
-      lines.forEach((line: string) => {
-        if (line.trim()) {
-          engineService.addLog('stderr', line)
-        }
-      })
-    })
-  }
+  //   installProcess.stderr?.on('data', (data) => {
+  //     const lines = data.toString().split('\n')
+  //     lines.forEach((line: string) => {
+  //       if (line.trim()) {
+  //         engineService.addLog('stderr', line)
+  //       }
+  //     })
+  //   })
+  // }
 
-  try {
-    await attachOutputForwarder(installProcess, {
-      logPrefix: 'INSTALL_GTN'
-    })
-  } finally {
-    // Clean up listeners to allow process to exit
-    installProcess.stdout?.removeAllListeners()
-    installProcess.stderr?.removeAllListeners()
-    installProcess.removeAllListeners()
-  }
+  // try {
+  //   await attachOutputForwarder(installProcess, {
+  //     logPrefix: 'INSTALL_GTN'
+  //   })
+  // } finally {
+  //   // Clean up listeners to allow process to exit
+  //   installProcess.stdout?.removeAllListeners()
+  //   installProcess.stderr?.removeAllListeners()
+  //   installProcess.removeAllListeners()
+  // }
 }

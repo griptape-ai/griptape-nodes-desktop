@@ -11,14 +11,14 @@ export async function installPython(userDataDir: string, uvExecutablePath: strin
     throw new Error(`UV executable not found at: ${uvExecutablePath}`)
   }
 
-  const child = spawn(uvExecutablePath, ['python', 'install', getPythonVersion()], {
-    env: getEnv(userDataDir),
-    cwd: getCwd(userDataDir),
-    windowsHide: true
-  })
-  await attachOutputForwarder(child, {
-    logPrefix: 'INSTALL_PYTHON'
-  })
+  // const child = spawn(uvExecutablePath, ['python', 'install', getPythonVersion()], {
+  //   env: getEnv(userDataDir),
+  //   cwd: getCwd(userDataDir),
+  //   windowsHide: true
+  // })
+  // await attachOutputForwarder(child, {
+  //   logPrefix: 'INSTALL_PYTHON'
+  // })
 }
 
 export async function findPythonExecutablePath(
@@ -28,13 +28,14 @@ export async function findPythonExecutablePath(
   if (!fs.existsSync(uvExecutablePath)) {
     throw new Error(`UV executable not found at: ${uvExecutablePath}`)
   }
-  const child = spawn(uvExecutablePath, ['python', 'find', getPythonVersion()], {
-    env: getEnv(userDataDir),
-    cwd: getCwd(userDataDir),
-    windowsHide: true
-  })
-  attachOutputForwarder(child, {
-    logPrefix: 'FIND_PYTHON'
-  })
-  return collectStdout(child)
+  // const child = spawn(uvExecutablePath, ['python', 'find', getPythonVersion()], {
+  //   env: getEnv(userDataDir),
+  //   cwd: getCwd(userDataDir),
+  //   windowsHide: true
+  // })
+  // attachOutputForwarder(child, {
+  //   logPrefix: 'FIND_PYTHON'
+  // })
+  // return collectStdout(child)
+  return '/fake/python/path'
 }
