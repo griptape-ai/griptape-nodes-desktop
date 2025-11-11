@@ -996,7 +996,172 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## Version History
 
-### [0.1.5] - 2025-01-XX
+### [0.2.7]
+
+**Fixed**
+
+- Use Local instead of Roaming for XDG_DATA_HOME on Windows
+
+### [0.2.6]
+
+**Fixed**
+
+- Correct library name from "Advanced Image Library" to "Advanced Media Library"
+- Persist webview localStorage across app restarts
+- Add cancel functionality and fix close button on auth dialog
+
+### [0.2.5]
+
+**Fixed**
+
+- Reverted process leak prevention fix (caused issues)
+
+### [0.2.4]
+
+**Fixed**
+
+- Prevent process leaks in runGtn by auto-cleaning listeners
+
+### [0.2.3]
+
+**Changed**
+
+- Set log level to debug for better troubleshooting
+
+### [0.2.2]
+
+**Added**
+
+- Camera/microphone permissions for webcam nodes
+
+**Changed**
+
+- Reduced header height for more compact UI
+
+### [0.2.1]
+
+**Fixed**
+
+- Add clickable link to App Settings from workspace section
+- Use horizontal scroll for long log lines
+
+### [0.2.0-rc11]
+
+**Fixed**
+
+- Resolve library preferences race condition
+- Default cloud library to true
+
+### [0.2.0-rc10]
+
+**Fixed**
+
+- Use correct URL for embedded editor
+
+### [0.2.0-rc9]
+
+**Added**
+
+- Forward installation logs to UI
+- Engine reconfiguration button in settings
+- Engine component reinstall for troubleshooting
+
+**Fixed**
+
+- Make terminal-scrollbar grow to fill parent container
+- Include subprocess output in error messages
+
+### [0.2.0-rc8]
+
+**Added**
+
+- Optional library installation during onboarding
+- Error banner to Engine page for initialization failures
+- Move App Settings to native menu and profile dropdown
+
+**Fixed**
+
+- Prevent GTN operations during channel switch
+- Persist operation messages and improve version refresh timing
+- Persist upgrade state across navigation in Settings
+
+### [0.2.0-rc7]
+
+**Added**
+
+- Cmd+H keyboard shortcut to hide application on macOS
+- Visual feedback to Copy Logs button
+- Engine channel switching between stable and nightly
+
+**Fixed**
+
+- Automatic token refresh to prevent expired tokens in editor
+- Manual context menu handler for webview image saving
+- Auto-refresh engine version in settings after upgrade or channel switch
+
+### [0.2.0-rc6]
+
+**Added**
+
+- Copy Logs button to Engine Logs pane
+- Windows code signing with signtool to Velopack builds
+
+**Fixed**
+
+- PowerShell argument quoting for vpk pack command
+- Prevent workspace directory creation before user selection
+
+### [0.2.0-rc4]
+
+**Added**
+
+- Link to engine tab from Dashboard
+- System monitor moved to toolbar as collapsible component
+
+**Changed**
+
+- Colorscheme more muted, less blue
+- Default "remember my credentials" checkbox to true
+- Update login button text to "Login or Sign-Up"
+
+**Fixed**
+
+- Nvidia-smi fallback for GPU usage
+- Enable link clicks in editor webview to open in default browser
+
+### [0.2.0-rc3]
+
+**Added**
+
+- Embedded=true query param to editor URL
+- Context menu to web view
+
+**Fixed**
+
+- Handle GTN installation failures gracefully
+- Set icon for Linux
+
+### [0.2.0-rc2]
+
+### [0.2.0-rc1]
+
+**Added**
+
+- Initial 0.2.0 release candidate
+
+### [0.1.6]
+
+**Added**
+
+- Context menu to web view
+- Embedded query parameter support
+
+**Fixed**
+
+- GTN installation failure handling
+- Linux icon
+
+### [0.1.5]
 
 **Added**
 
@@ -1006,7 +1171,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 - Engine log overflow protection with compact button styling
 
-### [0.1.4] - 2025-01-XX
+### [0.1.4]
 
 **Added**
 
@@ -1017,7 +1182,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 - Engine auto-update flow and error handling
 
-### [0.1.3] - 2025-01-XX
+### [0.1.3]
 
 **Added**
 
@@ -1034,7 +1199,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - Editor reload awareness (Cmd/Ctrl+R)
 - Engine shutdown process improvements
 
-### [0.1.2] - 2025-01-XX
+### [0.1.2]
 
 **Added**
 
@@ -1051,7 +1216,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - Log display now properly bounded to prevent performance issues
 - Window draggable regions
 
-### [0.1.0] - 2025-01-XX
+### [0.1.0]
 
 **Added**
 
@@ -1082,7 +1247,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - Integrated Prettier for consistent formatting
 - Added automated CI checks
 
-### [0.0.3] - 2025-10-06
+### [0.0.3]
 
 **Added**
 
