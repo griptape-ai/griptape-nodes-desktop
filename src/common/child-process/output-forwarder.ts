@@ -17,9 +17,14 @@ export function attachOutputForwarder(
     const stdoutLines: string[] = []
     const stderrLines: string[] = []
 
+    // Store readline interfaces so we can close them
+    let stdoutInterface: readline.Interface | undefined
+    let stderrInterface: readline.Interface | undefined
+
     // stdout
     if (child.stdout) {
-      readline.createInterface({ input: child.stdout }).on('line', (line) => {
+      stdoutInterface = readline.createInterface({ input: child.stdout })
+      stdoutInterface.on('line', (line) => {
         logger.info(`[${logPrefix}] ${line}`)
         stdoutLines.push(line)
       })
@@ -27,13 +32,18 @@ export function attachOutputForwarder(
 
     // stderr
     if (child.stderr) {
-      readline.createInterface({ input: child.stderr }).on('line', (line) => {
+      stderrInterface = readline.createInterface({ input: child.stderr })
+      stderrInterface.on('line', (line) => {
         logger.error(`[${errorPrefix}] ${line}`)
         stderrLines.push(line)
       })
     }
 
     child.on('close', (code) => {
+      // Clean up readline interfaces to allow process to exit
+      stdoutInterface?.close()
+      stderrInterface?.close()
+
       if (code === 0) {
         resolve()
       } else {
@@ -52,6 +62,9 @@ export function attachOutputForwarder(
     })
 
     child.on('error', (error) => {
+      // Clean up readline interfaces on error too
+      stdoutInterface?.close()
+      stderrInterface?.close()
       reject(error)
     })
   })
