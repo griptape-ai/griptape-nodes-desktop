@@ -471,7 +471,11 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     const env = getEnv(this.userDataDir)
     const cwd = getCwd(this.userDataDir)
-    const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], { env, cwd })
+    const child = spawn(this.gtnExecutablePath, ['--no-update', ...args], {
+      env,
+      cwd,
+      windowsHide: true
+    })
     if (forward_logs) {
       attachOutputForwarder(child, { logPrefix: `gtn ${args.join(' ')}`.slice(0, 10) })
     }
@@ -508,7 +512,8 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       logger.info('Running uv tool upgrade griptape-nodes')
       const upgradeProcess = spawn(uvExecutablePath, ['tool', 'upgrade', 'griptape-nodes'], {
         env,
-        cwd
+        cwd,
+        windowsHide: true
       })
 
       attachOutputForwarder(upgradeProcess, { logPrefix: 'UPGRADE_GTN' })
@@ -545,7 +550,8 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     logger.info('Uninstalling current GTN version')
     const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
       env,
-      cwd
+      cwd,
+      windowsHide: true
     })
 
     await new Promise<void>((resolve, _reject) => {
@@ -585,7 +591,8 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     logger.info('Uninstalling current GTN version (if exists)')
     const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
       env,
-      cwd
+      cwd,
+      windowsHide: true
     })
 
     await new Promise<void>((resolve) => {

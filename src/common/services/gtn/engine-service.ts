@@ -184,7 +184,8 @@ export class EngineService extends EventEmitter<EngineEvents> {
             PYTHONIOENCODING: 'utf-8',
             PYTHONUTF8: '1'
           },
-          stdio: ['pipe', 'pipe', 'pipe']
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true
         }
       )
 

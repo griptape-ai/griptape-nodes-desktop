@@ -121,10 +121,11 @@ export class SystemMonitorService extends EventEmitter {
     try {
       logger.debug('SystemMonitorService: Executing nvidia-smi command')
       // Try to execute nvidia-smi with query format
-      const { stdout } = await execFileAsync('nvidia-smi', [
-        '--query-gpu=utilization.gpu,memory.used,memory.total',
-        '--format=csv,noheader,nounits'
-      ])
+      const { stdout } = await execFileAsync(
+        'nvidia-smi',
+        ['--query-gpu=utilization.gpu,memory.used,memory.total', '--format=csv,noheader,nounits'],
+        { windowsHide: true }
+      )
 
       logger.debug('SystemMonitorService: nvidia-smi output:', stdout)
 

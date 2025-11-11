@@ -30,7 +30,8 @@ function spawnWindows(userDataDir: string, uvInstallDir: string): ChildProcess {
       // then we will get a bunch of errors relating to import failures of core powershell
       // modules.
       env: {},
-      cwd: getCwd(userDataDir)
+      cwd: getCwd(userDataDir),
+      windowsHide: true
     }
   )
 }

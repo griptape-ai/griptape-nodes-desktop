@@ -35,7 +35,8 @@ async function uninstallGtn(userDataDir: string, uvExecutablePath: string): Prom
 
   const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
     env: getEnv(userDataDir),
-    cwd: getCwd(userDataDir)
+    cwd: getCwd(userDataDir),
+    windowsHide: true
   })
 
   try {
@@ -86,7 +87,8 @@ export async function installGtn(
 
   const installProcess = spawn(uvExecutablePath, installArgs, {
     env: getEnv(userDataDir),
-    cwd: getCwd(userDataDir)
+    cwd: getCwd(userDataDir),
+    windowsHide: true
   })
 
   // Forward logs to engine service if available

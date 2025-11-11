@@ -82,7 +82,7 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
     const pythonExecutablePath = await this.getPythonExecutablePath()
     const env = getEnv(this.userDataDir)
     const cwd = getCwd(this.userDataDir)
-    const child = spawn(pythonExecutablePath, ['-c', command], { cwd, env })
+    const child = spawn(pythonExecutablePath, ['-c', command], { cwd, env, windowsHide: true })
     attachOutputForwarder(child, { logPrefix: `python ${command}` })
     return child
   }
