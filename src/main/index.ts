@@ -47,19 +47,19 @@ logger.info('isPackaged():', isPackaged())
 logger.info('__dirname:', __dirname)
 
 // Set userData path for development
-if (!isPackaged()) {
-  const devUserDataPath = path.join(app.getAppPath(), '_userdata')
-  app.setPath('userData', devUserDataPath)
-  logger.info('Development mode: userData set to', devUserDataPath)
-
-  const devDocumentsPath = path.join(app.getAppPath(), '_documents')
-  app.setPath('documents', devDocumentsPath)
-  logger.info('Development mode: documents set to', devDocumentsPath)
-
-  const devLogsPath = path.join(app.getAppPath(), '_logs')
-  app.setPath('logs', devLogsPath)
-  logger.info('Development mode: logs set to', devLogsPath)
-}
+// if (!isPackaged()) {
+//   const devUserDataPath = path.join(app.getAppPath(), '_userdata')
+//   app.setPath('userData', devUserDataPath)
+//   logger.info('Development mode: userData set to', devUserDataPath)
+//
+//   const devDocumentsPath = path.join(app.getAppPath(), '_documents')
+//   app.setPath('documents', devDocumentsPath)
+//   logger.info('Development mode: documents set to', devDocumentsPath)
+//
+//   const devLogsPath = path.join(app.getAppPath(), '_logs')
+//   app.setPath('logs', devLogsPath)
+//   logger.info('Development mode: logs set to', devLogsPath)
+// }
 
 // Initialize services with proper paths
 const userDataPath = app.getPath('userData')
