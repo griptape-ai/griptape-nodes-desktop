@@ -163,140 +163,141 @@ export class EngineService extends EventEmitter<EngineEvents> {
       logger.info('[ENGINE] Starting Griptape Nodes engine...')
       logger.info(`[ENGINE] Command: ${gtnPath} engine`)
 
+      // TODO: TROUBLESHOOTING - Uncomment to restore subprocess
       // Spawn the engine process from config directory so it finds the config file
-      this.engineProcess = spawn(
-        gtnPath,
-        [
-          '--no-update'
-          // 'engine', TODO: uncomment after resolving https://github.com/griptape-ai/griptape-nodes/issues/2315
-        ],
-        {
-          cwd: getCwd(this.userDataDir),
-          env: {
-            ...getEnv(this.userDataDir),
-            // Force color output for terminals that support it
-            FORCE_COLOR: '1',
-            RICH_FORCE_TERMINAL: '1',
-            PYTHONUNBUFFERED: '1',
-            // Help with Windows terminal compatibility
-            TERM: 'xterm-256color',
-            // Fix Windows Unicode encoding issues
-            PYTHONIOENCODING: 'utf-8',
-            PYTHONUTF8: '1'
-          },
-          stdio: ['pipe', 'pipe', 'pipe'],
-          windowsHide: true
-        }
-      )
+      // this.engineProcess = spawn(
+      //   gtnPath,
+      //   [
+      //     '--no-update'
+      //     // 'engine', TODO: uncomment after resolving https://github.com/griptape-ai/griptape-nodes/issues/2315
+      //   ],
+      //   {
+      //     cwd: getCwd(this.userDataDir),
+      //     env: {
+      //       ...getEnv(this.userDataDir),
+      //       // Force color output for terminals that support it
+      //       FORCE_COLOR: '1',
+      //       RICH_FORCE_TERMINAL: '1',
+      //       PYTHONUNBUFFERED: '1',
+      //       // Help with Windows terminal compatibility
+      //       TERM: 'xterm-256color',
+      //       // Fix Windows Unicode encoding issues
+      //       PYTHONIOENCODING: 'utf-8',
+      //       PYTHONUTF8: '1'
+      //     },
+      //     stdio: ['pipe', 'pipe', 'pipe'],
+      //     windowsHide: true
+      //   }
+      // )
 
-      attachOutputForwarder(this.engineProcess, { logPrefix: 'GTN-ENGINE' })
+      // attachOutputForwarder(this.engineProcess, { logPrefix: 'GTN-ENGINE' })
 
-      // Handle stdout with line buffering and carriage return handling
-      this.engineProcess.stdout?.on('data', (data) => {
-        this.stdoutBuffer += data.toString('utf8')
+      // // Handle stdout with line buffering and carriage return handling
+      // this.engineProcess.stdout?.on('data', (data) => {
+      //   this.stdoutBuffer += data.toString('utf8')
 
-        // Handle both Windows CRLF and Unix LF line endings
-        // First normalize Windows line endings
-        this.stdoutBuffer = this.stdoutBuffer.replace(/\r\n/g, '\n')
+      //   // Handle both Windows CRLF and Unix LF line endings
+      //   // First normalize Windows line endings
+      //   this.stdoutBuffer = this.stdoutBuffer.replace(/\r\n/g, '\n')
 
-        // Handle carriage returns (\r) which are used for progress indicators
-        // Split by \r to handle overwrites, keeping only the last one
-        const carriageReturnParts = this.stdoutBuffer.split('\r')
-        if (carriageReturnParts.length > 1) {
-          // Keep only the last part after \r (this is what should be displayed)
-          this.stdoutBuffer = carriageReturnParts[carriageReturnParts.length - 1]
-        }
+      //   // Handle carriage returns (\r) which are used for progress indicators
+      //   // Split by \r to handle overwrites, keeping only the last one
+      //   const carriageReturnParts = this.stdoutBuffer.split('\r')
+      //   if (carriageReturnParts.length > 1) {
+      //     // Keep only the last part after \r (this is what should be displayed)
+      //     this.stdoutBuffer = carriageReturnParts[carriageReturnParts.length - 1]
+      //   }
 
-        const lines = this.stdoutBuffer.split('\n')
+      //   const lines = this.stdoutBuffer.split('\n')
 
-        // Keep the last incomplete line in the buffer
-        this.stdoutBuffer = lines.pop() || ''
+      //   // Keep the last incomplete line in the buffer
+      //   this.stdoutBuffer = lines.pop() || ''
 
-        // Process complete lines
-        lines.forEach((line) => {
-          if (line.trim().length > 0) {
-            this.addLog('stdout', line)
-          }
-        })
-      })
+      //   // Process complete lines
+      //   lines.forEach((line) => {
+      //     if (line.trim().length > 0) {
+      //       this.addLog('stdout', line)
+      //     }
+      //   })
+      // })
 
-      // Handle stderr with line buffering and carriage return handling
-      this.engineProcess.stderr?.on('data', (data) => {
-        this.stderrBuffer += data.toString('utf8')
+      // // Handle stderr with line buffering and carriage return handling
+      // this.engineProcess.stderr?.on('data', (data) => {
+      //   this.stderrBuffer += data.toString('utf8')
 
-        // Handle both Windows CRLF and Unix LF line endings
-        // First normalize Windows line endings
-        this.stderrBuffer = this.stderrBuffer.replace(/\r\n/g, '\n')
+      //   // Handle both Windows CRLF and Unix LF line endings
+      //   // First normalize Windows line endings
+      //   this.stderrBuffer = this.stderrBuffer.replace(/\r\n/g, '\n')
 
-        // Handle carriage returns (\r) which are used for progress indicators
-        // Split by \r to handle overwrites, keeping only the last one
-        const carriageReturnParts = this.stderrBuffer.split('\r')
-        if (carriageReturnParts.length > 1) {
-          // Keep only the last part after \r (this is what should be displayed)
-          this.stderrBuffer = carriageReturnParts[carriageReturnParts.length - 1]
-        }
+      //   // Handle carriage returns (\r) which are used for progress indicators
+      //   // Split by \r to handle overwrites, keeping only the last one
+      //   const carriageReturnParts = this.stderrBuffer.split('\r')
+      //   if (carriageReturnParts.length > 1) {
+      //     // Keep only the last part after \r (this is what should be displayed)
+      //     this.stderrBuffer = carriageReturnParts[carriageReturnParts.length - 1]
+      //   }
 
-        const lines = this.stderrBuffer.split('\n')
+      //   const lines = this.stderrBuffer.split('\n')
 
-        // Keep the last incomplete line in the buffer
-        this.stderrBuffer = lines.pop() || ''
+      //   // Keep the last incomplete line in the buffer
+      //   this.stderrBuffer = lines.pop() || ''
 
-        // Process complete lines
-        lines.forEach((line) => {
-          if (line.trim().length > 0) {
-            this.addLog('stderr', line)
-          }
-        })
-      })
+      //   // Process complete lines
+      //   lines.forEach((line) => {
+      //     if (line.trim().length > 0) {
+      //       this.addLog('stderr', line)
+      //     }
+      //   })
+      // })
 
-      // Handle process exit
-      this.engineProcess.once('exit', (code, _signal) => {
-        // Flush any remaining buffered data
-        if (this.stdoutBuffer.trim().length > 0) {
-          this.addLog('stdout', this.stdoutBuffer)
-          this.stdoutBuffer = ''
-        }
-        if (this.stderrBuffer.trim().length > 0) {
-          this.addLog('stderr', this.stderrBuffer)
-          this.stderrBuffer = ''
-        }
+      // // Handle process exit
+      // this.engineProcess.once('exit', (code, _signal) => {
+      //   // Flush any remaining buffered data
+      //   if (this.stdoutBuffer.trim().length > 0) {
+      //     this.addLog('stdout', this.stdoutBuffer)
+      //     this.stdoutBuffer = ''
+      //   }
+      //   if (this.stderrBuffer.trim().length > 0) {
+      //     this.addLog('stderr', this.stderrBuffer)
+      //     this.stderrBuffer = ''
+      //   }
 
-        // Clean up the process and its listeners
-        this.engineProcess?.removeAllListeners()
-        this.engineProcess?.stdout?.removeAllListeners()
-        this.engineProcess?.stderr?.removeAllListeners()
-        this.engineProcess = null
+      //   // Clean up the process and its listeners
+      //   this.engineProcess?.removeAllListeners()
+      //   this.engineProcess?.stdout?.removeAllListeners()
+      //   this.engineProcess?.stderr?.removeAllListeners()
+      //   this.engineProcess = null
 
-        // Auto-restart if it crashed unexpectedly
-        if (this.status == 'ready') {
-          // This means someone "stopped" the engine.
-          this.restartAttempts = 0
-          this.addLog('stdout', 'Engine stopped.')
-        } else if (
-          this.status == 'running' &&
-          code !== 0 &&
-          this.restartAttempts < this.maxRestartAttempts
-        ) {
-          this.restartAttempts++
-          this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`)
-          this.addLog(
-            'stdout',
-            `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`
-          )
-          setTimeout(() => this.startEngine(), this.restartDelay)
-          this.setEngineStatus('ready')
-        } else {
-          this.addLog('stderr', 'Maximum restart attempts reached. Engine will not auto-restart.')
-          this.setEngineStatus('error')
-        }
-      })
+      //   // Auto-restart if it crashed unexpectedly
+      //   if (this.status == 'ready') {
+      //     // This means someone "stopped" the engine.
+      //     this.restartAttempts = 0
+      //     this.addLog('stdout', 'Engine stopped.')
+      //   } else if (
+      //     this.status == 'running' &&
+      //     code !== 0 &&
+      //     this.restartAttempts < this.maxRestartAttempts
+      //   ) {
+      //     this.restartAttempts++
+      //     this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`)
+      //     this.addLog(
+      //       'stdout',
+      //       `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`
+      //     )
+      //     setTimeout(() => this.startEngine(), this.restartDelay)
+      //     this.setEngineStatus('ready')
+      //   } else {
+      //     this.addLog('stderr', 'Maximum restart attempts reached. Engine will not auto-restart.')
+      //     this.setEngineStatus('error')
+      //   }
+      // })
 
-      // Handle process error
-      this.engineProcess.on('error', (error) => {
-        this.addLog('stderr', `Engine process error: ${error.message}`)
-        this.addLog('stderr', `Error code: ${(error as any).code}, errno: ${(error as any).errno}`)
-        this.setEngineStatus('error')
-      })
+      // // Handle process error
+      // this.engineProcess.on('error', (error) => {
+      //   this.addLog('stderr', `Engine process error: ${error.message}`)
+      //   this.addLog('stderr', `Error code: ${(error as any).code}, errno: ${(error as any).errno}`)
+      //   this.setEngineStatus('error')
+      // })
     } catch (error: any) {
       this.addLog('stderr', `Failed to start engine: ${error.message}`)
       this.setEngineStatus('error')
