@@ -1,6 +1,10 @@
 # Griptape Nodes Desktop
 
-A cross-platform desktop application for managing and developing AI workflows with the [Griptape](https://www.griptape.ai/) framework. This Electron-based application provides a local development environment for building, testing, and managing Griptape Nodes workflows with an integrated visual editor.
+Note that this document is intended for developers that want understand the Griptape Nodes Desktop project with a view to contributing to it.
+
+If you are a user, or potential user of Griptape Nodes Desktop, please take a look at the [README](./README.md) instead.
+
+A cross-platform desktop application for managing and developing AI workflows with the [Griptape](https://www.griptape.ai/) framework. This application provides a local development environment for building, testing, and managing Griptape Nodes workflows with an integrated visual editor.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Electron](https://img.shields.io/badge/Electron-37.3.1-47848F?logo=electron)](https://www.electronjs.org/)
@@ -37,15 +41,20 @@ A cross-platform desktop application for managing and developing AI workflows wi
 
 ### Advanced Features
 
-- **Library Management**: Automatic synchronization and registration of Griptape Nodes libraries
+- **Library Management**: Automatic synchronization and registration of Griptape Nodes libraries with optional installation during onboarding
+- **Engine Channel Switching**: Switch between stable and nightly engine builds directly from settings
+- **Automatic Token Refresh**: Prevents expired authentication tokens in the editor with automatic background refresh
 - **Update Channels**: Support for stable, beta, and custom release channels
-- **Log Visualization**: ANSI color support and clickable URLs in engine logs
+- **Log Visualization**: ANSI color support and clickable URLs in engine logs with Copy Logs button
+- **Context Menu Support**: Right-click context menu in editor webview for copy/paste/save operations
 - **Environment Diagnostics**: Collect and persist environment information for troubleshooting
+- **Engine Reinstallation**: Troubleshooting tools to reconfigure or reinstall engine components
 - **Build Metadata Injection**: Git commit information injected at build time
 - **System Monitor**: Real-time CPU and memory usage monitoring with graphical display
 - **Auto-Update Engine**: Automatic GTN engine updates on application startup
 - **Usage Metrics**: Anonymous usage reporting for product improvement
 - **Device ID Management**: Unique device identification for tracking and support
+- **Persistent WebView State**: Editor localStorage persists across app restarts
 
 ## Architecture
 
@@ -301,7 +310,8 @@ The build process involves multiple stages:
 - PowerShell build script
 - Supports x64 and ARM64 architectures
 - Custom installer via Velopack
-- Code signing optional
+- Code signing with AzureSignTool for EV certificates
+- Supports both local signtool and Azure Key Vault signing
 
 **Linux**
 - Generates both DEB and RPM packages
@@ -314,9 +324,18 @@ The project is configured for GitHub Actions with:
 - Automated builds on push
 - Multi-platform builds (matrix strategy)
 - Code signing with stored secrets
+  - macOS: Apple Developer certificate
+  - Windows: AzureSignTool with Azure Key Vault for EV certificates
 - Automated releases to S3 (Velopack)
+- Windows Setup.exe upload to S3 for distribution
 - Code quality checks (format, lint, typecheck)
 - Merge queue support for safer merges
+
+**Windows Code Signing:**
+- Uses AzureSignTool for EV certificate signing
+- Supports Azure Key Vault integration
+- Fallback to local signtool if Azure credentials not available
+- Signs both installer executables and Velopack packages
 
 ## Core Services
 
@@ -360,9 +379,10 @@ Handles OAuth 2.0 authentication with Griptape Cloud.
 **Responsibilities:**
 - Start local Express server on port 5172
 - Handle OAuth flow (authorization code grant)
-- Store and refresh access tokens
+- Store and refresh access tokens automatically
 - Generate and store API keys
 - Emit `apiKey` event when authentication completes
+- Automatic token refresh to prevent expired sessions in editor
 
 **Storage Modes:**
 - In-memory (default): No persistence, lost on restart
@@ -373,6 +393,11 @@ Handles OAuth 2.0 authentication with Griptape Cloud.
 - Token: `https://auth.cloud.griptape.ai/oauth/token`
 - API Key: `https://cloud.griptape.ai/api/api-keys`
 
+**Token Refresh:**
+- Monitors token expiration and automatically refreshes before expiry
+- Prevents session interruptions in the embedded editor
+- Configurable refresh interval for optimal performance
+
 ### 5. GtnService
 
 Manages Griptape Nodes CLI installation and configuration.
@@ -380,10 +405,12 @@ Manages Griptape Nodes CLI installation and configuration.
 **Responsibilities:**
 - Install GTN via `uv tool install griptape-nodes`
 - Initialize GTN configuration (`gtn init`)
-- Sync and register libraries
+- Sync and register libraries with optional installation during onboarding
 - Manage workspace directory
 - Auto-update GTN engine on startup (if already installed)
 - Manage GTN version and upgrades
+- Switch between stable and nightly engine channels
+- Reconfigure and reinstall engine components for troubleshooting
 
 **Configuration**: `xdg_config_home/griptape_nodes/griptape_nodes_config.json`
 
@@ -395,12 +422,20 @@ Manages Griptape Nodes CLI installation and configuration.
 - `syncLibraries()`: Sync libraries with engine
 - `registerLibraries()`: Register synced libraries
 - `getGtnVersion()`: Get current GTN version
+- `switchChannel(channel)`: Switch between stable and nightly channels
+- `reconfigureEngine()`: Reconfigure engine settings
+- `reinstallEngine()`: Reinstall engine components for troubleshooting
 
 **Auto-Update Behavior:**
 - Checks if GTN is already installed on startup
 - Automatically runs `gtn self update` if GTN exists
 - Logs update process to engine service for UI display
 - Non-fatal: continues with existing version if update fails
+
+**Channel Management:**
+- Supports stable and nightly engine channels
+- Channel switching triggers engine reinstallation
+- Preserves workspace and configuration during channel switches
 
 ### 6. EngineService
 
@@ -476,8 +511,16 @@ Manages application-wide settings and preferences.
 - Manage system monitor visibility
 - Persist settings across restarts
 - Provide settings change notifications
+- Manage engine channel preferences (stable/nightly)
+- Track library installation preferences
+- Store operation progress state for UI persistence
 
 **Storage**: `settings.json` in userData
+
+**Engine Settings:**
+- Current engine channel selection
+- Library installation preferences
+- Update check preferences
 
 ### 11. SystemMonitorService
 
@@ -527,32 +570,44 @@ Overview page showing:
 
 Engine management page with:
 - Engine status badge with color coding
-- Control buttons (Start, Stop, Restart, Clear Logs)
+- Control buttons (Start, Stop, Restart, Clear Logs, Copy Logs)
 - Real-time log viewer with virtualization (bounded to 1000 entries)
 - ANSI color rendering via ansi-to-html
 - Clickable URLs in log output
 - Auto-scroll to bottom option
 - Compact button styling for better space efficiency
+- Error banner for initialization failures
+- Copy Logs button with visual feedback
+- Horizontal scroll for long log lines
 
 #### Editor (`Editor.tsx`)
 
 Embedded Griptape Nodes web editor:
 - Runs in webview with custom preload script
-- Authentication token injection
+- Authentication token injection with automatic refresh
 - Full-screen overlay when active
 - Direct integration with local engine
+- Context menu support for right-click operations
+- Embedded mode query parameter (`embedded=true`)
+- Persistent localStorage across app restarts
+- Link clicks open in default browser
 
 #### Settings (`Settings.tsx`)
 
 Configuration management:
-- Workspace directory selector
+- Workspace directory selector with clickable link to App Settings
 - Update channel selection
 - GTN engine version display and manual upgrade
+- Engine channel switching (stable/nightly)
+- Engine reconfiguration button
+- Engine reinstallation for troubleshooting
 - System monitor visibility toggle
 - Version information (app and GTN)
 - Release notes and changelog
 - Manual update check
 - Environment information display
+- Library preferences management
+- Operation progress tracking with persistence
 
 ### Components
 
@@ -573,8 +628,10 @@ Configuration management:
 **OnboardingWizard** (`onboarding/`)
 - Multi-step setup wizard
 - Keychain explanation (macOS)
-- Workspace directory setup
+- Workspace directory setup with validation
 - Credential storage preferences
+- Optional library installation step
+- "Remember my credentials" defaults to true
 
 **EditorWebview** (`EditorWebview.tsx`)
 - Embedded Griptape Nodes editor
@@ -595,6 +652,7 @@ Configuration management:
 **Global Shortcuts:**
 - `Cmd+R` / `Ctrl+R`: Reload editor webview (when on Editor page) or reload app (other pages)
 - `Cmd+Option+I` / `Ctrl+Shift+I`: Toggle Developer Tools
+- `Cmd+H`: Hide application (macOS only)
 - `Cmd+Q` / `Alt+F4`: Quit application (platform-specific)
 
 **Menu Shortcuts:**
@@ -629,7 +687,8 @@ project-root/
 {
   "api_key": "encrypted_api_key",
   "workspace_directory": "/path/to/workspace",
-  "storage_backend": "local"
+  "storage_backend": "local",
+  "engine_channel": "stable"
 }
 ```
 
@@ -644,7 +703,21 @@ project-root/
 ```json
 {
   "completed": true,
-  "credentialStorageEnabled": false
+  "credentialStorageEnabled": false,
+  "librariesInstalled": true
+}
+```
+
+**Settings** (`settings.json`)
+```json
+{
+  "systemMonitorVisible": true,
+  "engineChannel": "stable",
+  "libraryPreferences": {
+    "installDuringOnboarding": true,
+    "autoUpdate": false
+  },
+  "updateChannel": "stable"
 }
 ```
 
@@ -672,10 +745,16 @@ The application respects these environment variables:
 
 **Runtime Security**
 - Non-persistent partition for main window (no cookies to disk)
-- Separate webview partition for editor
+- Separate webview partition for editor with localStorage persistence
 - Node integration controlled through preload scripts
 - IPC communication via contextBridge
 - Content Security Policy for web content
+
+**System Permissions** (macOS entitlements)
+- Camera access for webcam-enabled nodes
+- Microphone access for audio processing nodes
+- Network access for API communication
+- File system access for workspace management
 
 ### Authentication Security
 
