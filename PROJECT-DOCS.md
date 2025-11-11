@@ -61,6 +61,7 @@ A cross-platform desktop application for managing and developing AI workflows wi
 ### Technology Stack
 
 **Frontend**
+
 - React 19.1.1 with TypeScript
 - Tailwind CSS + tailwindcss-animate for styling
 - React Context API for state management
@@ -68,17 +69,20 @@ A cross-platform desktop application for managing and developing AI workflows wi
 - Lucide React for icons
 
 **Desktop Framework**
+
 - Electron 37.3.1 with Electron Forge
 - Webpack 5 for building and bundling
 - Native module support with auto-unpack
 
 **Backend Services**
+
 - Express.js for local OAuth server
 - electron-store for persistent configuration
 - electron-log for structured logging
 - Velopack for automatic updates
 
 **Python Management**
+
 - UV package manager for dependency management
 - Standalone Python distribution (3.12.7)
 - Griptape Nodes CLI integration
@@ -267,18 +271,21 @@ npm run generate-icons      # Generate platform icons (macOS only)
 ### Project Configuration
 
 **TypeScript** (`tsconfig.json`)
+
 - Target: ES6
 - Module: CommonJS
 - JSX: react-jsx
 - Path aliases: `@/*` → `src/*`
 
 **Webpack**
+
 - Main process: `webpack.main.config.ts`
 - Renderer process: `webpack.renderer.config.ts`
 - Shared rules: `webpack.rules.ts`
 - Plugins: `webpack.plugins.ts`
 
 **Electron Forge** (`forge.config.ts`)
+
 - Makers: ZIP (macOS), DEB/RPM (Linux)
 - Auto-unpack natives plugin
 - Fuses for security configuration
@@ -301,12 +308,14 @@ The build process involves multiple stages:
 ### Platform-Specific Notes
 
 **macOS**
+
 - Requires macOS for icon generation (.icns format)
 - Code signing requires Apple Developer certificate
 - DMG created with custom template
 - Supports both Intel and Apple Silicon
 
 **Windows**
+
 - PowerShell build script
 - Supports x64 and ARM64 architectures
 - Custom installer via Velopack
@@ -314,6 +323,7 @@ The build process involves multiple stages:
 - Supports both local signtool and Azure Key Vault signing
 
 **Linux**
+
 - Generates both DEB and RPM packages
 - Tested on Ubuntu 18.04+
 - AppImage support planned
@@ -321,6 +331,7 @@ The build process involves multiple stages:
 ### CI/CD
 
 The project is configured for GitHub Actions with:
+
 - Automated builds on push
 - Multi-platform builds (matrix strategy)
 - Code signing with stored secrets
@@ -332,6 +343,7 @@ The project is configured for GitHub Actions with:
 - Merge queue support for safer merges
 
 **Windows Code Signing:**
+
 - Uses AzureSignTool for EV certificate signing
 - Supports Azure Key Vault integration
 - Fallback to local signtool if Azure credentials not available
@@ -344,6 +356,7 @@ The project is configured for GitHub Actions with:
 Manages first-time user setup and configuration.
 
 **Responsibilities:**
+
 - Track onboarding completion state
 - Manage credential storage preferences
 - Guide users through initial setup
@@ -355,6 +368,7 @@ Manages first-time user setup and configuration.
 Manages the UV package manager for Python dependencies.
 
 **Responsibilities:**
+
 - Download and install UV from GitHub releases
 - Provide UV executable path
 - Manage UV environment configuration
@@ -366,6 +380,7 @@ Manages the UV package manager for Python dependencies.
 Manages standalone Python runtime installation.
 
 **Responsibilities:**
+
 - Download Python distribution (currently 3.12.7)
 - Extract and configure Python
 - Provide Python executable path
@@ -377,6 +392,7 @@ Manages standalone Python runtime installation.
 Handles OAuth 2.0 authentication with Griptape Cloud.
 
 **Responsibilities:**
+
 - Start local Express server on port 5172
 - Handle OAuth flow (authorization code grant)
 - Store and refresh access tokens automatically
@@ -385,15 +401,18 @@ Handles OAuth 2.0 authentication with Griptape Cloud.
 - Automatic token refresh to prevent expired sessions in editor
 
 **Storage Modes:**
+
 - In-memory (default): No persistence, lost on restart
 - Persistent: Encrypted storage with electron-store
 
 **Endpoints**:
+
 - Authorization: `https://auth.cloud.griptape.ai/authorize`
 - Token: `https://auth.cloud.griptape.ai/oauth/token`
 - API Key: `https://cloud.griptape.ai/api/api-keys`
 
 **Token Refresh:**
+
 - Monitors token expiration and automatically refreshes before expiry
 - Prevents session interruptions in the embedded editor
 - Configurable refresh interval for optimal performance
@@ -403,6 +422,7 @@ Handles OAuth 2.0 authentication with Griptape Cloud.
 Manages Griptape Nodes CLI installation and configuration.
 
 **Responsibilities:**
+
 - Install GTN via `uv tool install griptape-nodes`
 - Initialize GTN configuration (`gtn init`)
 - Sync and register libraries with optional installation during onboarding
@@ -415,6 +435,7 @@ Manages Griptape Nodes CLI installation and configuration.
 **Configuration**: `xdg_config_home/griptape_nodes/griptape_nodes_config.json`
 
 **Key Methods:**
+
 - `start()`: Initialize service and check for updates
 - `selfUpdate()`: Update GTN to latest version
 - `upgradeGtn()`: Force upgrade GTN via UV
@@ -427,12 +448,14 @@ Manages Griptape Nodes CLI installation and configuration.
 - `reinstallEngine()`: Reinstall engine components for troubleshooting
 
 **Auto-Update Behavior:**
+
 - Checks if GTN is already installed on startup
 - Automatically runs `gtn self update` if GTN exists
 - Logs update process to engine service for UI display
 - Non-fatal: continues with existing version if update fails
 
 **Channel Management:**
+
 - Supports stable and nightly engine channels
 - Channel switching triggers engine reinstallation
 - Preserves workspace and configuration during channel switches
@@ -442,6 +465,7 @@ Manages Griptape Nodes CLI installation and configuration.
 Manages the Griptape Nodes engine process.
 
 **Responsibilities:**
+
 - Spawn and monitor engine child process
 - Capture stdout/stderr with ANSI color support
 - Parse and emit logs in real-time
@@ -449,6 +473,7 @@ Manages the Griptape Nodes engine process.
 - Manage engine lifecycle (start, stop, restart)
 
 **Engine Status**:
+
 - `not-ready`: Service not initialized
 - `ready`: Service ready, engine stopped
 - `initializing`: Environment setup in progress
@@ -456,6 +481,7 @@ Manages the Griptape Nodes engine process.
 - `error`: Engine failed to start
 
 **Features:**
+
 - Line buffering for stdout/stderr
 - Carriage return handling for progress indicators
 - Hyperlink detection (OSC 8 sequences)
@@ -466,6 +492,7 @@ Manages the Griptape Nodes engine process.
 Manages application updates using Velopack.
 
 **Responsibilities:**
+
 - Check for updates from S3-hosted channels
 - Download updates with progress tracking
 - Apply updates with automatic restart
@@ -474,6 +501,7 @@ Manages application updates using Velopack.
 **Update URL**: `https://griptape-nodes-desktop-releases.s3.amazonaws.com`
 
 **Channels**:
+
 - Channel is embedded at build time via `VELOPACK_CHANNEL` env var
 - Users can switch channels via settings
 - Logical channel names extracted from full channel strings
@@ -483,6 +511,7 @@ Manages application updates using Velopack.
 Manages unique device identification for analytics and support.
 
 **Responsibilities:**
+
 - Generate and persist unique device identifier
 - Provide device ID for usage metrics
 - Support device ID reset for privacy
@@ -495,6 +524,7 @@ Manages unique device identification for analytics and support.
 Reports anonymous usage metrics to Griptape Cloud.
 
 **Responsibilities:**
+
 - Report application launch events
 - Track feature usage anonymously
 - Include device ID and platform information
@@ -507,6 +537,7 @@ Reports anonymous usage metrics to Griptape Cloud.
 Manages application-wide settings and preferences.
 
 **Responsibilities:**
+
 - Store and retrieve user preferences
 - Manage system monitor visibility
 - Persist settings across restarts
@@ -518,6 +549,7 @@ Manages application-wide settings and preferences.
 **Storage**: `settings.json` in userData
 
 **Engine Settings:**
+
 - Current engine channel selection
 - Library installation preferences
 - Update check preferences
@@ -527,6 +559,7 @@ Manages application-wide settings and preferences.
 Monitors system resource usage in real-time.
 
 **Responsibilities:**
+
 - Track CPU usage percentage
 - Monitor memory usage (used/total)
 - Emit periodic metrics updates (every 2 seconds)
@@ -534,6 +567,7 @@ Monitors system resource usage in real-time.
 - Calculate and report system health metrics
 
 **Features:**
+
 - Non-blocking metrics collection
 - EventEmitter-based updates
 - Configurable monitoring interval
@@ -560,6 +594,7 @@ Start → Login → Onboarding → Dashboard
 #### Dashboard (`Dashboard.tsx`)
 
 Overview page showing:
+
 - Welcome message and getting started guide
 - Engine status indicator
 - Quick action buttons (Open Editor, View Engine)
@@ -569,6 +604,7 @@ Overview page showing:
 #### Engine (`Engine.tsx`)
 
 Engine management page with:
+
 - Engine status badge with color coding
 - Control buttons (Start, Stop, Restart, Clear Logs, Copy Logs)
 - Real-time log viewer with virtualization (bounded to 1000 entries)
@@ -583,6 +619,7 @@ Engine management page with:
 #### Editor (`Editor.tsx`)
 
 Embedded Griptape Nodes web editor:
+
 - Runs in webview with custom preload script
 - Authentication token injection with automatic refresh
 - Full-screen overlay when active
@@ -595,6 +632,7 @@ Embedded Griptape Nodes web editor:
 #### Settings (`Settings.tsx`)
 
 Configuration management:
+
 - Workspace directory selector with clickable link to App Settings
 - Update channel selection
 - GTN engine version display and manual upgrade
@@ -612,6 +650,7 @@ Configuration management:
 ### Components
 
 **Sidebar** (`Sidebar.tsx`)
+
 - Navigation menu with icons
 - Active page highlighting
 - Engine status indicator
@@ -619,6 +658,7 @@ Configuration management:
 - Collapsible on mobile
 
 **LoginPage** (`LoginPage.tsx`)
+
 - OAuth 2.0 login flow in modal dialog
 - Griptape Cloud branding
 - Loading states
@@ -626,6 +666,7 @@ Configuration management:
 - Non-blocking UI (user can dismiss during login)
 
 **OnboardingWizard** (`onboarding/`)
+
 - Multi-step setup wizard
 - Keychain explanation (macOS)
 - Workspace directory setup with validation
@@ -634,12 +675,14 @@ Configuration management:
 - "Remember my credentials" defaults to true
 
 **EditorWebview** (`EditorWebview.tsx`)
+
 - Embedded Griptape Nodes editor
 - Authentication state checking
 - Error boundary
 - Portal-based rendering
 
 **SystemMonitor** (`SystemMonitor.tsx`)
+
 - Real-time CPU and memory usage display
 - Collapsible panel with smooth animations
 - Graphical progress bars for resource usage
@@ -650,12 +693,14 @@ Configuration management:
 ### Keyboard Shortcuts
 
 **Global Shortcuts:**
+
 - `Cmd+R` / `Ctrl+R`: Reload editor webview (when on Editor page) or reload app (other pages)
 - `Cmd+Option+I` / `Ctrl+Shift+I`: Toggle Developer Tools
 - `Cmd+H`: Hide application (macOS only)
 - `Cmd+Q` / `Alt+F4`: Quit application (platform-specific)
 
 **Menu Shortcuts:**
+
 - `Cmd+Z` / `Ctrl+Z`: Undo
 - `Cmd+Shift+Z` / `Ctrl+Y`: Redo
 - `Cmd+X` / `Ctrl+X`: Cut
@@ -668,6 +713,7 @@ Configuration management:
 ### User Data Directories
 
 **Development Mode:**
+
 ```
 project-root/
 ├── _userdata/        # Application data
@@ -676,6 +722,7 @@ project-root/
 ```
 
 **Production:**
+
 - macOS: `~/Library/Application Support/Griptape Nodes/`
 - Windows: `%APPDATA%\Griptape Nodes\`
 - Linux: `~/.config/griptape-nodes/`
@@ -683,6 +730,7 @@ project-root/
 ### Configuration Files
 
 **GTN Configuration** (`xdg_config_home/griptape_nodes/griptape_nodes_config.json`)
+
 ```json
 {
   "api_key": "encrypted_api_key",
@@ -693,6 +741,7 @@ project-root/
 ```
 
 **Workspace Configuration** (`gtn-workspace.json`)
+
 ```json
 {
   "workspaceDirectory": "/path/to/workspace"
@@ -700,6 +749,7 @@ project-root/
 ```
 
 **Onboarding State** (`onboarding.json`)
+
 ```json
 {
   "completed": true,
@@ -709,6 +759,7 @@ project-root/
 ```
 
 **Settings** (`settings.json`)
+
 ```json
 {
   "systemMonitorVisible": true,
@@ -736,6 +787,7 @@ The application respects these environment variables:
 ### Electron Security Features
 
 **Fuses** (Compile-Time Security)
+
 - ✅ `RunAsNode`: Disabled
 - ❌ `EnableCookieEncryption`: Disabled (prevents keychain prompts)
 - ❌ `EnableNodeOptionsEnvironmentVariable`: Disabled
@@ -744,6 +796,7 @@ The application respects these environment variables:
 - ✅ `OnlyLoadAppFromAsar`: Enabled
 
 **Runtime Security**
+
 - Non-persistent partition for main window (no cookies to disk)
 - Separate webview partition for editor with localStorage persistence
 - Node integration controlled through preload scripts
@@ -751,6 +804,7 @@ The application respects these environment variables:
 - Content Security Policy for web content
 
 **System Permissions** (macOS entitlements)
+
 - Camera access for webcam-enabled nodes
 - Microphone access for audio processing nodes
 - Network access for API communication
@@ -759,18 +813,21 @@ The application respects these environment variables:
 ### Authentication Security
 
 **Credential Storage**
+
 - Optional encrypted storage with electron-store
 - Uses Electron safeStorage API (keychain/credential manager)
 - User must opt-in during onboarding
 - In-memory mode available (no persistence)
 
 **API Key Protection**
+
 - Never logged or exposed in renderer
 - Redacted in debug output
 - Stored encrypted when persistence enabled
 - Separate storage implementations (in-memory vs persistent)
 
 **OAuth Flow**
+
 - Standard OAuth 2.0 authorization code flow
 - PKCE (Proof Key for Code Exchange) supported
 - State parameter for CSRF protection
@@ -793,6 +850,7 @@ The application respects these environment variables:
 **Symptoms**: Engine status stuck in "ready" or "initializing"
 
 **Solutions**:
+
 1. Check if Python and UV are installed: Look for errors in Engine logs
 2. Verify GTN installation: Check `_userdata/uv-tools/griptape-nodes/`
 3. Ensure workspace directory is accessible
@@ -804,6 +862,7 @@ The application respects these environment variables:
 **Symptoms**: OAuth flow redirects but login fails
 
 **Solutions**:
+
 1. Verify internet connection
 2. Check that port 5172 is not blocked by firewall
 3. Ensure Griptape Cloud endpoints are reachable:
@@ -817,10 +876,12 @@ The application respects these environment variables:
 **Symptoms**: Engine process starts but never becomes ready
 
 **Recent Fix**: As of version 0.0.3, the engine now starts conditionally:
+
 - If authenticated: Starts immediately
 - If not authenticated: Waits for login, then starts automatically
 
 **Solutions**:
+
 1. Complete the onboarding wizard
 2. Ensure you're logged in
 3. Check engine logs for specific errors
@@ -829,32 +890,38 @@ The application respects these environment variables:
 #### Build Issues
 
 **macOS**:
+
 - Icon generation requires macOS (uses `sips` command)
 - Code signing requires Apple Developer certificate
 - Ensure Xcode Command Line Tools installed
 
 **Windows**:
+
 - PowerShell execution policy may block scripts
 - Run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
 **Linux**:
+
 - Ensure build-essential installed
 - May need additional dependencies for electron-builder
 
 ### Logging
 
 **Main Process Logs**
+
 - Location: `_logs/main.log` (dev) or platform logs directory (prod)
 - Levels: info, warn, error
 - Includes service startup, IPC calls, errors
 
 **Engine Logs**
+
 - Displayed in Engine tab
 - Includes stdout and stderr from engine process
 - ANSI color codes preserved
 - Clickable URLs detected and formatted
 
 **Renderer Logs**
+
 - Available in Chrome DevTools console (development)
 - Press `Cmd+Option+I` (macOS) or `Ctrl+Shift+I` (Windows/Linux)
 
@@ -879,6 +946,7 @@ The application respects these environment variables:
 - **Comments**: Document complex logic, avoid temporal references
 
 **Code Quality Commands:**
+
 ```bash
 npm run typecheck    # Check TypeScript types
 npm run lint         # Run ESLint
@@ -931,51 +999,62 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ### [0.1.5] - 2025-01-XX
 
 **Added**
+
 - Hostname-based engine naming for better identification
 
 **Fixed**
+
 - Engine log overflow protection with compact button styling
 
 ### [0.1.4] - 2025-01-XX
 
 **Added**
+
 - Automatic GTN engine updates on application boot
 - Update status logging to engine service
 
 **Fixed**
+
 - Engine auto-update flow and error handling
 
 ### [0.1.3] - 2025-01-XX
 
 **Added**
+
 - System monitor with real-time CPU/memory tracking
 - Settings toggle for system monitor visibility
 
 **Changed**
+
 - Menu bar improvements for OS-specific behaviors (macOS/Windows/Linux)
 - Reduced minimum window size to 1280x800 for smaller screens
 
 **Fixed**
+
 - Editor reload awareness (Cmd/Ctrl+R)
 - Engine shutdown process improvements
 
 ### [0.1.2] - 2025-01-XX
 
 **Added**
+
 - GTN engine update management in Settings page
 - View and Window menus with platform-specific items
 - Keyboard shortcuts for reload (Cmd/Ctrl+R)
 
 **Changed**
+
 - Increased default window size to 1920x1200 for better editor experience
 
 **Fixed**
+
 - Log display now properly bounded to prevent performance issues
 - Window draggable regions
 
 ### [0.1.0] - 2025-01-XX
 
 **Added**
+
 - Environment information collection and display
 - Device ID service for anonymous usage tracking
 - Usage metrics reporting to Griptape Cloud
@@ -985,17 +1064,20 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - CI checks for format, lint, and typecheck
 
 **Changed**
+
 - Login flow now happens in modal for better UX
 - Logs now grow dynamically to fill available space
 - Release channel wording improvements
 - Colored ANSI logs in engine output
 
 **Fixed**
+
 - Authentication flow when credential storage is disabled
 - DMG S3 upload path alignment with Velopack conventions
 - Double sidebar display issues
 
 **Development**
+
 - Added comprehensive ESLint configuration
 - Integrated Prettier for consistent formatting
 - Added automated CI checks
@@ -1003,6 +1085,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ### [0.0.3] - 2025-10-06
 
 **Added**
+
 - Onboarding wizard for first-time setup
 - Embedded Griptape Nodes editor
 - Velopack auto-update system
@@ -1010,17 +1093,20 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - Credential storage opt-in
 
 **Changed**
+
 - Engine startup now conditional on authentication
 - Authentication persistence is opt-in (no keychain prompts by default)
 - Improved cross-platform compatibility
 
 **Fixed**
+
 - Engine startup hang for unauthenticated users
 - macOS keychain prompts on first launch
 - Windows PowerShell script execution
 - UV installer compatibility issues
 
 **Security**
+
 - Disabled cookie encryption to prevent keychain prompts
 - Added in-memory credential storage option
 - Non-persistent partitions for webviews

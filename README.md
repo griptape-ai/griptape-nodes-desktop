@@ -53,4 +53,3 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 **Made with ❤️ by the Griptape team**
 
 For more information, visit [griptape.ai](https://www.griptape.ai/)
-
