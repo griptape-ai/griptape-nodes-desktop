@@ -271,7 +271,7 @@ const Engine: React.FC = () => {
   LogRow.displayName = 'LogRow'
 
   return (
-    <div className="h-full flex flex-col overflow-hidden max-w-6xl mx-auto">
+    <div className="h-full flex flex-col overflow-hidden mx-auto">
       {/* Compact Status Bar - Sticky */}
       <div className="flex-shrink-0 bg-card border-b border-border px-6 py-3 flex items-center justify-between gap-4 mt-6">
         {/* Left side: Status */}
