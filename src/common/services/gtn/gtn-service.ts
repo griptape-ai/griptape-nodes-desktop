@@ -148,29 +148,38 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       }
     }
 
-    await this.syncLibraries()
-    await this.registerLibraries()
+    // Check if GTN has already been initialized
+    const gtnConfigPath = getGtnConfigPath(this.userDataDir)
+    const isAlreadyInitialized = fs.existsSync(gtnConfigPath)
 
-    try {
-      // Wait for both API key and workspace setup before initializing
-      await this.onboardingService.waitForWorkspaceSetup()
-      await this.initialize({
-        apiKey: await this.authService.waitForApiKey(),
-        workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
-        storageBackend: 'local',
-        advancedLibrary: this.onboardingService.isAdvancedLibraryEnabled(),
-        cloudLibrary: this.onboardingService.isCloudLibraryEnabled()
-      })
-    } catch (error) {
-      logger.error('GTN initialization failed:', error)
+    if (isAlreadyInitialized) {
+      logger.info('GTN already initialized, skipping init')
       if (this.engineService) {
-        this.engineService.addLog(
-          'stderr',
-          `GTN initialization failed: ${error instanceof Error ? error.message : String(error)}`
-        )
-        this.engineService.setError()
+        this.engineService.addLog('stdout', 'GTN already initialized')
       }
-      throw error
+    } else {
+      try {
+        logger.info('Initializing GTN...')
+        // Wait for both API key and workspace setup before initializing
+        await this.onboardingService.waitForWorkspaceSetup()
+        await this.initialize({
+          apiKey: await this.authService.waitForApiKey(),
+          workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
+          storageBackend: 'local',
+          advancedLibrary: this.onboardingService.isAdvancedLibraryEnabled(),
+          cloudLibrary: this.onboardingService.isCloudLibraryEnabled()
+        })
+      } catch (error) {
+        logger.error('GTN initialization failed:', error)
+        if (this.engineService) {
+          this.engineService.addLog(
+            'stderr',
+            `GTN initialization failed: ${error instanceof Error ? error.message : String(error)}`
+          )
+          this.engineService.setError()
+        }
+        throw error
+      }
     }
 
     this.isReady = true
