@@ -197,7 +197,7 @@ app.on('ready', async () => {
     if (contents.getType() === 'webview') {
       // Handle permission requests for camera, microphone, etc.
       contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
-        const allowedPermissions = ['media', 'mediaKeySystem']
+        const allowedPermissions = ['media', 'mediaKeySystem', 'fullscreen']
 
         if (allowedPermissions.includes(permission)) {
           // Verify this is our trusted origin
@@ -222,7 +222,7 @@ app.on('ready', async () => {
 
       // Handle permission checks (runs before requests)
       contents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
-        const allowedPermissions = ['media', 'mediaKeySystem']
+        const allowedPermissions = ['media', 'mediaKeySystem', 'fullscreen']
 
         if (allowedPermissions.includes(permission)) {
           const isGriptapeOrigin =
@@ -1099,6 +1099,14 @@ const setupIPC = () => {
 
   ipcMain.on('app:set-current-page', (event, page: string) => {
     currentPage = page
+  })
+
+  // Handle fullscreen requests from webview
+  ipcMain.handle('window:set-fullscreen', (event, fullscreen: boolean) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) {
+      window.setFullScreen(fullscreen)
+    }
   })
 
   // Engine Service handlers

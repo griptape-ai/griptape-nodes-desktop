@@ -113,11 +113,23 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       }
     }
 
+    const handleEnterFullscreen = () => {
+      console.log('Webview entering fullscreen')
+      window.electronAPI.setFullscreen(true)
+    }
+
+    const handleLeaveFullscreen = () => {
+      console.log('Webview leaving fullscreen')
+      window.electronAPI.setFullscreen(false)
+    }
+
     console.log('Adding event listeners to webview')
     webview.addEventListener('did-finish-load', handleLoad)
     webview.addEventListener('did-fail-load', handleLoadFail)
     webview.addEventListener('new-window', handleNewWindow)
     webview.addEventListener('will-navigate', handleWillNavigate)
+    webview.addEventListener('enter-html-full-screen', handleEnterFullscreen)
+    webview.addEventListener('leave-html-full-screen', handleLeaveFullscreen)
 
     // Also listen for console messages from webview for debugging
     webview.addEventListener('console-message', (e: any) => {
@@ -136,6 +148,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       webview.removeEventListener('did-fail-load', handleLoadFail)
       webview.removeEventListener('new-window', handleNewWindow)
       webview.removeEventListener('will-navigate', handleWillNavigate)
+      webview.removeEventListener('enter-html-full-screen', handleEnterFullscreen)
+      webview.removeEventListener('leave-html-full-screen', handleLeaveFullscreen)
     }
   }, [hasInitialized, preloadPath])
 
@@ -246,6 +260,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
         preload={preloadPath || undefined}
         // @ts-expect-error When boolean, we get `EditorWebview.tsx:236 Received `true` for a non-boolean attribute `allowpopups`.`
         allowpopups="true"
+        allowfullscreen="true"
       />
       {/* eslint-enable react/no-unknown-property */}
     </div>

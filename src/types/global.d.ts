@@ -221,6 +221,7 @@ declare global {
       getPlatform: () => Promise<NodeJS.Platform>
       restartApp: () => Promise<void>
       setCurrentPage: (page: string) => void
+      setFullscreen: (fullscreen: boolean) => Promise<void>
       onNavigateToSettings: (callback: () => void) => void
       removeNavigateToSettings: (callback: () => void) => void
     }
@@ -318,6 +319,7 @@ declare global {
         nodeintegration?: string
         disablewebsecurity?: string
         allowpopups?: string
+        allowfullscreen?: string
         preload?: string
       }
     }

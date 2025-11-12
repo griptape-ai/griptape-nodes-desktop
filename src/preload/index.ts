@@ -147,6 +147,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPlatform: () => ipcRenderer.invoke('get-platform'),
   restartApp: () => ipcRenderer.invoke('app:restart'),
   setCurrentPage: (page: string) => ipcRenderer.send('app:set-current-page', page),
+  setFullscreen: (fullscreen: boolean) => ipcRenderer.invoke('window:set-fullscreen', fullscreen),
   onNavigateToSettings: (callback: () => void) => {
     ipcRenderer.on('navigate-to-settings', callback)
   },
