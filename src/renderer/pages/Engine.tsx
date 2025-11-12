@@ -105,7 +105,8 @@ const Engine: React.FC = () => {
     }, 100)
 
     return () => clearInterval(timer)
-  }, [logs.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget
