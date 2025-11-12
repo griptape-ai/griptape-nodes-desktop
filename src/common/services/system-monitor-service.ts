@@ -31,6 +31,9 @@ export class SystemMonitorService extends EventEmitter {
   private isMonitoring = false
   private cpuModel = 'Unknown'
   private gpuModels: string[] = []
+  private cachedGpuControllers: si.Systeminformation.GraphicsControllerData[] = []
+  private lastGpuCacheTime = 0
+  private readonly GPU_CACHE_DURATION = 30000 // 30 seconds - GPU info rarely changes
 
   constructor() {
     super()
@@ -99,15 +102,40 @@ export class SystemMonitorService extends EventEmitter {
 
       const graphics = await si.graphics()
       if (graphics.controllers && graphics.controllers.length > 0) {
-        // Filter to only discrete GPUs
+        // Filter to only discrete GPUs and cache them
         const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
+        this.cachedGpuControllers = discreteGpus
         this.gpuModels = discreteGpus.map((gpu) => gpu.model || 'Unknown')
+        this.lastGpuCacheTime = Date.now()
         logger.info(
           `SystemMonitorService: Found ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`
         )
       }
     } catch (err) {
       logger.error('SystemMonitorService: Failed to load static info:', err)
+    }
+  }
+
+  private async refreshGpuCacheIfNeeded(): Promise<void> {
+    const now = Date.now()
+    // Only refresh if cache is older than GPU_CACHE_DURATION
+    if (now - this.lastGpuCacheTime > this.GPU_CACHE_DURATION) {
+      try {
+        logger.debug('SystemMonitorService: Refreshing GPU cache')
+        const graphics = await si.graphics()
+        if (graphics.controllers && graphics.controllers.length > 0) {
+          const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
+          this.cachedGpuControllers = discreteGpus
+          this.gpuModels = discreteGpus.map((gpu) => gpu.model || 'Unknown')
+          this.lastGpuCacheTime = now
+          logger.debug(
+            `SystemMonitorService: GPU cache refreshed with ${discreteGpus.length} GPU(s)`
+          )
+        }
+      } catch (err) {
+        logger.error('SystemMonitorService: Failed to refresh GPU cache:', err)
+        // Keep using old cache on error
+      }
     }
   }
 
@@ -207,11 +235,12 @@ export class SystemMonitorService extends EventEmitter {
       // Get GPU info for discrete GPUs only
       const gpuInfos: SystemMetrics['gpus'] = []
       try {
-        const graphics = await si.graphics()
+        // Refresh GPU cache if needed (max once per 30 seconds to avoid excessive PowerShell spawns)
+        await this.refreshGpuCacheIfNeeded()
 
-        if (graphics.controllers && graphics.controllers.length > 0) {
-          // Filter to only discrete GPUs
-          const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
+        if (this.cachedGpuControllers.length > 0) {
+          // Use cached GPU controllers instead of querying again
+          const discreteGpus = this.cachedGpuControllers
 
           // First, try to get metrics from systeminformation
           discreteGpus.forEach((gpu, index) => {
