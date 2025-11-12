@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events'
-import * as si from 'systeminformation'
+import { app } from 'electron'
+import * as os from 'os'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { logger } from '@/main/utils/logger'
@@ -31,6 +32,9 @@ export class SystemMonitorService extends EventEmitter {
   private isMonitoring = false
   private cpuModel = 'Unknown'
   private gpuModels: string[] = []
+  private previousCpuTimes: { total: number; idle: number } | null = null
+  // Cache nvidia-smi path: undefined = not checked yet, null = not found, string = found path
+  private nvidiaSmiPath: string | null | undefined = undefined
 
   constructor() {
     super()
@@ -45,69 +49,45 @@ export class SystemMonitorService extends EventEmitter {
     logger.info('SystemMonitorService: Started')
   }
 
-  private isDiscreteGpu(gpu: si.Systeminformation.GraphicsControllerData): boolean {
-    // Filter out integrated graphics, focusing on clear indicators
-    const model = (gpu.model || '').toLowerCase()
-
-    // 1. Exclude clearly integrated Intel graphics patterns
-    const integratedPatterns = [
-      'intel hd',
-      'intel uhd',
-      'intel iris',
-      'intel(r) hd',
-      'intel(r) uhd',
-      'intel(r) iris'
-    ]
-    if (integratedPatterns.some((pattern) => model.includes(pattern))) {
-      return false
-    }
-
-    // 2. Include GPUs from known discrete GPU vendors
-    // NVIDIA and AMD cards are typically discrete (especially for compute workloads)
-    const discreteVendorPatterns = [
-      'nvidia',
-      'geforce',
-      'quadro',
-      'tesla',
-      'amd',
-      'radeon',
-      'rx ',
-      'vega'
-    ]
-    if (discreteVendorPatterns.some((pattern) => model.includes(pattern))) {
-      return true
-    }
-
-    // 3. Check bus type - exclude onboard (integrated)
-    if (gpu.bus && gpu.bus.toLowerCase() === 'onboard') {
-      return false
-    }
-
-    // 4. If it has dedicated VRAM (not dynamic), likely discrete
-    if (gpu.vram && gpu.vram > 0 && gpu.vramDynamic !== true) {
-      return true
-    }
-
-    // Default to excluding unknown GPUs to be safe
-    return false
-  }
-
   private async loadStaticInfo() {
     try {
-      const cpu = await si.cpu()
-      this.cpuModel = cpu.manufacturer && cpu.brand ? `${cpu.manufacturer} ${cpu.brand}` : 'Unknown'
+      // Get CPU model from Node.js os module
+      const cpus = os.cpus()
+      if (cpus.length > 0) {
+        this.cpuModel = cpus[0].model
+        logger.info(`SystemMonitorService: CPU model: ${this.cpuModel}`)
+      }
 
-      const graphics = await si.graphics()
-      if (graphics.controllers && graphics.controllers.length > 0) {
-        // Filter to only discrete GPUs
-        const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
-        this.gpuModels = discreteGpus.map((gpu) => gpu.model || 'Unknown')
-        logger.info(
-          `SystemMonitorService: Found ${discreteGpus.length} discrete GPU(s) out of ${graphics.controllers.length} total`
-        )
+      // Get GPU info from Electron app.getGPUInfo()
+      const gpuInfo: any = await app.getGPUInfo('basic')
+      if (gpuInfo.gpuDevice && gpuInfo.gpuDevice.length > 0) {
+        this.gpuModels = gpuInfo.gpuDevice.map((device: any) => {
+          // Construct a readable name from vendor and device IDs
+          return `GPU (Vendor: ${device.vendorId}, Device: ${device.deviceId})`
+        })
+        logger.info(`SystemMonitorService: Found ${gpuInfo.gpuDevice.length} GPU(s)`)
+      } else {
+        this.gpuModels = []
+        logger.info('SystemMonitorService: No GPUs detected')
       }
     } catch (err) {
       logger.error('SystemMonitorService: Failed to load static info:', err)
+    }
+  }
+
+  private async findNvidiaSmi(): Promise<string | null> {
+    try {
+      logger.debug('SystemMonitorService: Searching for nvidia-smi executable')
+      const whereCommand = process.platform === 'win32' ? 'where' : 'which'
+      const { stdout } = await execFileAsync(whereCommand, ['nvidia-smi'])
+      const foundPath = stdout.trim().split('\n')[0]
+      logger.info(`SystemMonitorService: Found nvidia-smi at: ${foundPath}`)
+      return foundPath
+    } catch (_err) {
+      logger.info(
+        'SystemMonitorService: nvidia-smi not found in PATH, GPU metrics will be unavailable'
+      )
+      return null
     }
   }
 
@@ -118,10 +98,23 @@ export class SystemMonitorService extends EventEmitter {
       memoryTotal: number
     }>
   > {
+    // If we've already determined nvidia-smi is not available, skip immediately
+    if (this.nvidiaSmiPath === null) {
+      return []
+    }
+
+    // If we haven't checked for nvidia-smi yet, find it and cache the result
+    if (this.nvidiaSmiPath === undefined) {
+      this.nvidiaSmiPath = await this.findNvidiaSmi()
+      if (this.nvidiaSmiPath === null) {
+        return []
+      }
+    }
+
     try {
-      logger.debug('SystemMonitorService: Executing nvidia-smi command')
-      // Try to execute nvidia-smi with query format
-      const { stdout } = await execFileAsync('nvidia-smi', [
+      logger.debug(`SystemMonitorService: Executing nvidia-smi command at: ${this.nvidiaSmiPath}`)
+      // Use the cached full path to nvidia-smi
+      const { stdout } = await execFileAsync(this.nvidiaSmiPath, [
         '--query-gpu=utilization.gpu,memory.used,memory.total',
         '--format=csv,noheader,nounits'
       ])
@@ -140,7 +133,9 @@ export class SystemMonitorService extends EventEmitter {
         }
       })
     } catch (err) {
-      logger.warn('SystemMonitorService: nvidia-smi failed:', err)
+      logger.warn('SystemMonitorService: nvidia-smi execution failed:', err)
+      // Cache the failure to prevent future attempts
+      this.nvidiaSmiPath = null
       return []
     }
   }
@@ -188,112 +183,77 @@ export class SystemMonitorService extends EventEmitter {
     }
   }
 
+  private calculateCpuUsage(): number {
+    const cpus = os.cpus()
+    let totalIdle = 0
+    let totalTick = 0
+
+    cpus.forEach((cpu) => {
+      for (const type in cpu.times) {
+        totalTick += cpu.times[type as keyof typeof cpu.times]
+      }
+      totalIdle += cpu.times.idle
+    })
+
+    const currentTimes = { total: totalTick, idle: totalIdle }
+
+    if (this.previousCpuTimes === null) {
+      // First call, save times and return 0
+      this.previousCpuTimes = currentTimes
+      return 0
+    }
+
+    const totalDiff = currentTimes.total - this.previousCpuTimes.total
+    const idleDiff = currentTimes.idle - this.previousCpuTimes.idle
+
+    // Update previous times for next call
+    this.previousCpuTimes = currentTimes
+
+    // Calculate usage percentage
+    const usage = 100 - (100 * idleDiff) / totalDiff
+    return Math.max(0, Math.min(100, usage)) // Clamp between 0-100
+  }
+
   async getMetrics(): Promise<SystemMetrics> {
     try {
-      // Get CPU usage
-      const cpuLoad = await si.currentLoad()
-      const cpuUsage = cpuLoad.currentLoad || 0
+      // Get CPU usage using Node.js os module
+      const cpuUsage = this.calculateCpuUsage()
 
-      // Get memory info
-      const mem = await si.mem()
+      // Get memory info using Node.js os module
+      const totalMem = os.totalmem()
+      const freeMem = os.freemem()
+      const usedMem = totalMem - freeMem
 
-      // Use 'active' memory for more accurate usage across all platforms
-      // 'active' represents memory actually being used by applications
-      // 'used' includes buffers/cache which is reclaimable, making it misleading
-      const memUsedGB = mem.active / (1024 * 1024 * 1024)
-      const memTotalGB = mem.total / (1024 * 1024 * 1024)
-      const memPercentage = (mem.active / mem.total) * 100
+      const memUsedGB = usedMem / (1024 * 1024 * 1024)
+      const memTotalGB = totalMem / (1024 * 1024 * 1024)
+      const memPercentage = (usedMem / totalMem) * 100
 
-      // Get GPU info for discrete GPUs only
-      const gpuInfos: SystemMetrics['gpus'] = []
-      try {
-        const graphics = await si.graphics()
-
-        if (graphics.controllers && graphics.controllers.length > 0) {
-          // Filter to only discrete GPUs
-          const discreteGpus = graphics.controllers.filter((gpu) => this.isDiscreteGpu(gpu))
-
-          // First, try to get metrics from systeminformation
-          discreteGpus.forEach((gpu, index) => {
-            // GPU utilization might not be available on all platforms
-            const gpuUsage =
-              gpu.utilizationGpu !== undefined && gpu.utilizationGpu !== null
-                ? gpu.utilizationGpu
-                : -1
-
-            const memUsed =
-              gpu.memoryUsed !== undefined && gpu.memoryUsed !== null
-                ? gpu.memoryUsed / 1024 // Convert MB to GB
-                : -1
-
-            const memTotal =
-              gpu.vram !== undefined && gpu.vram !== null
-                ? gpu.vram / 1024 // Convert MB to GB
-                : -1
-
-            logger.debug(
-              `SystemMonitorService: GPU ${index} (${gpu.model}): usage=${gpuUsage}, memUsed=${memUsed}, memTotal=${memTotal}`
-            )
-
-            gpuInfos.push({
-              model: this.gpuModels[index] || 'Unknown',
-              usage: gpuUsage,
-              memory: {
-                used: memUsed,
-                total: memTotal
-              }
-            })
-          })
-
-          // If utilization is unavailable (-1) on Windows, try nvidia-smi as fallback
-          const hasUnavailableMetrics = gpuInfos.some((gpu) => gpu.usage === -1)
-
-          if (hasUnavailableMetrics && process.platform === 'win32') {
-            logger.info('SystemMonitorService: Attempting nvidia-smi fallback for GPU metrics')
-            const nvidiaSmiMetrics = await this.getNvidiaSmiMetrics()
-            logger.debug(
-              `SystemMonitorService: nvidia-smi returned ${nvidiaSmiMetrics.length} GPUs`
-            )
-
-            if (nvidiaSmiMetrics.length > 0) {
-              // nvidia-smi only reports NVIDIA GPUs, but systeminformation reports all GPUs
-              // Find NVIDIA GPUs and match them with nvidia-smi data
-              let nvidiaIndex = 0
-              gpuInfos.forEach((gpuInfo, index) => {
-                // Check if this is an NVIDIA GPU by model name
-                const isNvidiaGpu = gpuInfo.model.toLowerCase().includes('nvidia')
-
-                if (isNvidiaGpu && nvidiaIndex < nvidiaSmiMetrics.length) {
-                  const smiMetric = nvidiaSmiMetrics[nvidiaIndex]
-                  logger.debug(
-                    `SystemMonitorService: Matching GPU ${index} (${gpuInfo.model}) with nvidia-smi GPU ${nvidiaIndex}`
-                  )
-                  logger.debug(
-                    `SystemMonitorService: nvidia-smi data: utilization=${smiMetric.utilization}, memUsed=${smiMetric.memoryUsed}, memTotal=${smiMetric.memoryTotal}`
-                  )
-
-                  // Only override if systeminformation data was unavailable
-                  if (gpuInfo.usage === -1) {
-                    gpuInfo.usage = smiMetric.utilization
-                    logger.debug(
-                      `SystemMonitorService: Updated GPU ${index} usage to ${smiMetric.utilization}`
-                    )
-                  }
-                  if (gpuInfo.memory.used === -1) {
-                    gpuInfo.memory.used = smiMetric.memoryUsed
-                  }
-                  if (gpuInfo.memory.total === -1) {
-                    gpuInfo.memory.total = smiMetric.memoryTotal
-                  }
-
-                  nvidiaIndex++
-                }
-              })
-            }
-          }
+      // Create GPU info array with static data
+      const gpuInfos: SystemMetrics['gpus'] = this.gpuModels.map((model) => ({
+        model,
+        usage: -1, // Will be updated by nvidia-smi if available
+        memory: {
+          used: -1, // Will be updated by nvidia-smi if available
+          total: -1 // Will be updated by nvidia-smi if available
         }
-      } catch (err) {
-        logger.debug('SystemMonitorService: GPU info not available:', err)
+      }))
+
+      // Try to get real-time GPU metrics from nvidia-smi
+      if (gpuInfos.length > 0) {
+        const nvidiaSmiMetrics = await this.getNvidiaSmiMetrics()
+        if (nvidiaSmiMetrics.length > 0) {
+          // Match nvidia-smi results to GPUs by index
+          nvidiaSmiMetrics.forEach((smiMetric, index) => {
+            if (index < gpuInfos.length) {
+              gpuInfos[index].usage = smiMetric.utilization
+              gpuInfos[index].memory.used = smiMetric.memoryUsed
+              gpuInfos[index].memory.total = smiMetric.memoryTotal
+            }
+          })
+          logger.debug(
+            `SystemMonitorService: Updated ${nvidiaSmiMetrics.length} GPU(s) with nvidia-smi data`
+          )
+        }
       }
 
       return {
