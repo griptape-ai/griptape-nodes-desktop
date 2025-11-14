@@ -157,6 +157,9 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       if (this.engineService) {
         this.engineService.addLog('stdout', 'GTN already initialized')
       }
+      // Ensure engines.json exists even if GTN was already initialized
+      // This fixes the regression where engine names lost hostname after the init-skip change
+      this.ensureEnginesJson()
     } else {
       try {
         logger.info('Initializing GTN...')
@@ -257,16 +260,20 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     })
   }
 
-  async initialize(options: {
-    apiKey?: string
-    workspaceDirectory?: string
-    storageBackend?: 'local' | 'gtc'
-    bucketName?: string
-    advancedLibrary?: boolean
-    cloudLibrary?: boolean
-  }): Promise<void> {
-    // Write engines.json with friendly engine name before running gtn init
+  /**
+   * Ensures engines.json exists with the engine name including hostname.
+   * This is called both during initialization and for existing installations
+   * to fix the regression where engine names lost hostname information.
+   */
+  private ensureEnginesJson(): void {
     const enginesJsonPath = getEnginesJsonPath(this.userDataDir)
+
+    // Only create if it doesn't exist to preserve existing engine IDs
+    if (fs.existsSync(enginesJsonPath)) {
+      logger.info('engines.json already exists, preserving existing configuration')
+      return
+    }
+
     const hostname = os.hostname()
     const engineName = `Griptape Nodes Desktop - ${hostname}`
 
@@ -288,6 +295,18 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     fs.mkdirSync(path.dirname(enginesJsonPath), { recursive: true })
     fs.writeFileSync(enginesJsonPath, JSON.stringify(enginesJson, null, 2), 'utf8')
     logger.info(`Created engines.json with engine name: ${engineName}`)
+  }
+
+  async initialize(options: {
+    apiKey?: string
+    workspaceDirectory?: string
+    storageBackend?: 'local' | 'gtc'
+    bucketName?: string
+    advancedLibrary?: boolean
+    cloudLibrary?: boolean
+  }): Promise<void> {
+    // Ensure engines.json exists with friendly engine name before running gtn init
+    this.ensureEnginesJson()
 
     const args = ['init', '--no-interactive']
 
