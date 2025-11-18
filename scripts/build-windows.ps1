@@ -17,9 +17,11 @@ npm run package
 if ($Architecture -eq "arm64") {
     $Runtime = "win-arm64"
     $PackagedDir = "out\Griptape Nodes-win32-arm64"
+    $Framework = "vcredist143-arm64"
 } else {
     $Runtime = "win-x64"
     $PackagedDir = "out\Griptape Nodes-win32-x64"
+    $Framework = "vcredist143-x64"
 }
 
 $AppDir = $PackagedDir
@@ -56,6 +58,7 @@ if ($env:AZURE_KEY_VAULT_CERTIFICATE_NAME) {
         --outputDir "Releases" `
         --runtime "$Runtime" `
         --channel "$Channel" `
+        --framework "$Framework" `
         --verbose `
         --signTemplate "AzureSignTool sign -s -kvu $env:AZURE_KEY_VAULT_URI -kvc $env:AZURE_KEY_VAULT_CERTIFICATE_NAME -kvi $env:AZURE_KEY_VAULT_CLIENT_ID -kvs $env:AZURE_KEY_VAULT_CLIENT_SECRET -kvt $env:AZURE_KEY_VAULT_TENANT_ID -tr http://timestamp.globalsign.com/tsa/r6advanced1 -td sha256 -fd sha256 {{file}}"
 
@@ -70,7 +73,8 @@ if ($env:AZURE_KEY_VAULT_CERTIFICATE_NAME) {
         --icon "$IconPath" `
         --outputDir "Releases" `
         --runtime "$Runtime" `
-        --channel "$Channel"
+        --channel "$Channel" `
+        --framework "$Framework"
 }
 
 Write-Host "Velopack build completed for $Runtime"

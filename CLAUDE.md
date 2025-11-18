@@ -251,3 +251,18 @@ Electron Forge handles packaging:
 3. Platform-specific makers: DMG (macOS), ZIP, DEB, RPM
 4. Code signing and notarization only in CI (GitHub Actions)
 5. Velopack generates update packages
+
+### Windows Dependencies
+
+The application includes native Node modules compiled with MSVC that require the **Visual C++ 2015-2022 Runtime**. The build process automatically handles this dependency:
+
+- **x64 builds**: Velopack includes `vcredist143-x64` framework
+- **ARM64 builds**: Velopack includes `vcredist143-arm64` framework
+- If the runtime is not installed on the user's system, Velopack will prompt for installation before the app can run
+- This check also occurs before applying updates to ensure compatibility
+
+**Native modules requiring VC++ Runtime**:
+- `velopack_nodeffi_win_*.node` - Velopack native bindings for auto-updates
+- Electron's native modules (e.g., safeStorage for credential encryption)
+
+This is configured in `scripts/build-windows.ps1` via the `--framework` flag passed to `vpk pack`.
