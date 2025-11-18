@@ -262,6 +262,7 @@ The application includes native Node modules compiled with MSVC that require the
 - This check also occurs before applying updates to ensure compatibility
 
 **Native modules requiring VC++ Runtime**:
+
 - `velopack_nodeffi_win_*.node` - Velopack native bindings for auto-updates
 - Electron's native modules (e.g., safeStorage for credential encryption)
 
