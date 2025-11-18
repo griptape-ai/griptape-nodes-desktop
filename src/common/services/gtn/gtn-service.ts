@@ -412,6 +412,10 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       return
     }
 
+    logger.info('Syncing libraries with current engine version')
+    if (this.engineService) {
+      this.engineService.addLog('stdout', 'Syncing libraries with current engine version...')
+    }
     await this.runGtn(['libraries', 'sync'], { wait: true })
   }
 
@@ -470,7 +474,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     options?: { forward_logs?: boolean; wait?: boolean }
   ): Promise<ChildProcess> {
     const wait = options?.wait || false
-    const forward_logs = options?.forward_logs || false
+    const forward_logs = options?.forward_logs || true
 
     // Hack to ensure executable is available by the time login is complete
     // and the UI tries to use it.
@@ -522,12 +526,19 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     logger.info(`Switching engine channel to: ${channel}`)
     await this.waitForReady()
 
+    if (this.engineService) {
+      this.engineService.addLog('stdout', `Starting channel switch to ${channel}...`)
+    }
+
     const uvExecutablePath = await this.uvService.getUvExecutablePath()
     const env = getEnv(this.userDataDir)
     const cwd = getCwd(this.userDataDir)
 
     // Uninstall current version
     logger.info('Uninstalling current GTN version')
+    if (this.engineService) {
+      this.engineService.addLog('stdout', 'Uninstalling current GTN version...')
+    }
     const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
       env,
       cwd
@@ -537,26 +548,47 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       uninstallProcess.on('exit', (code) => {
         if (code === 0) {
           logger.info('Successfully uninstalled GTN')
+          if (this.engineService) {
+            this.engineService.addLog('stdout', 'Successfully uninstalled previous GTN version')
+          }
           resolve()
         } else {
           logger.warn(`Uninstall returned exit code ${code}, continuing with install`)
+          if (this.engineService) {
+            this.engineService.addLog(
+              'stdout',
+              'Previous version uninstalled with warnings, continuing...'
+            )
+          }
           resolve() // Continue even if uninstall fails
         }
       })
       uninstallProcess.on('error', (error) => {
         logger.warn('Uninstall error, continuing with install:', error)
+        if (this.engineService) {
+          this.engineService.addLog(
+            'stdout',
+            'Previous version not found or already uninstalled, proceeding...'
+          )
+        }
         resolve() // Continue even if uninstall fails
       })
     })
 
     // Install new channel version
     logger.info(`Installing GTN from ${channel} channel`)
+    if (this.engineService) {
+      this.engineService.addLog('stdout', `Installing GTN from ${channel} channel...`)
+    }
     await installGtn(this.userDataDir, uvExecutablePath, channel)
     await this.syncLibraries()
 
     // Refresh cached executable path after reinstallation
     this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
     logger.info(`Successfully switched to ${channel} channel`)
+    if (this.engineService) {
+      this.engineService.addLog('stdout', `Successfully switched to ${channel} channel`)
+    }
   }
 
   async forceReinstallGtn(): Promise<void> {
