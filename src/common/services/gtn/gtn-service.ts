@@ -403,15 +403,6 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
    * Sync libraries with current engine version
    */
   async syncLibraries() {
-    let libraryPaths = await this.findLibraryConfigPaths()
-    if (libraryPaths.length > 0) {
-      // Skip sync if already installed.
-      // Ideally we'd force retry installation if a library
-      // is FLAWED or UNUSABLE. But that's for later.
-      logger.info(`GtnService: SKIPPING SYNC, libraryPaths: "${libraryPaths}"`)
-      return
-    }
-
     logger.info('Syncing libraries with current engine version')
     if (this.engineService) {
       this.engineService.addLog('stdout', 'Syncing libraries with current engine version...')
