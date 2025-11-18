@@ -319,6 +319,9 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       return
     }
 
+    // Ensure app is ready before creating BrowserWindow
+    await app.whenReady()
+
     return new Promise((resolve, reject) => {
       this.authResolve = resolve
       this.authReject = reject
