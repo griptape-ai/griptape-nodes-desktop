@@ -197,7 +197,7 @@ app.on('ready', async () => {
     if (contents.getType() === 'webview') {
       // Handle permission requests for camera, microphone, etc.
       contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
-        const allowedPermissions = ['media', 'mediaKeySystem', 'fullscreen']
+        const allowedPermissions = ['media', 'mediaKeySystem', 'fullscreen', 'clipboard-sanitized-write', 'clipboard-read']
 
         if (allowedPermissions.includes(permission)) {
           // Verify this is our trusted origin
@@ -222,7 +222,7 @@ app.on('ready', async () => {
 
       // Handle permission checks (runs before requests)
       contents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
-        const allowedPermissions = ['media', 'mediaKeySystem', 'fullscreen']
+        const allowedPermissions = ['media', 'mediaKeySystem', 'fullscreen', 'clipboard-sanitized-write', 'clipboard-read']
 
         if (allowedPermissions.includes(permission)) {
           const isGriptapeOrigin =
