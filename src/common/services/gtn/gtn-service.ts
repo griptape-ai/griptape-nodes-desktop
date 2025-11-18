@@ -510,6 +510,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       logger.info('Upgrading nightly channel - reinstalling from GitHub')
       const uvExecutablePath = await this.uvService.getUvExecutablePath()
       await installGtn(this.userDataDir, uvExecutablePath, 'nightly')
+      await this.syncLibraries()
     } else {
       // For stable, use gtn self update
       logger.info('Running gtn self update')
@@ -551,6 +552,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     // Install new channel version
     logger.info(`Installing GTN from ${channel} channel`)
     await installGtn(this.userDataDir, uvExecutablePath, channel)
+    await this.syncLibraries()
 
     // Refresh cached executable path after reinstallation
     this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
@@ -602,6 +604,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     // Reinstall with force flags
     logger.info(`Reinstalling GTN from ${channel} channel`)
     await installGtn(this.userDataDir, uvExecutablePath, channel)
+    await this.syncLibraries()
 
     // Refresh cached executable path
     this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
