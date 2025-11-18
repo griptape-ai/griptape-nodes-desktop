@@ -503,42 +503,17 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     logger.info('gtn service upgradeGtn start')
     await this.waitForReady()
 
-    const uvExecutablePath = await this.uvService.getUvExecutablePath()
-    const env = getEnv(this.userDataDir)
-    const cwd = getCwd(this.userDataDir)
     const channel = this.settingsService.getEngineChannel()
 
     if (channel === 'nightly') {
       // For nightly, we need to reinstall from GitHub to get the latest
       logger.info('Upgrading nightly channel - reinstalling from GitHub')
+      const uvExecutablePath = await this.uvService.getUvExecutablePath()
       await installGtn(this.userDataDir, uvExecutablePath, 'nightly')
     } else {
-      // For stable, use uv tool upgrade
-      logger.info('Running uv tool upgrade griptape-nodes')
-      const upgradeProcess = spawn(uvExecutablePath, ['tool', 'upgrade', 'griptape-nodes'], {
-        env,
-        cwd
-      })
-
-      attachOutputForwarder(upgradeProcess, { logPrefix: 'UPGRADE_GTN' })
-
-      // Wait for upgrade to complete
-      await new Promise<void>((resolve, reject) => {
-        upgradeProcess.on('exit', (code) => {
-          if (code === 0) {
-            logger.info('gtn service upgradeGtn completed successfully')
-            resolve()
-          } else {
-            const error = new Error(`GTN upgrade failed with exit code ${code}`)
-            logger.error('gtn service upgradeGtn failed:', error)
-            reject(error)
-          }
-        })
-        upgradeProcess.on('error', (error) => {
-          logger.error('gtn service upgradeGtn error:', error)
-          reject(error)
-        })
-      })
+      // For stable, use gtn self update
+      logger.info('Running gtn self update')
+      await this.selfUpdate()
     }
   }
 
