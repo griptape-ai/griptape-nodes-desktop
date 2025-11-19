@@ -73,7 +73,14 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
   useEffect(() => {
     const webview = webviewRef.current
 
-    console.log('EditorWebview useEffect running, webview:', webview, 'preloadPath:', preloadPath, 'editorUrl:', editorUrl)
+    console.log(
+      'EditorWebview useEffect running, webview:',
+      webview,
+      'preloadPath:',
+      preloadPath,
+      'editorUrl:',
+      editorUrl
+    )
 
     if (!webview || hasInitialized || !preloadPath || !editorUrl) {
       console.log(
