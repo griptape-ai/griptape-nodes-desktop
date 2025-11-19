@@ -10,6 +10,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
   const [preloadPath, setPreloadPath] = useState<string | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [editorUrl, setEditorUrl] = useState<string | null>(null)
   const webviewRef = useRef<HTMLWebViewElement>(null)
 
   // Check auth before doing anything else
@@ -39,35 +40,51 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     checkAuth()
   }, [])
 
-  // Get the webview preload path only after auth is ready
+  // Get the webview preload path and editor URL only after auth is ready
   useEffect(() => {
     if (!authReady) {
       return
     }
 
-    try {
-      const path = window.electron.getWebviewPreloadPath()
-      console.log('Got webview preload path:', path)
-      setPreloadPath(path)
-    } catch (err) {
-      console.error('Failed to get webview preload path:', err)
-      setError('Failed to initialize editor')
+    const loadEditorConfig = async () => {
+      try {
+        const path = window.electron.getWebviewPreloadPath()
+        console.log('Got webview preload path:', path)
+        setPreloadPath(path)
+
+        // Get the configured editor channel
+        const channel = await window.settingsAPI.getEditorChannel()
+        const baseUrl =
+          channel === 'nightly'
+            ? 'https://app-nightly.nodes.griptape.ai'
+            : 'https://app.nodes.griptape.ai'
+        const url = `${baseUrl}?embedded=true`
+        console.log('Editor URL set to:', url, '(channel:', channel, ')')
+        setEditorUrl(url)
+      } catch (err) {
+        console.error('Failed to get webview preload path or editor config:', err)
+        setError('Failed to initialize editor')
+      }
     }
+
+    loadEditorConfig()
   }, [authReady])
 
   useEffect(() => {
     const webview = webviewRef.current
 
-    console.log('EditorWebview useEffect running, webview:', webview, 'preloadPath:', preloadPath)
+    console.log('EditorWebview useEffect running, webview:', webview, 'preloadPath:', preloadPath, 'editorUrl:', editorUrl)
 
-    if (!webview || hasInitialized || !preloadPath) {
+    if (!webview || hasInitialized || !preloadPath || !editorUrl) {
       console.log(
         'Skipping initialization - webview:',
         !!webview,
         'hasInitialized:',
         hasInitialized,
         'preloadPath:',
-        preloadPath
+        preloadPath,
+        'editorUrl:',
+        editorUrl
       )
       return
     }
@@ -95,11 +112,12 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       const url = e.url
 
       try {
-        // Check if URL is external (different domain from nodes.griptape.ai or app.nodes.griptape.ai)
+        // Check if URL is external (different domain from nodes.griptape.ai, app.nodes.griptape.ai, or app-nightly.nodes.griptape.ai)
         const urlObj = new URL(url)
         const isExternal =
           !urlObj.hostname.includes('nodes.griptape.ai') &&
-          !urlObj.hostname.includes('app.nodes.griptape.ai')
+          !urlObj.hostname.includes('app.nodes.griptape.ai') &&
+          !urlObj.hostname.includes('app-nightly.nodes.griptape.ai')
 
         if (isExternal) {
           e.preventDefault()
@@ -137,8 +155,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     })
 
     // NOW set the src to start loading (after listeners are attached)
-    console.log('Setting webview src to trigger load')
-    webview.src = 'https://app.nodes.griptape.ai?embedded=true'
+    console.log('Setting webview src to trigger load:', editorUrl)
+    webview.src = editorUrl
 
     setHasInitialized(true)
 
@@ -151,9 +169,9 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       webview.removeEventListener('enter-html-full-screen', handleEnterFullscreen)
       webview.removeEventListener('leave-html-full-screen', handleLeaveFullscreen)
     }
-  }, [hasInitialized, preloadPath])
+  }, [hasInitialized, preloadPath, editorUrl])
 
-  // Listen for reload command from main process (triggered by CMD-R menu accelerator)
+  // Listen for reload command from main process (triggered by CMD-R menu accelerator or channel change)
   useEffect(() => {
     const webview = webviewRef.current
 
@@ -161,9 +179,28 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       return
     }
 
-    const handleReload = () => {
+    const handleReload = async () => {
       console.log('Reloading editor webview')
-      webview.reload()
+
+      // Re-fetch the editor channel in case it changed
+      try {
+        const channel = await window.settingsAPI.getEditorChannel()
+        const baseUrl =
+          channel === 'nightly'
+            ? 'https://app-nightly.nodes.griptape.ai'
+            : 'https://app.nodes.griptape.ai'
+        const url = `${baseUrl}?embedded=true`
+
+        console.log('Reloading with new URL:', url, '(channel:', channel, ')')
+
+        // Update the URL state and navigate to the new URL
+        setEditorUrl(url)
+        webview.src = url
+      } catch (err) {
+        console.error('Failed to reload with updated channel:', err)
+        // Fallback to regular reload
+        webview.reload()
+      }
     }
 
     window.editorAPI.onReloadWebview(handleReload)
@@ -220,8 +257,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     )
   }
 
-  // Only render webview if auth is ready and we have preload path
-  if (!authReady || !preloadPath) {
+  // Only render webview if auth is ready and we have preload path and editor URL
+  if (!authReady || !preloadPath || !editorUrl) {
     return (
       <div
         style={{

@@ -1354,6 +1354,16 @@ const setupIPC = () => {
     return ['stable', 'nightly']
   })
 
+  // Editor channel handlers
+  ipcMain.handle('settings:get-editor-channel', () => {
+    return settingsService.getEditorChannel()
+  })
+
+  ipcMain.handle('settings:set-editor-channel', (event, channel: 'stable' | 'nightly') => {
+    settingsService.setEditorChannel(channel)
+    return { success: true }
+  })
+
   // Update service handlers
   ipcMain.handle('update:check', async () => {
     const focusedWindow = BrowserWindow.getFocusedWindow()

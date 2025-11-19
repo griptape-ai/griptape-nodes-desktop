@@ -41,4 +41,13 @@ export class SettingsService {
     this.store.set('channelSwitchInProgress', inProgress)
     logger.info('SettingsService: channelSwitchInProgress set to', inProgress)
   }
+
+  getEditorChannel(): 'stable' | 'nightly' {
+    return this.store.get('editorChannel', 'stable')
+  }
+
+  setEditorChannel(channel: 'stable' | 'nightly'): void {
+    this.store.set('editorChannel', channel)
+    logger.info('SettingsService: editorChannel set to', channel)
+  }
 }
