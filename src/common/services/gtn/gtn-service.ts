@@ -215,10 +215,15 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   async selfUpdate(): Promise<void> {
-    logger.info('Running gtn self update')
+    logger.info('Running uv tool upgrade griptape-nodes')
 
-    // Execute gtn self update and forward logs to engine service if available
-    const child = await this.runGtn(['self', 'update'], { wait: false })
+    // Get UV executable and environment configuration
+    const uvExecutablePath = await this.uvService.getUvExecutablePath()
+    const env = getEnv(this.userDataDir)
+    const cwd = getCwd(this.userDataDir)
+
+    // Spawn UV tool upgrade process
+    const child = spawn(uvExecutablePath, ['tool', 'upgrade', 'griptape-nodes'], { env, cwd })
 
     // Forward logs to engine service for UI display
     if (this.engineService) {
@@ -245,19 +250,22 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     await new Promise<void>((resolve, reject) => {
       child.on('exit', (code) => {
         if (code === 0) {
-          logger.info('gtn self update completed successfully')
+          logger.info('uv tool upgrade griptape-nodes completed successfully')
           resolve()
         } else {
-          const error = new Error(`gtn self update failed with exit code ${code}`)
-          logger.error('gtn self update failed:', error)
+          const error = new Error(`uv tool upgrade failed with exit code ${code}`)
+          logger.error('uv tool upgrade failed:', error)
           reject(error)
         }
       })
       child.on('error', (error) => {
-        logger.error('gtn self update error:', error)
+        logger.error('uv tool upgrade error:', error)
         reject(error)
       })
     })
+
+    // Sync libraries after successful upgrade
+    await this.syncLibraries()
   }
 
   /**

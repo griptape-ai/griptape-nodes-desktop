@@ -804,6 +804,12 @@ async function reinstallFullStack(): Promise<void> {
 
     engineService.addLog('stdout', 'Full stack reinstall completed successfully')
     logger.info('Full stack reinstall completed successfully')
+
+    // Start the engine automatically
+    logger.info('Starting engine...')
+    engineService.addLog('stdout', 'Starting engine...')
+    await engineService.startEngine()
+    engineService.addLog('stdout', 'Engine started successfully')
   } catch (error) {
     logger.error('Full stack reinstall failed:', error)
     engineService.addLog(
