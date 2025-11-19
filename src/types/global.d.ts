@@ -276,6 +276,10 @@ declare global {
       ) => Promise<{ success: boolean; error?: string }>
       getAvailableEngineChannels: () => Promise<string[]>
       isChannelSwitchInProgress: () => Promise<boolean>
+      getEditorChannel: () => Promise<'stable' | 'nightly'>
+      setEditorChannel: (
+        channel: 'stable' | 'nightly'
+      ) => Promise<{ success: boolean; error?: string }>
     }
     systemMonitorAPI: {
       getMetrics: () => Promise<{

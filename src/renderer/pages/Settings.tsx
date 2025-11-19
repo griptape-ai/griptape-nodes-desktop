@@ -43,6 +43,7 @@ const Settings: React.FC = () => {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [showReconfigureModal, setShowReconfigureModal] = useState(false)
   const [reconfiguringEngine, setReconfiguringEngine] = useState(false)
+  const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly'>('stable')
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -90,6 +91,7 @@ const Settings: React.FC = () => {
     loadUpdateInfo()
     loadSystemMonitorSetting()
     loadEngineChannel()
+    loadEditorChannel()
     window.griptapeAPI.refreshConfig()
 
     const handleWorkspaceChanged = (event: any, directory: string) => {
@@ -141,6 +143,15 @@ const Settings: React.FC = () => {
       setEngineChannel(channel)
     } catch (err) {
       console.error('Failed to load engine channel:', err)
+    }
+  }
+
+  const loadEditorChannel = async () => {
+    try {
+      const channel = await window.settingsAPI.getEditorChannel()
+      setEditorChannel(channel)
+    } catch (err) {
+      console.error('Failed to load editor channel:', err)
     }
   }
 
@@ -363,6 +374,20 @@ const Settings: React.FC = () => {
       setIsUpgradePending(false)
     } finally {
       setSwitchingChannel(false)
+    }
+  }
+
+  const handleEditorChannelChange = async (newChannel: 'stable' | 'nightly') => {
+    try {
+      const result = await window.settingsAPI.setEditorChannel(newChannel)
+      if (result && result.success) {
+        setEditorChannel(newChannel)
+        // Trigger a reload of the editor webview to apply the new channel
+        window.editorAPI.requestReloadWebview()
+      }
+    } catch (err) {
+      console.error('Failed to switch editor channel:', err)
+      alert('Failed to switch editor channel')
     }
   }
 
@@ -718,6 +743,32 @@ const Settings: React.FC = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Editor Channel Section */}
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <h2 className="text-lg font-semibold mb-4">Editor Channel</h2>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-2">Editor Release Channel</p>
+              <select
+                value={editorChannel}
+                onChange={(e) => handleEditorChannelChange(e.target.value as 'stable' | 'nightly')}
+                className={cn(
+                  'w-full px-3 py-2 text-sm rounded-md',
+                  'bg-background border border-input',
+                  'focus:outline-none focus:ring-2 focus:ring-ring'
+                )}
+              >
+                <option value="stable">Stable</option>
+                <option value="nightly">Nightly</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Stable: Production editor with stable features. Nightly: Preview editor with latest
+                features (may be unstable). The editor will reload when you change this setting.
+              </p>
             </div>
           </div>
         </div>

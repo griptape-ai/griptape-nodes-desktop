@@ -198,7 +198,10 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   setEngineChannel: (channel: 'stable' | 'nightly') =>
     ipcRenderer.invoke('settings:set-engine-channel', channel),
   getAvailableEngineChannels: () => ipcRenderer.invoke('settings:get-available-engine-channels'),
-  isChannelSwitchInProgress: () => ipcRenderer.invoke('settings:is-channel-switch-in-progress')
+  isChannelSwitchInProgress: () => ipcRenderer.invoke('settings:is-channel-switch-in-progress'),
+  getEditorChannel: () => ipcRenderer.invoke('settings:get-editor-channel'),
+  setEditorChannel: (channel: 'stable' | 'nightly') =>
+    ipcRenderer.invoke('settings:set-editor-channel', channel)
 })
 
 contextBridge.exposeInMainWorld('systemMonitorAPI', {
