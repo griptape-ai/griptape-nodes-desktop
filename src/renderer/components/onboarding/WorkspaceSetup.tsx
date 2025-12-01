@@ -62,16 +62,16 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
               <Folder className="w-8 h-8 text-purple-400" />
             </div>
           </div>
-          <h2 className="text-3xl font-semibold text-white">Initialize Engine</h2>
-          <p className="text-gray-400 text-lg">
+          <h2 className="text-3xl font-semibold text-foreground">Initialize Engine</h2>
+          <p className="text-muted-foreground text-lg">
             Configure workspace location and optional libraries
           </p>
         </div>
 
         {/* Workspace directory selector */}
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-300">Workspace Directory</label>
+            <label className="text-sm font-medium text-foreground">Workspace Directory</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -79,8 +79,8 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
                 readOnly
                 className={cn(
                   'flex-1 px-4 py-3 text-sm rounded-md',
-                  'bg-gray-900 border border-gray-700',
-                  'text-gray-300 font-mono'
+                  'bg-background border border-input',
+                  'text-foreground font-mono'
                 )}
                 placeholder="Select a directory"
               />
@@ -97,7 +97,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
             </div>
           </div>
 
-          <div className="space-y-2 text-sm text-gray-400">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <p className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
               <span>This is where your workflow files will be saved</span>
@@ -114,10 +114,10 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
         </div>
 
         {/* Library options */}
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-300">Optional Libraries</label>
-            <p className="text-xs text-gray-400">
+            <label className="text-sm font-medium text-foreground">Optional Libraries</label>
+            <p className="text-xs text-muted-foreground">
               Install additional libraries to extend Griptape Nodes capabilities
             </p>
           </div>
@@ -129,16 +129,16 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
                 checked={advancedLibrary}
                 onChange={(e) => setAdvancedLibrary(e.target.checked)}
                 className={cn(
-                  'mt-0.5 w-4 h-4 rounded border-gray-600',
+                  'mt-0.5 w-4 h-4 rounded border-input',
                   'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
-                  'bg-gray-900 cursor-pointer'
+                  'bg-background cursor-pointer'
                 )}
               />
               <div className="flex-1 space-y-1">
-                <span className="text-sm text-gray-200 group-hover:text-white transition-colors">
+                <span className="text-sm text-foreground group-hover:text-foreground transition-colors">
                   Install Advanced Media Library
                 </span>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   Advanced image processing nodes (requires specific models to function)
                 </p>
               </div>
@@ -150,16 +150,16 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
                 checked={cloudLibrary}
                 onChange={(e) => setCloudLibrary(e.target.checked)}
                 className={cn(
-                  'mt-0.5 w-4 h-4 rounded border-gray-600',
+                  'mt-0.5 w-4 h-4 rounded border-input',
                   'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
-                  'bg-gray-900 cursor-pointer'
+                  'bg-background cursor-pointer'
                 )}
               />
               <div className="flex-1 space-y-1">
-                <span className="text-sm text-gray-200 group-hover:text-white transition-colors">
+                <span className="text-sm text-foreground group-hover:text-foreground transition-colors">
                   Install Griptape Cloud Library
                 </span>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   Nodes for integrating with Griptape Cloud services
                 </p>
               </div>
