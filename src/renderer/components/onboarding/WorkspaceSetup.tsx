@@ -62,9 +62,9 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
               <Folder className="w-8 h-8 text-purple-400" />
             </div>
           </div>
-          <h2 className="text-3xl font-semibold text-white">Select Workspace Directory</h2>
+          <h2 className="text-3xl font-semibold text-white">Initialize Engine</h2>
           <p className="text-gray-400 text-lg">
-            Choose where Griptape Nodes will store your workflows and data
+            Configure workspace location and optional libraries
           </p>
         </div>
 
@@ -188,7 +188,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
-            {isCompleting ? 'Completing Setup...' : 'Complete Setup'}
+            {isCompleting ? 'Initializing...' : 'Initialize'}
           </button>
         </div>
       </div>
