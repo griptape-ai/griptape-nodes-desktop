@@ -19,7 +19,7 @@ const EngineSetup: React.FC<EngineSetupProps> = ({ onPageChange }) => {
     setIsReconfiguring(true)
     setOperationMessage({
       type: 'info',
-      text: 'Reconfiguring engine with new workspace and library settings...'
+      text: 'Initializing engine...'
     })
 
     try {
@@ -31,7 +31,7 @@ const EngineSetup: React.FC<EngineSetupProps> = ({ onPageChange }) => {
 
       setOperationMessage({
         type: 'success',
-        text: 'Engine setup completed successfully!'
+        text: 'Engine initialized successfully!'
       })
 
       // Mark as pending so Settings can refresh environment info when engine restarts
@@ -42,10 +42,10 @@ const EngineSetup: React.FC<EngineSetupProps> = ({ onPageChange }) => {
         onPageChange('settings')
       }, 1500)
     } catch (err) {
-      console.error('Failed to complete engine setup:', err)
+      console.error('Failed to initialize engine:', err)
       setOperationMessage({
         type: 'error',
-        text: 'Failed to complete engine setup. Please try again.'
+        text: 'Failed to initialize engine. Please try again.'
       })
       setIsReconfiguring(false)
     }
