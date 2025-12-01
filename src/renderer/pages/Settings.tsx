@@ -5,9 +5,12 @@ import { useEngine } from '../contexts/EngineContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
-import WorkspaceSetup from '../components/onboarding/WorkspaceSetup'
 
-const Settings: React.FC = () => {
+interface SettingsProps {
+  onPageChange: (page: string) => void
+}
+
+const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
   const { apiKey } = useAuth()
   const {
     status,
@@ -41,8 +44,6 @@ const Settings: React.FC = () => {
   const [switchingChannel, setSwitchingChannel] = useState(false)
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
-  const [showReconfigureModal, setShowReconfigureModal] = useState(false)
-  const [reconfiguringEngine, setReconfiguringEngine] = useState(false)
   const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly'>('stable')
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
@@ -227,37 +228,6 @@ const Settings: React.FC = () => {
     }
   }
 
-  const handleReconfigureEngine = async (
-    workspaceDirectory: string,
-    advancedLibrary: boolean,
-    cloudLibrary: boolean
-  ) => {
-    setReconfiguringEngine(true)
-    setOperationMessage({
-      type: 'info',
-      text: 'Reconfiguring engine with new workspace and library settings...'
-    })
-    try {
-      await window.griptapeAPI.reconfigureEngine({
-        workspaceDirectory,
-        advancedLibrary,
-        cloudLibrary
-      })
-      setWorkspaceDir(workspaceDirectory)
-      setOperationMessage({ type: 'success', text: 'Engine reconfigured successfully!' })
-      setShowReconfigureModal(false)
-      setTimeout(() => setOperationMessage(null), 3000)
-    } catch (err) {
-      console.error('Failed to reconfigure engine:', err)
-      setOperationMessage({
-        type: 'error',
-        text: 'Failed to reconfigure engine. Please try again.'
-      })
-      setTimeout(() => setOperationMessage(null), 5000)
-    } finally {
-      setReconfiguringEngine(false)
-    }
-  }
 
   const loadUpdateInfo = async () => {
     try {
@@ -569,8 +539,8 @@ const Settings: React.FC = () => {
             </div>
             <div className="pt-2">
               <button
-                onClick={() => setShowReconfigureModal(true)}
-                disabled={reconfiguringEngine}
+                onClick={() => onPageChange('engine-setup')}
+                disabled={status === 'initializing'}
                 className={cn(
                   'px-4 py-2 text-sm rounded-md',
                   'bg-secondary text-secondary-foreground',
@@ -578,11 +548,10 @@ const Settings: React.FC = () => {
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
-                Re-configure Engine
+                Setup Engine
               </button>
               <p className="text-xs text-muted-foreground mt-2">
-                Re-run the workspace setup wizard to change workspace location and library
-                preferences
+                Configure workspace directory and optional libraries
               </p>
             </div>
           </div>
@@ -1038,33 +1007,6 @@ const Settings: React.FC = () => {
       </div>
 
       {/* Reinstall Confirmation Dialog */}
-      {showReconfigureModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full mx-4 my-8">
-            <div className="flex justify-between items-center p-6 border-b border-gray-700">
-              <h3 className="text-xl font-semibold text-white">Re-configure Engine</h3>
-              <button
-                onClick={() => !reconfiguringEngine && setShowReconfigureModal(false)}
-                disabled={reconfiguringEngine}
-                className="text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6">
-              <WorkspaceSetup onComplete={handleReconfigureEngine} />
-            </div>
-          </div>
-        </div>
-      )}
-
       {showReinstallDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
