@@ -548,10 +548,10 @@ const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
-                Setup Engine
+                Re-run Setup Wizard
               </button>
               <p className="text-xs text-muted-foreground mt-2">
-                Configure workspace directory and optional libraries
+                Re-run the workspace setup wizard to change location and library preferences
               </p>
             </div>
           </div>
