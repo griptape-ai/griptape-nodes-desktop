@@ -68,6 +68,7 @@ contextBridge.exposeInMainWorld('engineAPI', {
   stop: () => ipcRenderer.invoke('engine:stop'),
   restart: () => ipcRenderer.invoke('engine:restart'),
   reinstall: () => ipcRenderer.invoke('engine:reinstall'),
+  runCommand: (command: string) => ipcRenderer.invoke('engine:run-command', command),
   onStatusChanged: (callback: (event: any, status: string) => void) => {
     ipcRenderer.on('engine:status-changed', callback)
   },

@@ -6,6 +6,7 @@ VelopackApp.build().run()
 
 import path from 'node:path'
 import fs from 'node:fs'
+import { ChildProcess } from 'node:child_process'
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell, net, clipboard } from 'electron'
 import { getPythonVersion } from '../common/config/versions'
 import { ENV_INFO_NOT_COLLECTED } from '../common/config/constants'
@@ -1190,6 +1191,85 @@ const setupIPC = () => {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       }
+    }
+  })
+
+  // Track the currently running command process for stdin
+  let currentCommandProcess: ChildProcess | null = null
+
+  ipcMain.handle('engine:run-command', async (_event, commandInput: string) => {
+    try {
+      const trimmed = commandInput.trim()
+
+      // If there's a running process with stdin, send input to it
+      if (currentCommandProcess && currentCommandProcess.stdin && !currentCommandProcess.stdin.destroyed) {
+        currentCommandProcess.stdin.write(commandInput + '\n')
+        return { success: true }
+      }
+
+      // Otherwise, start a new command
+      // Split into args, handling quotes
+      const args = trimmed.split(/\s+/).filter((arg) => arg.length > 0)
+
+      // Strip "gtn" prefix if provided
+      if (args[0] === 'gtn') {
+        args.shift()
+      }
+
+      // Guard: prevent starting second engine
+      if (args.length === 0 || args[0] === 'engine') {
+        const errorMsg = 'Cannot execute "gtn engine" - use the Engine controls instead'
+        engineService.addLog('stdout', `$ gtn ${args.join(' ') || ''}`)
+        engineService.addLog('stderr', errorMsg)
+        return {
+          success: false,
+          error: errorMsg
+        }
+      }
+
+      // Log the command being executed
+      engineService.addLog('stdout', `$ gtn ${args.join(' ')}`)
+
+      // Execute the command
+      const child = await gtnService.runGtn(args, {
+        forward_logs: false, // We'll handle output manually
+        wait: false
+      })
+
+      // Track this as the current command process
+      currentCommandProcess = child
+
+      // Stream stdout line-by-line
+      child.stdout?.on('data', (data: Buffer) => {
+        const lines = data.toString().split('\n').filter((line) => line.trim())
+        lines.forEach((line) => {
+          engineService.addLog('stdout', line)
+        })
+      })
+
+      // Stream stderr line-by-line
+      child.stderr?.on('data', (data: Buffer) => {
+        const lines = data.toString().split('\n').filter((line) => line.trim())
+        lines.forEach((line) => {
+          engineService.addLog('stderr', line)
+        })
+      })
+
+      // Handle process completion
+      child.on('close', (code) => {
+        if (currentCommandProcess === child) {
+          currentCommandProcess = null
+        }
+        if (code !== 0) {
+          engineService.addLog('stderr', `Command exited with code ${code}`)
+        }
+      })
+
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      engineService.addLog('stderr', `Failed to execute command: ${errorMessage}`)
+      return { success: false, error: errorMessage }
     }
   })
 

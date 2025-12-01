@@ -187,6 +187,7 @@ declare global {
       stop: () => Promise<{ success: boolean; error?: string }>
       restart: () => Promise<{ success: boolean; error?: string }>
       reinstall: () => Promise<{ success: boolean; error?: string }>
+      runCommand: (command: string) => Promise<{ success: boolean; error?: string }>
       onStatusChanged: (callback: (event: any, status: EngineStatus) => void) => void
       removeStatusChanged: (callback: (event: any, status: EngineStatus) => void) => void
       onLog: (callback: (event: any, log: EngineLog) => void) => void

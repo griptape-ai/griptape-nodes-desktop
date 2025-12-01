@@ -34,8 +34,11 @@ const ansiConverter = new Convert({
 const Engine: React.FC = () => {
   const { status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs } = useEngine()
   const [isCopied, setIsCopied] = useState(false)
+  const [commandInput, setCommandInput] = useState('')
+  const [isExecuting, setIsExecuting] = useState(false)
   const listRef = useRef<any>(null)
   const logsContainerRef = useRef<HTMLDivElement>(null)
+  const commandInputRef = useRef<HTMLInputElement>(null)
   const wasAtBottomRef = useRef(true)
   const prevLogCountRef = useRef(0)
 
@@ -162,6 +165,42 @@ const Engine: React.FC = () => {
       console.error('Failed to copy logs to clipboard:', error)
     }
   }, [logs, formatTimestamp])
+
+  const handleExecuteCommand = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (isExecuting) {
+      return
+    }
+
+    // Keep focus on the input
+    const inputElement = commandInputRef.current
+    if (inputElement) {
+      inputElement.focus()
+    }
+
+    setIsExecuting(true)
+
+    try {
+      const result = await window.engineAPI.runCommand(commandInput)
+
+      if (!result.success && result.error) {
+        console.error('Command failed:', result.error)
+      }
+
+      if (result.success) {
+        setCommandInput('')
+      }
+    } catch (error) {
+      console.error('Failed to execute command:', error)
+    } finally {
+      setIsExecuting(false)
+      // Ensure focus is maintained after command execution
+      setTimeout(() => {
+        inputElement?.focus()
+      }, 0)
+    }
+  }
 
   const LogRow = memo(
     ({ index, style, logs: logList }: RowComponentProps<{ logs: typeof logs }>) => {
@@ -434,6 +473,33 @@ const Engine: React.FC = () => {
             />
           )}
         </div>
+      </div>
+
+      {/* Terminal Input */}
+      <div className="flex-shrink-0 px-6 py-3 border-t border-border">
+        <form onSubmit={handleExecuteCommand} className="flex gap-2">
+          <div className="flex-1 relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">
+              $
+            </span>
+            <input
+              ref={commandInputRef}
+              type="text"
+              value={commandInput}
+              onChange={(e) => setCommandInput(e.target.value)}
+              placeholder="Enter GTN command or respond to prompt (try 'gtn --help')"
+              disabled={isExecuting}
+              className="w-full pl-8 pr-3 py-2 bg-muted border border-border rounded font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isExecuting}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isExecuting ? 'Running...' : 'Run'}
+          </button>
+        </form>
       </div>
     </div>
   )
