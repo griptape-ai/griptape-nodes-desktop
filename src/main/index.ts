@@ -1202,7 +1202,11 @@ const setupIPC = () => {
       const trimmed = commandInput.trim()
 
       // If there's a running process with stdin, send input to it
-      if (currentCommandProcess && currentCommandProcess.stdin && !currentCommandProcess.stdin.destroyed) {
+      if (
+        currentCommandProcess &&
+        currentCommandProcess.stdin &&
+        !currentCommandProcess.stdin.destroyed
+      ) {
         currentCommandProcess.stdin.write(commandInput + '\n')
         return { success: true }
       }
@@ -1241,7 +1245,10 @@ const setupIPC = () => {
 
       // Stream stdout line-by-line
       child.stdout?.on('data', (data: Buffer) => {
-        const lines = data.toString().split('\n').filter((line) => line.trim())
+        const lines = data
+          .toString()
+          .split('\n')
+          .filter((line) => line.trim())
         lines.forEach((line) => {
           engineService.addLog('stdout', line)
         })
@@ -1249,7 +1256,10 @@ const setupIPC = () => {
 
       // Stream stderr line-by-line
       child.stderr?.on('data', (data: Buffer) => {
-        const lines = data.toString().split('\n').filter((line) => line.trim())
+        const lines = data
+          .toString()
+          .split('\n')
+          .filter((line) => line.trim())
         lines.forEach((line) => {
           engineService.addLog('stderr', line)
         })

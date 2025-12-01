@@ -228,7 +228,6 @@ const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
     }
   }
 
-
   const loadUpdateInfo = async () => {
     try {
       const results = await Promise.allSettled([
