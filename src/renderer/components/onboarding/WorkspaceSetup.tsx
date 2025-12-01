@@ -62,7 +62,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
               <Folder className="w-8 h-8 text-purple-400" />
             </div>
           </div>
-          <h2 className="text-3xl font-semibold text-foreground">Initialize Engine</h2>
+          <h2 className="text-3xl font-semibold text-foreground">Engine Setup</h2>
           <p className="text-muted-foreground text-lg">
             Configure workspace location and optional libraries
           </p>
@@ -188,7 +188,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
-            {isCompleting ? 'Initializing...' : 'Initialize'}
+            {isCompleting ? 'Setting Up...' : 'Set Up'}
           </button>
         </div>
       </div>
