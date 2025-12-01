@@ -168,8 +168,8 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
         </div>
 
         {/* Info note */}
-        <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4">
-          <p className="text-sm text-blue-300">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/30 rounded-lg p-4">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
             <span className="font-semibold">Tip:</span> Choose a location that&apos;s easy to find
             and has enough storage space for your workflows. The default location works great for
             most users.
