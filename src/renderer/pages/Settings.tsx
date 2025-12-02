@@ -23,7 +23,6 @@ const Settings: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [workspaceDir, setWorkspaceDir] = useState<string>('')
-  const [updatingWorkspace, setUpdatingWorkspace] = useState(false)
   const [loadingWorkspace, setLoadingWorkspace] = useState(true)
   const [currentVersion, setCurrentVersion] = useState<string>('')
   const [currentChannel, setCurrentChannel] = useState<string>('')
