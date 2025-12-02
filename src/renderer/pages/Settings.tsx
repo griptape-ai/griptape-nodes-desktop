@@ -5,7 +5,6 @@ import { useEngine } from '../contexts/EngineContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
-import WorkspaceSetup from '../components/onboarding/WorkspaceSetup'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
@@ -24,7 +23,6 @@ const Settings: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [workspaceDir, setWorkspaceDir] = useState<string>('')
-  const [updatingWorkspace, setUpdatingWorkspace] = useState(false)
   const [loadingWorkspace, setLoadingWorkspace] = useState(true)
   const [currentVersion, setCurrentVersion] = useState<string>('')
   const [currentChannel, setCurrentChannel] = useState<string>('')
@@ -41,9 +39,21 @@ const Settings: React.FC = () => {
   const [switchingChannel, setSwitchingChannel] = useState(false)
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
-  const [showReconfigureModal, setShowReconfigureModal] = useState(false)
-  const [reconfiguringEngine, setReconfiguringEngine] = useState(false)
   const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly'>('stable')
+
+  // Library settings state
+  const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
+  const [cloudLibrary, setCloudLibrary] = useState<boolean>(false)
+  const [loadingLibrarySettings, setLoadingLibrarySettings] = useState(true)
+
+  // Pending changes tracking
+  const [pendingWorkspaceDir, setPendingWorkspaceDir] = useState<string>('')
+  const [pendingAdvancedLibrary, setPendingAdvancedLibrary] = useState<boolean>(false)
+  const [pendingCloudLibrary, setPendingCloudLibrary] = useState<boolean>(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  // Apply state
+  const [isApplyingChanges, setIsApplyingChanges] = useState(false)
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -88,6 +98,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     loadEnvironmentInfo()
     loadWorkspaceDirectory()
+    loadLibrarySettings()
     loadUpdateInfo()
     loadSystemMonitorSetting()
     loadEngineChannel()
@@ -177,6 +188,24 @@ const Settings: React.FC = () => {
     }
   }
 
+  const loadLibrarySettings = async () => {
+    setLoadingLibrarySettings(true)
+    try {
+      const [advanced, cloud] = await Promise.all([
+        window.onboardingAPI.isAdvancedLibraryEnabled(),
+        window.onboardingAPI.isCloudLibraryEnabled()
+      ])
+      setAdvancedLibrary(advanced)
+      setCloudLibrary(cloud)
+      setPendingAdvancedLibrary(advanced)
+      setPendingCloudLibrary(cloud)
+    } catch (err) {
+      console.error('Failed to load library settings:', err)
+    } finally {
+      setLoadingLibrarySettings(false)
+    }
+  }
+
   const copyApiKey = () => {
     if (apiKey) {
       navigator.clipboard.writeText(apiKey)
@@ -196,6 +225,7 @@ const Settings: React.FC = () => {
     try {
       const directory = await window.griptapeAPI.getWorkspace()
       setWorkspaceDir(directory)
+      setPendingWorkspaceDir(directory)
     } catch (err) {
       console.error('Failed to load workspace directory:', err)
     } finally {
@@ -207,55 +237,69 @@ const Settings: React.FC = () => {
     try {
       const directory = await window.griptapeAPI.selectDirectory()
       if (directory) {
-        setWorkspaceDir(directory)
-        await updateWorkspace(directory)
+        setPendingWorkspaceDir(directory)
+        checkForUnsavedChanges(directory, pendingAdvancedLibrary, pendingCloudLibrary)
       }
     } catch (err) {
       console.error('Failed to select directory:', err)
     }
   }
 
-  const updateWorkspace = async (directory: string) => {
-    setUpdatingWorkspace(true)
-    try {
-      await window.griptapeAPI.setWorkspace(directory)
-    } catch (err) {
-      console.error('Failed to update workspace:', err)
-      alert('Failed to update workspace directory')
-    } finally {
-      setUpdatingWorkspace(false)
-    }
+  const handleAdvancedLibraryChange = (checked: boolean) => {
+    setPendingAdvancedLibrary(checked)
+    checkForUnsavedChanges(pendingWorkspaceDir, checked, pendingCloudLibrary)
   }
 
-  const handleReconfigureEngine = async (
-    workspaceDirectory: string,
-    advancedLibrary: boolean,
-    cloudLibrary: boolean
-  ) => {
-    setReconfiguringEngine(true)
+  const handleCloudLibraryChange = (checked: boolean) => {
+    setPendingCloudLibrary(checked)
+    checkForUnsavedChanges(pendingWorkspaceDir, pendingAdvancedLibrary, checked)
+  }
+
+  const checkForUnsavedChanges = (workspace: string, advanced: boolean, cloud: boolean) => {
+    const workspaceChanged = workspace !== workspaceDir
+    const advancedChanged = advanced !== advancedLibrary
+    const cloudChanged = cloud !== cloudLibrary
+    setHasUnsavedChanges(workspaceChanged || advancedChanged || cloudChanged)
+  }
+
+  const handleApplyChanges = async () => {
+    setIsApplyingChanges(true)
     setOperationMessage({
       type: 'info',
-      text: 'Reconfiguring engine with new workspace and library settings...'
+      text: 'Applying changes and reconfiguring engine...'
     })
+
     try {
       await window.griptapeAPI.reconfigureEngine({
-        workspaceDirectory,
-        advancedLibrary,
-        cloudLibrary
+        workspaceDirectory: pendingWorkspaceDir,
+        advancedLibrary: pendingAdvancedLibrary,
+        cloudLibrary: pendingCloudLibrary
       })
-      setWorkspaceDir(workspaceDirectory)
-      setOperationMessage({ type: 'success', text: 'Engine reconfigured successfully!' })
-      setShowReconfigureModal(false)
-      setTimeout(() => setOperationMessage(null), 3000)
+
+      // Update current state to match pending
+      setWorkspaceDir(pendingWorkspaceDir)
+      setAdvancedLibrary(pendingAdvancedLibrary)
+      setCloudLibrary(pendingCloudLibrary)
+      setHasUnsavedChanges(false)
+
+      // Mark as pending so environment info refreshes when engine restarts
+      setIsUpgradePending(true)
+
+      setOperationMessage({
+        type: 'success',
+        text: 'Settings applied successfully! Engine restarting...'
+      })
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setOperationMessage(null), 5000)
     } catch (err) {
-      console.error('Failed to reconfigure engine:', err)
+      console.error('Failed to apply settings:', err)
       setOperationMessage({
         type: 'error',
-        text: 'Failed to reconfigure engine. Please try again.'
+        text: 'Failed to apply settings. Please try again.'
       })
-      setTimeout(() => setOperationMessage(null), 5000)
     } finally {
-      setReconfiguringEngine(false)
+      setIsApplyingChanges(false)
     }
   }
 
@@ -531,58 +575,138 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        {/* Workspace Directory Section */}
+        {/* Workspace & Library Configuration Section */}
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h2 className="text-lg font-semibold mb-4">Workspace Directory</h2>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              This is where Griptape Nodes will store your workflows and data.
-              <br />
-              Changing the workspace directory will trigger an engine restart.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={loadingWorkspace ? '' : workspaceDir}
-                readOnly
-                className={cn(
-                  'flex-1 px-3 py-2 text-sm rounded-md',
-                  'bg-background border border-input',
-                  'font-mono'
-                )}
-                placeholder={
-                  loadingWorkspace ? 'Loading workspace directory...' : 'No workspace directory set'
-                }
-              />
-              <button
-                onClick={handleSelectWorkspace}
-                disabled={updatingWorkspace}
-                className={cn(
-                  'px-4 py-2 text-sm rounded-md',
-                  'bg-primary text-primary-foreground',
-                  'hover:bg-primary/90 transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-              >
-                {updatingWorkspace ? 'Updating...' : 'Browse'}
-              </button>
+          <h2 className="text-lg font-semibold mb-4">Workspace & Libraries</h2>
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">Workspace Directory</label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">
+                  This is where Griptape Nodes will store your workflows and data.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={loadingWorkspace ? '' : pendingWorkspaceDir}
+                  readOnly
+                  className={cn(
+                    'flex-1 px-3 py-2 text-sm rounded-md',
+                    'bg-background border border-input',
+                    'font-mono'
+                  )}
+                  placeholder={
+                    loadingWorkspace
+                      ? 'Loading workspace directory...'
+                      : 'No workspace directory set'
+                  }
+                />
+                <button
+                  onClick={handleSelectWorkspace}
+                  disabled={isApplyingChanges || loadingWorkspace}
+                  className={cn(
+                    'px-4 py-2 text-sm rounded-md',
+                    'bg-primary text-primary-foreground',
+                    'hover:bg-primary/90 transition-colors',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                >
+                  Browse
+                </button>
+              </div>
             </div>
-            <div className="pt-2">
+
+            {/* Divider */}
+            <div className="border-t border-border pt-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Optional Libraries</label>
+                  <p className="text-xs text-muted-foreground mt-1 mb-3">
+                    Install additional libraries to extend Griptape Nodes capabilities
+                  </p>
+                </div>
+
+                {loadingLibrarySettings ? (
+                  <p className="text-sm text-muted-foreground">Loading library settings...</p>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={pendingAdvancedLibrary}
+                        onChange={(e) => handleAdvancedLibraryChange(e.target.checked)}
+                        disabled={isApplyingChanges}
+                        className={cn(
+                          'mt-0.5 w-4 h-4 rounded border-input',
+                          'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
+                          'bg-background cursor-pointer',
+                          'disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                      />
+                      <div className="flex-1 space-y-1">
+                        <span className="text-sm text-foreground group-hover:text-foreground transition-colors">
+                          Install Advanced Media Library
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          Advanced image processing nodes (requires specific models to function)
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={pendingCloudLibrary}
+                        onChange={(e) => handleCloudLibraryChange(e.target.checked)}
+                        disabled={isApplyingChanges}
+                        className={cn(
+                          'mt-0.5 w-4 h-4 rounded border-input',
+                          'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
+                          'bg-background cursor-pointer',
+                          'disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                      />
+                      <div className="flex-1 space-y-1">
+                        <span className="text-sm text-foreground group-hover:text-foreground transition-colors">
+                          Install Griptape Cloud Library
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          Nodes for integrating with Griptape Cloud services
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Apply Changes Button */}
+            <div className="pt-2 border-t border-border">
               <button
-                onClick={() => setShowReconfigureModal(true)}
-                disabled={reconfiguringEngine}
+                onClick={handleApplyChanges}
+                disabled={
+                  !hasUnsavedChanges ||
+                  isApplyingChanges ||
+                  loadingWorkspace ||
+                  loadingLibrarySettings
+                }
                 className={cn(
-                  'px-4 py-2 text-sm rounded-md',
-                  'bg-secondary text-secondary-foreground',
-                  'hover:bg-secondary/80 transition-colors',
+                  'w-full px-4 py-3 text-sm font-medium rounded-md',
+                  'bg-green-600 hover:bg-green-500 active:bg-green-400',
+                  'text-white transition-colors',
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
-                Re-configure Engine
+                {isApplyingChanges ? 'Applying Changes...' : 'Apply Changes'}
               </button>
+              {hasUnsavedChanges && !isApplyingChanges && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                  You have unsaved changes. Click Apply Changes to reconfigure the engine.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mt-2">
-                Re-run the workspace setup wizard to change workspace location and library
-                preferences
+                Applying changes will stop the engine, reconfigure settings, and restart.
               </p>
             </div>
           </div>
@@ -1038,33 +1162,6 @@ const Settings: React.FC = () => {
       </div>
 
       {/* Reinstall Confirmation Dialog */}
-      {showReconfigureModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full mx-4 my-8">
-            <div className="flex justify-between items-center p-6 border-b border-gray-700">
-              <h3 className="text-xl font-semibold text-white">Re-configure Engine</h3>
-              <button
-                onClick={() => !reconfiguringEngine && setShowReconfigureModal(false)}
-                disabled={reconfiguringEngine}
-                className="text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6">
-              <WorkspaceSetup onComplete={handleReconfigureEngine} />
-            </div>
-          </div>
-        </div>
-      )}
-
       {showReinstallDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
