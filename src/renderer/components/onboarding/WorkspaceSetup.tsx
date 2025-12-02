@@ -13,16 +13,32 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
   const [isCompleting, setIsCompleting] = useState(false)
 
   useEffect(() => {
-    // Load the default workspace directory
-    const loadDefaultWorkspace = async () => {
+    // Load the saved workspace directory, or default if none exists
+    const loadWorkspace = async () => {
       try {
-        const directory = await window.griptapeAPI.getDefaultWorkspace()
-        setWorkspaceDirectory(directory)
-      } catch (error) {
-        console.error('Failed to load default workspace directory:', error)
+        // First try to get saved custom workspace
+        const savedWorkspace = await window.griptapeAPI.getWorkspace()
+
+        if (savedWorkspace && savedWorkspace.trim() !== '') {
+          // Use saved custom workspace if it exists
+          setWorkspaceDirectory(savedWorkspace)
+        } else {
+          // Fall back to default if no saved workspace
+          const defaultWorkspace = await window.griptapeAPI.getDefaultWorkspace()
+          setWorkspaceDirectory(defaultWorkspace)
+        }
+      } catch (err) {
+        console.error('Failed to load workspace:', err)
+        // On error, try to at least load the default
+        try {
+          const defaultWorkspace = await window.griptapeAPI.getDefaultWorkspace()
+          setWorkspaceDirectory(defaultWorkspace)
+        } catch (fallbackErr) {
+          console.error('Failed to load default workspace:', fallbackErr)
+        }
       }
     }
-    loadDefaultWorkspace()
+    loadWorkspace()
   }, [])
 
   const handleBrowse = async () => {
