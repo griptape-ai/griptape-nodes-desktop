@@ -393,8 +393,8 @@ Handles OAuth 2.0 authentication with Griptape Cloud.
 
 **Responsibilities:**
 
-- Start local Express server on port 5172
-- Handle OAuth flow (authorization code grant)
+- Start local Express server on port 5172 to capture OAuth callbacks
+- Handle OAuth flow (authorization code grant) via system browser
 - Store and refresh access tokens automatically
 - Generate and store API keys
 - Emit `apiKey` event when authentication completes

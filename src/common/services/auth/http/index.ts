@@ -1,10 +1,10 @@
-import { Server } from 'http'
-import { EventEmitter } from 'node:events'
-import { BrowserWindow, app } from 'electron'
+import { logger } from '@/main/utils/logger'
+import { BrowserWindow, app, shell } from 'electron'
 import express from 'express'
 import * as fs from 'fs'
+import { Server } from 'http'
+import { EventEmitter } from 'node:events'
 import * as path from 'path'
-import { logger } from '@/main/utils/logger'
 import { Store } from '../stores/base-store'
 import { InMemoryStore } from '../stores/in-memory-store'
 import { PersistentStore } from '../stores/persistent-store'
@@ -28,7 +28,6 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   private server: Server | null = null
   private authResolve: ((value: any) => void) | null = null
   private authReject: ((reason?: any) => void) | null = null
-  private authWindow: BrowserWindow | null = null
   private store: Store<AuthData>
 
   constructor() {
@@ -105,6 +104,11 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
 
   // Start a local dev server in some kind of lifecycle hook.
   async start() {
+    // Attempt to load from persistent store if it exists
+    if (this.hasExistingEncryptedStore()) {
+      this.loadFromPersistentStore()
+    }
+
     // Propagate the initial state for in-memory store
     if (this.store instanceof InMemoryStore) {
       const apiKey = this.store.get('apiKey')
@@ -127,42 +131,91 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       // Log the code
       logger.info('OAuth callback received - code:', code)
 
-      // Simple success message
+      // Determine if authentication was successful
+      const isSuccess = !!code && !error
+
+      // Send HTML response with auto-close functionality
       res.send(`
         <html>
           <head>
+            <title>Griptape Nodes - Authentication</title>
             <style>
               body {
-                font-family: system-ui, -apple-system, sans-serif;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 height: 100vh;
                 margin: 0;
-                background: #f5f5f5;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
               }
-              .message {
+              .container {
+                background: white;
+                padding: 3rem;
+                border-radius: 1rem;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
                 text-align: center;
+                max-width: 400px;
+              }
+              .icon {
+                font-size: 4rem;
+                margin-bottom: 1rem;
+              }
+              h1 {
+                margin: 0 0 0.5rem 0;
                 color: #333;
+                font-size: 1.75rem;
+              }
+              p {
+                color: #666;
+                margin: 0.5rem 0;
+                line-height: 1.6;
+              }
+              .countdown {
+                margin-top: 1.5rem;
+                padding: 1rem;
+                background: #f5f5f5;
+                border-radius: 0.5rem;
+                color: #666;
+                font-size: 0.9rem;
+              }
+              .error {
+                color: #e53e3e;
               }
             </style>
           </head>
           <body>
-            <div class="message">
-              <h2>✓ Success</h2>
-              <p>Authentication complete!</p>
-              <p style="color: #666;">You can close this tab and return to Griptape Nodes.</p>
+            <div class="container">
+              ${
+                isSuccess
+                  ? `
+                <div class="icon">✓</div>
+                <h1>Authentication Successful!</h1>
+                <p>You have successfully logged in to Griptape Nodes.</p>
+                <div class="countdown">
+                  <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">✨ <strong>You're all set!</strong></p>
+                  <p style="margin-top: 0.75rem;">Return to the Griptape Nodes app to continue.</p>
+                  <p style="font-size: 0.85rem; margin-top: 1rem; color: #999;">You can safely close this tab.</p>
+                </div>
+              `
+                  : `
+                <div class="icon error">✗</div>
+                <h1>Authentication Failed</h1>
+                <p class="error">${error_description || error || 'An unknown error occurred'}</p>
+                <p style="margin-top: 1rem;">Please close this tab and try again in the app.</p>
+              `
+              }
             </div>
           </body>
         </html>
       `)
 
-      // Send to renderer via IPC and focus the app
+      // Focus the app window
       const mainWindow = BrowserWindow.getAllWindows()[0]
       if (mainWindow) {
-        // Focus the app window
         if (mainWindow.isMinimized()) mainWindow.restore()
         mainWindow.focus()
+        mainWindow.show()
       }
 
       // Handle internally
@@ -176,8 +229,16 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     // Start server
     return new Promise<void>((resolve, reject) => {
       this.server = app
-        .listen(PORT, () => {
+        .listen(PORT, async () => {
           logger.info(`Auth server listening on http://localhost:${PORT}`)
+
+          // Attempt silent login with stored credentials after server is ready
+          try {
+            await this.attemptSilentLogin()
+          } catch (error) {
+            logger.error('Error during silent login attempt:', error)
+          }
+
           resolve()
         })
         .on('error', reject)
@@ -253,6 +314,49 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     }
   }
 
+  // Check if stored tokens are expired (with 5 minute buffer for safety)
+  private isTokenExpired(expiresAt?: number): boolean {
+    if (!expiresAt) return true
+    const now = Math.floor(Date.now() / 1000)
+    return expiresAt - now < 300 // Refresh if less than 5 minutes remaining
+  }
+
+  // Attempt to silently authenticate using stored credentials
+  // Returns true if authenticated (credentials valid or refreshed), false if login required
+  async attemptSilentLogin(): Promise<boolean> {
+    const stored = this.getStoredCredentials()
+
+    if (!stored) {
+      logger.info('No stored credentials for silent login')
+      return false
+    }
+
+    // Check if tokens are still valid
+    if (!this.isTokenExpired(stored.expiresAt)) {
+      logger.info('Silent login successful - credentials still valid')
+      return true
+    }
+
+    // Tokens expired, try to refresh
+    if (stored.tokens?.refresh_token) {
+      logger.info('Attempting silent token refresh...')
+      const refreshResult = await this.refreshTokens(stored.tokens.refresh_token)
+
+      if (refreshResult.success) {
+        logger.info('Silent login successful - tokens refreshed')
+        return true
+      }
+
+      logger.warn('Silent token refresh failed:', refreshResult.error)
+      this.clearCredentials()
+      return false
+    }
+
+    logger.warn('No refresh token available for silent login')
+    this.clearCredentials()
+    return false
+  }
+
   // Refresh access token using refresh token
   async refreshTokens(
     refreshToken: string
@@ -312,15 +416,15 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   }
 
   async login(): Promise<void> {
-    // Check if we have complete credentials
-    const stored = this.getStoredCredentials()
-    if (stored) {
-      logger.info('Using stored credentials')
+    // Try silent login first
+    const silentLoginSuccessful = await this.attemptSilentLogin()
+    if (silentLoginSuccessful) {
+      logger.info('Login successful via stored credentials')
       return
     }
 
-    // Ensure app is ready before creating BrowserWindow
-    await app.whenReady()
+    // If silent login failed, proceed with browser-based OAuth flow
+    logger.info('No valid stored credentials, prompting for browser login')
 
     return new Promise((resolve, reject) => {
       this.authResolve = resolve
@@ -336,124 +440,37 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         `state=${state}&` +
         `scope=openid%20profile%20email%20offline_access`
 
-      // Create an authentication window
-      // Using modal:false instead of modal:true to fix macOS close button visibility issue
-      // (Electron bug where modal windows don't show close buttons with custom parent title bars)
-      const mainWindow = BrowserWindow.getAllWindows()[0]
-      this.authWindow = new BrowserWindow({
-        width: 500,
-        height: 700,
-        modal: false,
-        parent: mainWindow,
-        alwaysOnTop: true, // Keep auth window visible above parent
-        center: true,
-        resizable: false,
-        minimizable: false,
-        maximizable: false,
-        fullscreenable: false,
-        closable: true,
-        title: 'Log In to Griptape',
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-          partition: 'auth' // In-memory partition for security
-        }
+      logger.info('Opening authentication URL in system browser')
+
+      // Open the auth URL in the user's default browser
+      shell.openExternal(authUrl).catch((error) => {
+        logger.error('Failed to open browser:', error)
+        this.authReject?.(new Error('Failed to open browser for authentication'))
+        this.authResolve = null
+        this.authReject = null
       })
 
-      // Remove menu bar
-      this.authWindow.setMenuBarVisibility(false)
-
-      // Add ESC key handler
-      this.authWindow.webContents.on('before-input-event', (event, input) => {
-        if (input.key === 'Escape' && input.type === 'keyDown') {
-          event.preventDefault()
-          if (this.authWindow && !this.authWindow.isDestroyed()) {
-            this.authWindow.close()
-          }
-        }
-      })
-
-      // Track whether we're processing an auth callback
-      let isProcessingCallback = false
-
-      // Handle navigation to detect OAuth callback
-      const handleAuthCallback = (url: string) => {
-        if (url.startsWith(REDIRECT_URI)) {
-          // Mark that we're processing the callback to prevent the closed handler from rejecting
-          isProcessingCallback = true
-
-          // Parse the URL to extract code and state
-          const urlObj = new URL(url)
-          const code = urlObj.searchParams.get('code')
-          const returnedState = urlObj.searchParams.get('state')
-          const error = urlObj.searchParams.get('error')
-          const errorDescription = urlObj.searchParams.get('error_description')
-
-          logger.info('OAuth callback intercepted in auth window')
-
-          // Handle the auth response
-          if (code) {
-            this.handleAuthCode(code, returnedState || '')
-          } else if (error) {
-            this.authReject?.(new Error(errorDescription || error))
-            this.authResolve = null
-            this.authReject = null
-          }
-
-          // Close the auth window after handling
-          if (this.authWindow && !this.authWindow.isDestroyed()) {
-            this.authWindow.close()
-          }
-
-          return true
-        }
-        return false
-      }
-
-      this.authWindow.webContents.on('will-redirect', (event, url) => {
-        if (handleAuthCallback(url)) {
-          event.preventDefault()
-        }
-      })
-
-      this.authWindow.webContents.on('did-navigate', (event, url) => {
-        handleAuthCallback(url)
-      })
-
-      // Handle window close (user cancelled)
-      this.authWindow.on('closed', () => {
-        // Only reject if we're not processing a callback (i.e., user manually closed the window)
-        if (this.authResolve && !isProcessingCallback) {
-          this.authReject?.(new Error('Authentication cancelled'))
-          this.authResolve = null
-          this.authReject = null
-        }
-        // Clear the window reference
-        this.authWindow = null
-      })
-
-      // Load the auth URL
-      this.authWindow.loadURL(authUrl)
-
-      // Set timeout
+      // Set timeout for authentication (5 minutes)
       setTimeout(
         () => {
-          if (this.authResolve && this.authWindow && !this.authWindow.isDestroyed()) {
-            this.authWindow.close()
+          if (this.authResolve) {
+            logger.warn('Authentication timeout - no callback received')
             this.authReject?.(new Error('Authentication timeout'))
             this.authResolve = null
             this.authReject = null
           }
         },
         5 * 60 * 1000
-      ) // 5 minutes
+      )
     })
   }
 
   cancelLogin(): void {
     logger.info('Cancelling authentication')
-    if (this.authWindow && !this.authWindow.isDestroyed()) {
-      this.authWindow.close()
+    if (this.authResolve) {
+      this.authReject?.(new Error('Authentication cancelled'))
+      this.authResolve = null
+      this.authReject = null
     }
   }
 
