@@ -90,7 +90,7 @@ All services follow a common pattern:
 
 **AuthService** (`src/common/services/auth/http/` and `src/common/services/auth/custom/`)
 
-- HTTP flow: Local server on port 51413 for OAuth callback
+- HTTP flow: Local server on port 5172 for OAuth callback, opens auth URL in system browser
 - Custom flow: Uses custom URL scheme (gtn://) for OAuth (packaged apps only)
 - Supports persistent credential storage using electron-store + safeStorage
 - Credentials stored encrypted in OS keychain when user opts in
@@ -136,8 +136,8 @@ All IPC handlers defined in `setupIPC()` in `src/main/index.ts`:
 1. User clicks login → Renderer calls `window.oauthAPI.login()`
 2. Main process spawns local HTTP server (HTTP mode) or uses custom URL scheme handler
 3. Opens system browser to Auth0 login page
-4. After auth, browser redirects to callback URL (localhost:51413 or gtn://)
-5. Main process captures tokens and optionally stores encrypted in keychain
+4. After auth, browser redirects to callback URL (localhost:5172 or gtn://)
+5. Main process captures tokens, focuses app window, and optionally stores encrypted in keychain
 6. Renderer polls `auth:check` and updates AuthContext when tokens available
 
 ### Onboarding Wizard
