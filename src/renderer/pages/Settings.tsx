@@ -6,11 +6,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 
-interface SettingsProps {
-  onPageChange: (page: string) => void
-}
-
-const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
+const Settings: React.FC = () => {
   const { apiKey } = useAuth()
   const {
     status,
@@ -45,6 +41,20 @@ const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly'>('stable')
+
+  // Library settings state
+  const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
+  const [cloudLibrary, setCloudLibrary] = useState<boolean>(false)
+  const [loadingLibrarySettings, setLoadingLibrarySettings] = useState(true)
+
+  // Pending changes tracking
+  const [pendingWorkspaceDir, setPendingWorkspaceDir] = useState<string>('')
+  const [pendingAdvancedLibrary, setPendingAdvancedLibrary] = useState<boolean>(false)
+  const [pendingCloudLibrary, setPendingCloudLibrary] = useState<boolean>(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  // Apply state
+  const [isApplyingChanges, setIsApplyingChanges] = useState(false)
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -89,6 +99,7 @@ const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
   useEffect(() => {
     loadEnvironmentInfo()
     loadWorkspaceDirectory()
+    loadLibrarySettings()
     loadUpdateInfo()
     loadSystemMonitorSetting()
     loadEngineChannel()
@@ -178,6 +189,24 @@ const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
     }
   }
 
+  const loadLibrarySettings = async () => {
+    setLoadingLibrarySettings(true)
+    try {
+      const [advanced, cloud] = await Promise.all([
+        window.onboardingAPI.isAdvancedLibraryEnabled(),
+        window.onboardingAPI.isCloudLibraryEnabled()
+      ])
+      setAdvancedLibrary(advanced)
+      setCloudLibrary(cloud)
+      setPendingAdvancedLibrary(advanced)
+      setPendingCloudLibrary(cloud)
+    } catch (err) {
+      console.error('Failed to load library settings:', err)
+    } finally {
+      setLoadingLibrarySettings(false)
+    }
+  }
+
   const copyApiKey = () => {
     if (apiKey) {
       navigator.clipboard.writeText(apiKey)
@@ -197,6 +226,7 @@ const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
     try {
       const directory = await window.griptapeAPI.getWorkspace()
       setWorkspaceDir(directory)
+      setPendingWorkspaceDir(directory)
     } catch (err) {
       console.error('Failed to load workspace directory:', err)
     } finally {
@@ -208,23 +238,69 @@ const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
     try {
       const directory = await window.griptapeAPI.selectDirectory()
       if (directory) {
-        setWorkspaceDir(directory)
-        await updateWorkspace(directory)
+        setPendingWorkspaceDir(directory)
+        checkForUnsavedChanges(directory, pendingAdvancedLibrary, pendingCloudLibrary)
       }
     } catch (err) {
       console.error('Failed to select directory:', err)
     }
   }
 
-  const updateWorkspace = async (directory: string) => {
-    setUpdatingWorkspace(true)
+  const handleAdvancedLibraryChange = (checked: boolean) => {
+    setPendingAdvancedLibrary(checked)
+    checkForUnsavedChanges(pendingWorkspaceDir, checked, pendingCloudLibrary)
+  }
+
+  const handleCloudLibraryChange = (checked: boolean) => {
+    setPendingCloudLibrary(checked)
+    checkForUnsavedChanges(pendingWorkspaceDir, pendingAdvancedLibrary, checked)
+  }
+
+  const checkForUnsavedChanges = (workspace: string, advanced: boolean, cloud: boolean) => {
+    const workspaceChanged = workspace !== workspaceDir
+    const advancedChanged = advanced !== advancedLibrary
+    const cloudChanged = cloud !== cloudLibrary
+    setHasUnsavedChanges(workspaceChanged || advancedChanged || cloudChanged)
+  }
+
+  const handleApplyChanges = async () => {
+    setIsApplyingChanges(true)
+    setOperationMessage({
+      type: 'info',
+      text: 'Applying changes and reconfiguring engine...'
+    })
+
     try {
-      await window.griptapeAPI.setWorkspace(directory)
+      await window.griptapeAPI.reconfigureEngine({
+        workspaceDirectory: pendingWorkspaceDir,
+        advancedLibrary: pendingAdvancedLibrary,
+        cloudLibrary: pendingCloudLibrary
+      })
+
+      // Update current state to match pending
+      setWorkspaceDir(pendingWorkspaceDir)
+      setAdvancedLibrary(pendingAdvancedLibrary)
+      setCloudLibrary(pendingCloudLibrary)
+      setHasUnsavedChanges(false)
+
+      // Mark as pending so environment info refreshes when engine restarts
+      setIsUpgradePending(true)
+
+      setOperationMessage({
+        type: 'success',
+        text: 'Settings applied successfully! Engine restarting...'
+      })
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setOperationMessage(null), 5000)
     } catch (err) {
-      console.error('Failed to update workspace:', err)
-      alert('Failed to update workspace directory')
+      console.error('Failed to apply settings:', err)
+      setOperationMessage({
+        type: 'error',
+        text: 'Failed to apply settings. Please try again.'
+      })
     } finally {
-      setUpdatingWorkspace(false)
+      setIsApplyingChanges(false)
     }
   }
 
@@ -500,57 +576,138 @@ const Settings: React.FC<SettingsProps> = ({ onPageChange }) => {
           </div>
         </div>
 
-        {/* Workspace Directory Section */}
+        {/* Workspace & Library Configuration Section */}
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h2 className="text-lg font-semibold mb-4">Workspace Directory</h2>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              This is where Griptape Nodes will store your workflows and data.
-              <br />
-              Changing the workspace directory will trigger an engine restart.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={loadingWorkspace ? '' : workspaceDir}
-                readOnly
-                className={cn(
-                  'flex-1 px-3 py-2 text-sm rounded-md',
-                  'bg-background border border-input',
-                  'font-mono'
-                )}
-                placeholder={
-                  loadingWorkspace ? 'Loading workspace directory...' : 'No workspace directory set'
-                }
-              />
-              <button
-                onClick={handleSelectWorkspace}
-                disabled={updatingWorkspace}
-                className={cn(
-                  'px-4 py-2 text-sm rounded-md',
-                  'bg-primary text-primary-foreground',
-                  'hover:bg-primary/90 transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-              >
-                {updatingWorkspace ? 'Updating...' : 'Browse'}
-              </button>
+          <h2 className="text-lg font-semibold mb-4">Workspace & Libraries</h2>
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">Workspace Directory</label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">
+                  This is where Griptape Nodes will store your workflows and data.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={loadingWorkspace ? '' : pendingWorkspaceDir}
+                  readOnly
+                  className={cn(
+                    'flex-1 px-3 py-2 text-sm rounded-md',
+                    'bg-background border border-input',
+                    'font-mono'
+                  )}
+                  placeholder={
+                    loadingWorkspace
+                      ? 'Loading workspace directory...'
+                      : 'No workspace directory set'
+                  }
+                />
+                <button
+                  onClick={handleSelectWorkspace}
+                  disabled={isApplyingChanges || loadingWorkspace}
+                  className={cn(
+                    'px-4 py-2 text-sm rounded-md',
+                    'bg-primary text-primary-foreground',
+                    'hover:bg-primary/90 transition-colors',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                >
+                  Browse
+                </button>
+              </div>
             </div>
-            <div className="pt-2">
+
+            {/* Divider */}
+            <div className="border-t border-border pt-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Optional Libraries</label>
+                  <p className="text-xs text-muted-foreground mt-1 mb-3">
+                    Install additional libraries to extend Griptape Nodes capabilities
+                  </p>
+                </div>
+
+                {loadingLibrarySettings ? (
+                  <p className="text-sm text-muted-foreground">Loading library settings...</p>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={pendingAdvancedLibrary}
+                        onChange={(e) => handleAdvancedLibraryChange(e.target.checked)}
+                        disabled={isApplyingChanges}
+                        className={cn(
+                          'mt-0.5 w-4 h-4 rounded border-input',
+                          'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
+                          'bg-background cursor-pointer',
+                          'disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                      />
+                      <div className="flex-1 space-y-1">
+                        <span className="text-sm text-foreground group-hover:text-foreground transition-colors">
+                          Install Advanced Media Library
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          Advanced image processing nodes (requires specific models to function)
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={pendingCloudLibrary}
+                        onChange={(e) => handleCloudLibraryChange(e.target.checked)}
+                        disabled={isApplyingChanges}
+                        className={cn(
+                          'mt-0.5 w-4 h-4 rounded border-input',
+                          'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
+                          'bg-background cursor-pointer',
+                          'disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                      />
+                      <div className="flex-1 space-y-1">
+                        <span className="text-sm text-foreground group-hover:text-foreground transition-colors">
+                          Install Griptape Cloud Library
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          Nodes for integrating with Griptape Cloud services
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Apply Changes Button */}
+            <div className="pt-2 border-t border-border">
               <button
-                onClick={() => onPageChange('engine-setup')}
-                disabled={status === 'initializing'}
+                onClick={handleApplyChanges}
+                disabled={
+                  !hasUnsavedChanges ||
+                  isApplyingChanges ||
+                  loadingWorkspace ||
+                  loadingLibrarySettings
+                }
                 className={cn(
-                  'px-4 py-2 text-sm rounded-md',
-                  'bg-secondary text-secondary-foreground',
-                  'hover:bg-secondary/80 transition-colors',
+                  'w-full px-4 py-3 text-sm font-medium rounded-md',
+                  'bg-green-600 hover:bg-green-500 active:bg-green-400',
+                  'text-white transition-colors',
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
-                Re-run Setup Wizard
+                {isApplyingChanges ? 'Applying Changes...' : 'Apply Changes'}
               </button>
+              {hasUnsavedChanges && !isApplyingChanges && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                  You have unsaved changes. Click Apply Changes to reconfigure the engine.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mt-2">
-                Re-run the workspace setup wizard to change location and library preferences
+                Applying changes will stop the engine, reconfigure settings, and restart.
               </p>
             </div>
           </div>

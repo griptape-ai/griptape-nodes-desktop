@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { EngineProvider } from '../contexts/EngineContext'
 import Dashboard from '../pages/Dashboard'
 import Engine from '../pages/Engine'
-import EngineSetup from '../pages/EngineSetup'
 import Settings from '../pages/Settings'
 import { Header } from './Header'
 import { EditorWebview } from './EditorWebview'
@@ -61,10 +60,8 @@ const MainApp: React.FC = () => {
         return <Dashboard onPageChange={setCurrentPage} />
       case 'engine':
         return <Engine />
-      case 'engine-setup':
-        return <EngineSetup onPageChange={setCurrentPage} />
       case 'settings':
-        return <Settings onPageChange={setCurrentPage} />
+        return <Settings />
       default:
         return <Dashboard onPageChange={setCurrentPage} />
     }
