@@ -263,9 +263,6 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         reject(error)
       })
     })
-
-    // Sync libraries after successful upgrade
-    await this.syncLibraries()
   }
 
   /**
@@ -426,17 +423,6 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     return libraryPaths
   }
 
-  /**
-   * Sync libraries with current engine version
-   */
-  async syncLibraries() {
-    logger.info('Syncing libraries with current engine version')
-    if (this.engineService) {
-      this.engineService.addLog('stdout', 'Syncing libraries with current engine version...')
-    }
-    await this.runGtn(['libraries', 'sync'], { wait: true })
-  }
-
   async registerLibraries() {
     let libraryPaths = await this.findLibraryConfigPaths()
     const gtnConfigPath = getGtnConfigPath(this.userDataDir)
@@ -532,7 +518,6 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       logger.info('Upgrading nightly channel - reinstalling from GitHub')
       const uvExecutablePath = await this.uvService.getUvExecutablePath()
       await installGtn(this.userDataDir, uvExecutablePath, 'nightly')
-      await this.syncLibraries()
     } else {
       // For stable, use gtn self update
       logger.info('Running gtn self update')
@@ -599,7 +584,6 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       this.engineService.addLog('stdout', `Installing GTN from ${channel} channel...`)
     }
     await installGtn(this.userDataDir, uvExecutablePath, channel)
-    await this.syncLibraries()
 
     // Refresh cached executable path after reinstallation
     this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
@@ -654,7 +638,6 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     // Reinstall with force flags
     logger.info(`Reinstalling GTN from ${channel} channel`)
     await installGtn(this.userDataDir, uvExecutablePath, channel)
-    await this.syncLibraries()
 
     // Refresh cached executable path
     this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)

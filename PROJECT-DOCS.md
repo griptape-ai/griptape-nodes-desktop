@@ -440,7 +440,6 @@ Manages Griptape Nodes CLI installation and configuration.
 - `selfUpdate()`: Update GTN to latest version
 - `upgradeGtn()`: Force upgrade GTN via UV
 - `updateWorkspaceDirectory(dir)`: Change workspace location
-- `syncLibraries()`: Sync libraries with engine
 - `registerLibraries()`: Register synced libraries
 - `getGtnVersion()`: Get current GTN version
 - `switchChannel(channel)`: Switch between stable and nightly channels
