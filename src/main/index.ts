@@ -381,7 +381,6 @@ app.on('ready', async () => {
               clipboard.writeText(params.srcURL)
             }
           })
-
         }
 
         // Add edit menu items (with spell check support) for text contexts
