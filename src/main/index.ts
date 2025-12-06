@@ -382,11 +382,12 @@ app.on('ready', async () => {
             }
           })
 
-          menuItems.push({ type: 'separator' })
         }
 
-        // Add edit menu items (with spell check support)
-        menuItems.push(...buildEditContextMenu(params, contents))
+        // Add edit menu items (with spell check support) for text contexts
+        if (params.isEditable || params.selectionText) {
+          menuItems.push(...buildEditContextMenu(params, contents))
+        }
 
         // Add reload option
         menuItems.push({
