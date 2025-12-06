@@ -2,7 +2,7 @@
   "name": "griptape-nodes-desktop",
   "productName": "Griptape Nodes",
   "version": "0.3.1",
-  "description": "My Electron application description",
+  "description": "Griptape Nodes Desktop Application",
   "main": ".webpack/main",
   "scripts": {
     "start": "electron-forge start",
