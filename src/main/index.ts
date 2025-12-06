@@ -385,13 +385,8 @@ app.on('ready', async () => {
           menuItems.push({ type: 'separator' })
         }
 
-        // Add edit menu items (with spell check) for editable fields
-        if (params.isEditable) {
-          menuItems.push(...buildEditContextMenu(params, contents))
-        } else if (params.selectionText) {
-          // Only add standalone copy if not in an editable field
-          menuItems.push({ role: 'copy' }, { type: 'separator' })
-        }
+        // Add edit menu items (with spell check support)
+        menuItems.push(...buildEditContextMenu(params, contents))
 
         // Add reload option
         menuItems.push({
