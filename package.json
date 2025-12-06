@@ -1,7 +1,7 @@
 {
   "name": "griptape-nodes-desktop",
   "productName": "Griptape Nodes",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "My Electron application description",
   "main": ".webpack/main",
   "scripts": {

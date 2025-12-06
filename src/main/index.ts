@@ -104,6 +104,48 @@ const gtnService = new GtnService(
 const engineService = new EngineService(userDataPath, gtnService)
 const updateService = new UpdateService(isPackaged())
 
+/**
+ * Builds context menu items for text editing with spell check support
+ */
+function buildEditContextMenu(
+  params: Electron.ContextMenuParams,
+  webContents: Electron.WebContents
+): Electron.MenuItemConstructorOptions[] {
+  const menuItems: Electron.MenuItemConstructorOptions[] = []
+
+  // Add spell check suggestions if available
+  if (params.misspelledWord) {
+    if (params.dictionarySuggestions.length > 0) {
+      for (const suggestion of params.dictionarySuggestions) {
+        menuItems.push({
+          label: suggestion,
+          click: () => webContents.replaceMisspelling(suggestion)
+        })
+      }
+    } else {
+      menuItems.push({
+        label: 'No spelling suggestions',
+        enabled: false
+      })
+    }
+    menuItems.push({ type: 'separator' })
+  }
+
+  // Standard edit menu items
+  menuItems.push(
+    { role: 'undo' },
+    { role: 'redo' },
+    { type: 'separator' },
+    { role: 'cut' },
+    { role: 'copy' },
+    { role: 'paste' },
+    { type: 'separator' },
+    { role: 'selectAll' }
+  )
+
+  return menuItems
+}
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -343,23 +385,12 @@ app.on('ready', async () => {
           menuItems.push({ type: 'separator' })
         }
 
-        // Add standard editing options if there's selected text
-        if (params.selectionText) {
-          menuItems.push({ role: 'copy' }, { type: 'separator' })
-        }
-
-        // Add standard editing options for input fields
+        // Add edit menu items (with spell check) for editable fields
         if (params.isEditable) {
-          menuItems.push(
-            { role: 'undo' },
-            { role: 'redo' },
-            { type: 'separator' },
-            { role: 'cut' },
-            { role: 'copy' },
-            { role: 'paste' },
-            { type: 'separator' },
-            { role: 'selectAll' }
-          )
+          menuItems.push(...buildEditContextMenu(params, contents))
+        } else if (params.selectionText) {
+          // Only add standalone copy if not in an editable field
+          menuItems.push({ role: 'copy' }, { type: 'separator' })
         }
 
         // Add reload option
@@ -752,17 +783,9 @@ const showAboutDialog = async () => {
 
 const setupKeyboardShortcuts = (mainWindow: BrowserWindow) => {
   // Set up right-click context menu
-  mainWindow.webContents.on('context-menu', (_event, _params) => {
-    const menu = Menu.buildFromTemplate([
-      { role: 'undo' },
-      { role: 'redo' },
-      { type: 'separator' },
-      { role: 'cut' },
-      { role: 'copy' },
-      { role: 'paste' },
-      { type: 'separator' },
-      { role: 'selectAll' }
-    ])
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    const menuItems = buildEditContextMenu(params, mainWindow.webContents)
+    const menu = Menu.buildFromTemplate(menuItems)
     menu.popup({ window: mainWindow })
   })
 }
