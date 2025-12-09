@@ -307,39 +307,6 @@ app.on('ready', async () => {
         return false
       })
 
-      // Intercept requests to inject Authorization header with bearer token
-      contents.session.webRequest.onBeforeSendHeaders(
-        { urls: ['https://*.griptape.ai/*', 'https://api.nodes.griptape.ai/*'] },
-        (details, callback) => {
-          const credentials = authService.getStoredCredentials()
-
-          logger.info(`[WebviewRequestInterceptor] Intercepting request to: ${details.url}`)
-          logger.info(`[WebviewRequestInterceptor] Has credentials: ${!!credentials}`)
-          logger.info(`[WebviewRequestInterceptor] Has tokens: ${!!credentials?.tokens}`)
-          logger.info(
-            `[WebviewRequestInterceptor] Has access_token: ${!!credentials?.tokens?.access_token}`
-          )
-
-          if (credentials && credentials.tokens && credentials.tokens.access_token) {
-            // Inject Authorization header with bearer token
-            const token = credentials.tokens.access_token
-            details.requestHeaders['Authorization'] = `Bearer ${token}`
-            logger.info(
-              `[WebviewRequestInterceptor] ✅ Injected auth header for request to: ${details.url}`
-            )
-            logger.info(
-              `[WebviewRequestInterceptor] Token starts with: ${token.substring(0, 20)}...`
-            )
-          } else {
-            logger.warn(
-              `[WebviewRequestInterceptor] ❌ No credentials available to inject for: ${details.url}`
-            )
-          }
-
-          callback({ requestHeaders: details.requestHeaders })
-        }
-      )
-
       // Handle context menu for webviews manually to ensure image saving works
       contents.on('context-menu', (_event, params) => {
         const menuItems: Electron.MenuItemConstructorOptions[] = []
