@@ -66,8 +66,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
             )
         }
 
-        // Pass embedded=true to signal we're in desktop embedded mode
-        const url = `${baseUrl}?embedded=true`
+        const url = baseUrl
         console.log('[EditorWebview] Editor URL set to:', url)
         setEditorUrl(url)
       } catch (err) {
@@ -190,7 +189,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
             : channel === 'local'
               ? 'http://localhost:5173'
               : 'https://app.nodes.griptape.ai'
-        const url = `${baseUrl}?embedded=true`
+        const url = baseUrl
 
         console.debug('[EditorWebview] Reloading with URL:', url)
         // Update the URL state and navigate to the new URL
