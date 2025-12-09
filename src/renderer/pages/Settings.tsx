@@ -906,8 +906,8 @@ const Settings: React.FC = () => {
               <p className="text-xs text-muted-foreground mt-1">
                 Stable: Production editor with stable features. Nightly: Preview editor with latest
                 features (may be unstable).
-                {showLocalOption && ' Local: Development editor running on localhost:5173.'}
-                {' '}The editor will reload when you change this setting.
+                {showLocalOption && ' Local: Development editor running on localhost:5173.'} The
+                editor will reload when you change this setting.
               </p>
             </div>
           </div>
