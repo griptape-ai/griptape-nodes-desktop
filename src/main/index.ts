@@ -7,7 +7,17 @@ VelopackApp.build().run()
 import path from 'node:path'
 import fs from 'node:fs'
 import { ChildProcess } from 'node:child_process'
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell, net, clipboard } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  dialog,
+  ipcMain,
+  shell,
+  net,
+  clipboard,
+  webContents
+} from 'electron'
 import { getPythonVersion } from '../common/config/versions'
 import { ENV_INFO_NOT_COLLECTED } from '../common/config/constants'
 import { HttpAuthService } from '../common/services/auth/http'
@@ -238,6 +248,7 @@ app.on('ready', async () => {
   // Enable context menus for webviews (including right-click on images)
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() === 'webview') {
+      logger.info('[Webview] New webview created, setting up handlers')
       // Handle permission requests for camera, microphone, etc.
       contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
         const allowedPermissions = [
@@ -295,6 +306,39 @@ app.on('ready', async () => {
 
         return false
       })
+
+      // Intercept requests to inject Authorization header with bearer token
+      contents.session.webRequest.onBeforeSendHeaders(
+        { urls: ['https://*.griptape.ai/*', 'https://api.nodes.griptape.ai/*'] },
+        (details, callback) => {
+          const credentials = authService.getStoredCredentials()
+
+          logger.info(`[WebviewRequestInterceptor] Intercepting request to: ${details.url}`)
+          logger.info(`[WebviewRequestInterceptor] Has credentials: ${!!credentials}`)
+          logger.info(`[WebviewRequestInterceptor] Has tokens: ${!!credentials?.tokens}`)
+          logger.info(
+            `[WebviewRequestInterceptor] Has access_token: ${!!credentials?.tokens?.access_token}`
+          )
+
+          if (credentials && credentials.tokens && credentials.tokens.access_token) {
+            // Inject Authorization header with bearer token
+            const token = credentials.tokens.access_token
+            details.requestHeaders['Authorization'] = `Bearer ${token}`
+            logger.info(
+              `[WebviewRequestInterceptor] ✅ Injected auth header for request to: ${details.url}`
+            )
+            logger.info(
+              `[WebviewRequestInterceptor] Token starts with: ${token.substring(0, 20)}...`
+            )
+          } else {
+            logger.warn(
+              `[WebviewRequestInterceptor] ❌ No credentials available to inject for: ${details.url}`
+            )
+          }
+
+          callback({ requestHeaders: details.requestHeaders })
+        }
+      )
 
       // Handle context menu for webviews manually to ensure image saving works
       contents.on('context-menu', (_event, params) => {
@@ -1050,28 +1094,113 @@ const setupIPC = () => {
 
   // Synchronous auth check for webview preload
   ipcMain.on('auth:check-sync', (event) => {
+    logger.info('[auth:check-sync] Webview preload requesting auth data')
+
     const credentials = authService.getStoredCredentials()
-    if (credentials) {
-      // Check if token is expired or missing expiration time
+
+    logger.info('[auth:check-sync] Credentials status:', {
+      hasCredentials: !!credentials,
+      hasTokens: !!credentials?.tokens,
+      hasUser: !!credentials?.user,
+      hasApiKey: !!credentials?.apiKey,
+      expiresAt: credentials?.expiresAt
+    })
+
+    if (credentials && credentials.tokens) {
+      // Always return tokens if they exist, even if expired
+      // The webview/editor's Auth0 SDK can handle token refresh automatically
+      // if a refresh_token is present
       const currentTime = Math.floor(Date.now() / 1000)
-      if (!credentials.expiresAt || currentTime >= credentials.expiresAt) {
-        // Token is expired or has no expiration time - don't return it
-        logger.warn(
-          'auth:check-sync - Token is expired or missing expiration time, treating as not authenticated'
+      const isExpired = !credentials.expiresAt || currentTime >= credentials.expiresAt
+
+      if (isExpired) {
+        logger.info(
+          '[auth:check-sync] Token is expired but returning it anyway for webview refresh'
         )
-        event.returnValue = {
-          isAuthenticated: false
-        }
       } else {
-        event.returnValue = {
-          isAuthenticated: true,
-          ...credentials
-        }
+        logger.info(
+          `[auth:check-sync] Token is valid, expires in ${credentials.expiresAt - currentTime} seconds`
+        )
+      }
+
+      logger.info('[auth:check-sync] ✅ Returning authenticated credentials to webview preload')
+      event.returnValue = {
+        isAuthenticated: true,
+        ...credentials
       }
     } else {
+      logger.warn('[auth:check-sync] ❌ No credentials available, returning not authenticated')
       event.returnValue = {
         isAuthenticated: false
       }
+    }
+  })
+
+  // Handle postMessage authentication protocol from embedded editor webview
+  ipcMain.on('webview:auth-token-request', (event) => {
+    logger.info('[Webview Auth] Editor requesting access token')
+    try {
+      const credentials = authService.getStoredCredentials()
+
+      if (!credentials || !credentials.tokens || !credentials.tokens.access_token) {
+        logger.warn('[Webview Auth] No access token available')
+        event.returnValue = { token: null, error: 'Not authenticated' }
+        return
+      }
+
+      // Check if token is expired
+      const currentTime = Math.floor(Date.now() / 1000)
+      const isExpired = !credentials.expiresAt || currentTime >= credentials.expiresAt
+
+      if (isExpired) {
+        logger.warn('[Webview Auth] Token is expired')
+        event.returnValue = { token: null, error: 'Token expired' }
+        return
+      }
+
+      logger.info('[Webview Auth] Returning access token to editor')
+      event.returnValue = { token: credentials.tokens.access_token }
+    } catch (err) {
+      logger.error('[Webview Auth] Error getting token:', err)
+      event.returnValue = { token: null, error: 'Internal error' }
+    }
+  })
+
+  ipcMain.on('webview:user-info-request', (event) => {
+    logger.info('[Webview Auth] Editor requesting user info')
+    try {
+      const credentials = authService.getStoredCredentials()
+
+      if (!credentials || !credentials.user) {
+        logger.warn('[Webview Auth] No user info available')
+        event.returnValue = { user: null, error: 'Not authenticated' }
+        return
+      }
+
+      logger.info('[Webview Auth] Returning user info to editor:', {
+        email: credentials.user.email
+      })
+      event.returnValue = { user: credentials.user }
+    } catch (err) {
+      logger.error('[Webview Auth] Error getting user info:', err)
+      event.returnValue = { user: null, error: 'Internal error' }
+    }
+  })
+
+  ipcMain.on('webview:logout-request', (event) => {
+    logger.info('[Webview Auth] Editor requesting logout')
+    try {
+      authService.clearCredentials()
+      event.returnValue = { success: true }
+
+      // Notify all windows that user logged out
+      BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send('auth:logout')
+      })
+      logger.info('[Webview Auth] Logout successful')
+    } catch (err) {
+      logger.error('[Webview Auth] Error during logout:', err)
+      event.returnValue = { success: false, error: 'Logout failed' }
     }
   })
 
@@ -1099,9 +1228,9 @@ const setupIPC = () => {
         }
       }
 
-      // Broadcast to all windows that tokens have been updated
-      BrowserWindow.getAllWindows().forEach((window) => {
-        window.webContents.send('auth:tokens-updated', {
+      // Broadcast to all webContents (including webviews) that tokens have been updated
+      webContents.getAllWebContents().forEach((contents) => {
+        contents.send('auth:tokens-updated', {
           tokens: credentials.tokens,
           expiresAt: credentials.expiresAt,
           apiKey: credentials.apiKey

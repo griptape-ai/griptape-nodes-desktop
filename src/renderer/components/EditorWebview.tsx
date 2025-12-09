@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 
 interface EditorWebviewProps {
   isVisible: boolean
@@ -8,118 +9,111 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
   const [error, setError] = useState<string | null>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
   const [preloadPath, setPreloadPath] = useState<string | null>(null)
-  const [authReady, setAuthReady] = useState(false)
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [editorUrl, setEditorUrl] = useState<string | null>(null)
+  const [hasEverBeenVisible, setHasEverBeenVisible] = useState(false)
   const webviewRef = useRef<HTMLWebViewElement>(null)
 
-  // Check auth before doing anything else
+  // Use AuthContext instead of checking independently
+  const { isLoading, isAuthenticated, tokens } = useAuth()
+
+  // Track when editor becomes visible for the first time
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        console.log('Checking auth before creating webview...')
-        const authData = await window.oauthAPI.checkAuth()
+    if (isVisible && !hasEverBeenVisible) {
+      console.log('[EditorWebview] Editor tab opened for first time, starting load')
+      setHasEverBeenVisible(true)
+    }
+  }, [isVisible, hasEverBeenVisible])
 
-        if (!authData.isAuthenticated || !authData.tokens) {
-          console.error('Not authenticated, cannot load editor')
-          setError('Not authenticated. Please log in first.')
-          setIsCheckingAuth(false)
-          return
-        }
-
-        console.log('Auth confirmed, ready to create webview')
-        setAuthReady(true)
-        setIsCheckingAuth(false)
-      } catch (err) {
-        console.error('Failed to check auth:', err)
-        setError('Failed to verify authentication')
-        setIsCheckingAuth(false)
-      }
+  // Get the webview preload path and editor URL only after auth is ready AND editor has been visited
+  useEffect(() => {
+    if (!hasEverBeenVisible) {
+      console.debug('[EditorWebview] Editor not yet visited, deferring load')
+      return
     }
 
-    checkAuth()
-  }, [])
-
-  // Get the webview preload path and editor URL only after auth is ready
-  useEffect(() => {
-    if (!authReady) {
+    if (isLoading || !isAuthenticated || !tokens) {
+      console.debug('[EditorWebview] Waiting for auth...', {
+        isLoading,
+        isAuthenticated,
+        hasTokens: !!tokens
+      })
       return
     }
 
     const loadEditorConfig = async () => {
       try {
+        console.debug('[EditorWebview] Auth ready, loading editor config...')
         const path = window.electron.getWebviewPreloadPath()
-        console.log('Got webview preload path:', path)
+        console.debug('[EditorWebview] Got webview preload path:', path)
         setPreloadPath(path)
 
         // Get the configured editor channel
         const channel = await window.settingsAPI.getEditorChannel()
-        const baseUrl =
-          channel === 'nightly'
-            ? 'https://app-nightly.nodes.griptape.ai'
-            : 'https://app.nodes.griptape.ai'
+        let baseUrl = 'https://app.nodes.griptape.ai' // default to stable
+        switch (channel) {
+          case 'nightly':
+            baseUrl = 'https://app-nightly.nodes.griptape.ai'
+            console.debug('[EditorWebview] Using nightly channel')
+            break
+          case 'local':
+            baseUrl = 'http://localhost:5173'
+            console.debug('[EditorWebview] Using local channel')
+            break
+          default:
+            console.warn(
+              '[EditorWebview] Unknown editor channel from settings, defaulting to stable:',
+              channel
+            )
+        }
+
+        // Pass embedded=true to signal we're in desktop embedded mode
         const url = `${baseUrl}?embedded=true`
-        console.log('Editor URL set to:', url, '(channel:', channel, ')')
+        console.log('[EditorWebview] Editor URL set to:', url)
         setEditorUrl(url)
       } catch (err) {
-        console.error('Failed to get webview preload path or editor config:', err)
+        console.error('[EditorWebview] Failed to get webview preload path or editor config:', err)
         setError('Failed to initialize editor')
       }
     }
 
     loadEditorConfig()
-  }, [authReady])
+  }, [hasEverBeenVisible, isLoading, isAuthenticated, tokens])
 
   useEffect(() => {
     const webview = webviewRef.current
 
-    console.log(
-      'EditorWebview useEffect running, webview:',
-      webview,
-      'preloadPath:',
-      preloadPath,
-      'editorUrl:',
-      editorUrl
-    )
-
     if (!webview || hasInitialized || !preloadPath || !editorUrl) {
-      console.log(
-        'Skipping initialization - webview:',
-        !!webview,
-        'hasInitialized:',
+      console.debug('[EditorWebview] Skipping webview initialization:', {
+        hasWebview: !!webview,
         hasInitialized,
-        'preloadPath:',
-        preloadPath,
-        'editorUrl:',
-        editorUrl
-      )
+        hasPreloadPath: !!preloadPath,
+        hasEditorUrl: !!editorUrl
+      })
       return
     }
 
+    console.log('[EditorWebview] Initializing webview')
+
     const handleLoad = async () => {
-      console.log('Editor webview loaded successfully')
+      console.debug('[EditorWebview] Webview loaded successfully')
     }
 
     const handleLoadFail = (event: any) => {
-      console.error('Editor webview failed to load:', event)
+      console.error('[EditorWebview] Webview failed to load:', event)
       setError(`Failed to load editor: ${event.errorDescription || 'Unknown error'}`)
     }
 
     const handleNewWindow = (e: any) => {
-      e.preventDefault() // Prevent webview from opening new window
-
-      const url = e.url
-      console.log('Opening new window link in default browser:', url)
-
-      // Open in system default browser
-      window.electronAPI.openExternal(url)
+      console.debug('[EditorWebview] Opening new window in browser:', e.url)
+      e.preventDefault()
+      window.electronAPI.openExternal(e.url)
     }
 
     const handleWillNavigate = (e: any) => {
       const url = e.url
 
       try {
-        // Check if URL is external (different domain from nodes.griptape.ai, app.nodes.griptape.ai, or app-nightly.nodes.griptape.ai)
+        // Check if URL is external (different domain from nodes.griptape.ai)
         const urlObj = new URL(url)
         const isExternal =
           !urlObj.hostname.includes('nodes.griptape.ai') &&
@@ -127,28 +121,27 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
           !urlObj.hostname.includes('app-nightly.nodes.griptape.ai')
 
         if (isExternal) {
+          console.debug('[EditorWebview] Opening external link in browser:', url)
           e.preventDefault()
-          console.log('Opening external link in default browser:', url)
           window.electronAPI.openExternal(url)
         } else {
-          console.log('Allowing internal navigation to:', url)
+          console.debug('[EditorWebview] Allowing internal navigation:', url)
         }
       } catch (err) {
-        console.error('Error parsing URL:', url, err)
+        console.error('[EditorWebview] Error parsing URL:', url, err)
       }
     }
 
     const handleEnterFullscreen = () => {
-      console.log('Webview entering fullscreen')
+      console.debug('[EditorWebview] Entering fullscreen')
       window.electronAPI.setFullscreen(true)
     }
 
     const handleLeaveFullscreen = () => {
-      console.log('Webview leaving fullscreen')
+      console.debug('[EditorWebview] Leaving fullscreen')
       window.electronAPI.setFullscreen(false)
     }
 
-    console.log('Adding event listeners to webview')
     webview.addEventListener('did-finish-load', handleLoad)
     webview.addEventListener('did-fail-load', handleLoadFail)
     webview.addEventListener('new-window', handleNewWindow)
@@ -156,19 +149,19 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     webview.addEventListener('enter-html-full-screen', handleEnterFullscreen)
     webview.addEventListener('leave-html-full-screen', handleLeaveFullscreen)
 
-    // Also listen for console messages from webview for debugging
+    // Listen for console messages from webview for debugging
     webview.addEventListener('console-message', (e: any) => {
-      console.log('Webview console:', e.message)
+      const level = e.level === 1 ? 'warn' : e.level === 2 ? 'error' : 'log'
+      console[level](`[EditorWebview:Webview] ${e.message}`)
     })
 
-    // NOW set the src to start loading (after listeners are attached)
-    console.log('Setting webview src to trigger load:', editorUrl)
+    // Set the src to start loading (after listeners are attached)
+    console.log('[EditorWebview] Setting webview src:', editorUrl)
     webview.src = editorUrl
-
     setHasInitialized(true)
 
     return () => {
-      console.log('Cleaning up webview event listeners')
+      console.debug('[EditorWebview] Cleaning up webview event listeners')
       webview.removeEventListener('did-finish-load', handleLoad)
       webview.removeEventListener('did-fail-load', handleLoadFail)
       webview.removeEventListener('new-window', handleNewWindow)
@@ -187,24 +180,24 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     }
 
     const handleReload = async () => {
-      console.log('Reloading editor webview')
-
+      console.log('[EditorWebview] Reloading editor webview')
       // Re-fetch the editor channel in case it changed
       try {
         const channel = await window.settingsAPI.getEditorChannel()
         const baseUrl =
           channel === 'nightly'
             ? 'https://app-nightly.nodes.griptape.ai'
-            : 'https://app.nodes.griptape.ai'
+            : channel === 'local'
+              ? 'http://localhost:5173'
+              : 'https://app.nodes.griptape.ai'
         const url = `${baseUrl}?embedded=true`
 
-        console.log('Reloading with new URL:', url, '(channel:', channel, ')')
-
+        console.debug('[EditorWebview] Reloading with URL:', url)
         // Update the URL state and navigate to the new URL
         setEditorUrl(url)
         webview.src = url
       } catch (err) {
-        console.error('Failed to reload with updated channel:', err)
+        console.error('[EditorWebview] Failed to reload with updated channel:', err)
         // Fallback to regular reload
         webview.reload()
       }
@@ -217,8 +210,21 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     }
   }, [isVisible])
 
+  // Don't render anything until editor tab is visited for the first time
+  if (!hasEverBeenVisible) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'none'
+        }}
+      />
+    )
+  }
+
   // Show loading state while checking auth
-  if (isCheckingAuth) {
+  if (isLoading) {
     return (
       <div
         style={{
@@ -237,8 +243,31 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     )
   }
 
+  // Show error if not authenticated (shouldn't happen since MainApp checks this)
+  if (!isAuthenticated || !tokens) {
+    console.error('[EditorWebview] Not authenticated, cannot load editor')
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: isVisible ? 'flex' : 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--background)'
+        }}
+      >
+        <div className="text-center max-w-md">
+          <h2 className="text-xl font-semibold mb-2 text-destructive">Not Authenticated</h2>
+          <p className="text-muted-foreground mb-4">Please log in first.</p>
+        </div>
+      </div>
+    )
+  }
+
   // Show error state
   if (error) {
+    console.error('[EditorWebview] Showing error state:', error)
     return (
       <div
         style={{
@@ -264,8 +293,9 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     )
   }
 
-  // Only render webview if auth is ready and we have preload path and editor URL
-  if (!authReady || !preloadPath || !editorUrl) {
+  // Only render webview if we have preload path and editor URL
+  if (!preloadPath || !editorUrl) {
+    console.debug('[EditorWebview] Showing initializing state - waiting for config')
     return (
       <div
         style={{
@@ -283,6 +313,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       </div>
     )
   }
+
+  console.log('[EditorWebview] Rendering webview element')
 
   return (
     <div

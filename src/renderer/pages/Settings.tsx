@@ -39,7 +39,7 @@ const Settings: React.FC = () => {
   const [switchingChannel, setSwitchingChannel] = useState(false)
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
-  const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly'>('stable')
+  const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly' | 'local'>('stable')
 
   // Library settings state
   const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
@@ -421,7 +421,7 @@ const Settings: React.FC = () => {
     }
   }
 
-  const handleEditorChannelChange = async (newChannel: 'stable' | 'nightly') => {
+  const handleEditorChannelChange = async (newChannel: 'stable' | 'nightly' | 'local') => {
     try {
       const result = await window.settingsAPI.setEditorChannel(newChannel)
       if (result && result.success) {
@@ -879,7 +879,9 @@ const Settings: React.FC = () => {
               <p className="text-sm font-medium mb-2">Editor Release Channel</p>
               <select
                 value={editorChannel}
-                onChange={(e) => handleEditorChannelChange(e.target.value as 'stable' | 'nightly')}
+                onChange={(e) =>
+                  handleEditorChannelChange(e.target.value as 'stable' | 'nightly' | 'local')
+                }
                 className={cn(
                   'w-full px-3 py-2 text-sm rounded-md',
                   'bg-background border border-input',
@@ -888,6 +890,7 @@ const Settings: React.FC = () => {
               >
                 <option value="stable">Stable</option>
                 <option value="nightly">Nightly</option>
+                <option value="local">Local Development</option>
               </select>
               <p className="text-xs text-muted-foreground mt-1">
                 Stable: Production editor with stable features. Nightly: Preview editor with latest

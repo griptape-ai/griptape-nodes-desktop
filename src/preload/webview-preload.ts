@@ -3,98 +3,89 @@
 
 import { ipcRenderer } from 'electron'
 
-console.log('Webview preload script loaded')
+console.log('[WebviewPreload] Webview preload script loaded')
+console.debug('[WebviewPreload] Location:', window.location.href)
 
-// Inject auth before the page's JavaScript runs - MUST be synchronous
-try {
-  console.log('Attempting to inject auth into webview (synchronous)...')
+// Handle postMessage authentication protocol from embedded editor
+window.addEventListener('message', async (event) => {
+  // Verify origin is from Griptape editor (production/nightly) or localhost (development)
+  const isGriptapeOrigin = event.origin.includes('nodes.griptape.ai')
+  const isLocalDevelopment = event.origin.startsWith('http://localhost:')
 
-  // Get auth data synchronously - this blocks until we have the data
-  const authData = ipcRenderer.sendSync('auth:check-sync')
-
-  if (!authData.isAuthenticated || !authData.tokens) {
-    console.warn('Not authenticated, skipping auth injection')
-  } else {
-    const { tokens, user } = authData
-
-    console.log('Got auth tokens in webview preload, expires_in:', tokens.expires_in)
-
-    // Calculate expiration time
-    const expiresAt = Math.floor(Date.now() / 1000) + (tokens.expires_in || 86400)
-
-    // Auth0 localStorage key format (must match scope in OAuth request)
-    const auth0Key =
-      '@@auth0spajs@@::bK5Fijuoy90ftmcwVUZABA5THOZyzHnH::https://cloud.griptape.ai/api::openid profile email offline_access'
-
-    // Auth0 cache entry format
-    const auth0CacheEntry = {
-      body: {
-        client_id: 'bK5Fijuoy90ftmcwVUZABA5THOZyzHnH',
-        access_token: tokens.access_token,
-        id_token: tokens.id_token,
-        refresh_token: tokens.refresh_token,
-        scope: 'openid profile email offline_access',
-        expires_in: tokens.expires_in || 86400,
-        token_type: tokens.token_type || 'Bearer',
-        decodedToken: {
-          user: user
-        }
-      },
-      expiresAt
-    }
-
-    console.log(
-      'Injecting auth with expiresAt:',
-      expiresAt,
-      'current time:',
-      Math.floor(Date.now() / 1000)
-    )
-
-    // Inject into localStorage before page loads - this is synchronous
-    localStorage.setItem(auth0Key, JSON.stringify(auth0CacheEntry))
-
-    console.log('✅ Auth injected into webview localStorage via preload (synchronous)')
+  if (!isGriptapeOrigin && !isLocalDevelopment) {
+    console.warn('[WebviewPreload] Ignoring message from untrusted origin:', event.origin)
+    return
   }
-} catch (err) {
-  console.error('Failed to inject auth in webview preload:', err)
-}
 
-// Listen for token updates from main process and update localStorage
-ipcRenderer.on('auth:tokens-updated', (event, data) => {
+  const { type, requestId } = event.data
+  if (!type || !requestId) return
+
+  console.debug('[WebviewPreload] Processing request:', type, requestId)
+
   try {
-    console.log('Received token update in webview, updating localStorage...')
+    switch (type) {
+      case 'AUTH_TOKEN_REQUEST': {
+        const authData = ipcRenderer.sendSync('webview:auth-token-request')
+        console.debug('[WebviewPreload] Sending AUTH_TOKEN_RESPONSE:', {
+          hasToken: !!authData?.token,
+          error: authData?.error
+        })
+        window.postMessage(
+          {
+            type: 'AUTH_TOKEN_RESPONSE',
+            requestId,
+            token: authData?.token || null,
+            error: authData?.error || null
+          },
+          event.origin
+        )
+        break
+      }
 
-    const { tokens, expiresAt } = data
+      case 'USER_INFO_REQUEST': {
+        const userData = ipcRenderer.sendSync('webview:user-info-request')
+        console.debug('[WebviewPreload] Sending USER_INFO_RESPONSE:', {
+          hasUser: !!userData?.user,
+          error: userData?.error
+        })
+        window.postMessage(
+          {
+            type: 'USER_INFO_RESPONSE',
+            requestId,
+            user: userData?.user || null,
+            error: userData?.error || null
+          },
+          event.origin
+        )
+        break
+      }
 
-    // Get the stored auth data to preserve user info
-    const auth0Key =
-      '@@auth0spajs@@::bK5Fijuoy90ftmcwVUZABA5THOZyzHnH::https://cloud.griptape.ai/api::openid profile email offline_access'
-
-    const existingData = localStorage.getItem(auth0Key)
-    if (!existingData) {
-      console.warn('No existing auth data found in localStorage, cannot update tokens')
-      return
+      case 'LOGOUT_REQUEST': {
+        const result = ipcRenderer.sendSync('webview:logout-request')
+        console.debug('[WebviewPreload] Sending LOGOUT_RESPONSE')
+        window.postMessage(
+          {
+            type: 'LOGOUT_RESPONSE',
+            requestId,
+            success: result?.success || false,
+            error: result?.error || null
+          },
+          event.origin
+        )
+        break
+      }
     }
-
-    const existingEntry = JSON.parse(existingData)
-
-    // Update the tokens while preserving other data
-    const updatedEntry = {
-      ...existingEntry,
-      body: {
-        ...existingEntry.body,
-        access_token: tokens.access_token,
-        id_token: tokens.id_token,
-        refresh_token: tokens.refresh_token,
-        expires_in: tokens.expires_in || 86400,
-        token_type: tokens.token_type || 'Bearer'
-      },
-      expiresAt
-    }
-
-    localStorage.setItem(auth0Key, JSON.stringify(updatedEntry))
-    console.log('✅ Tokens updated in webview localStorage')
   } catch (err) {
-    console.error('Failed to update tokens in webview:', err)
+    console.error('[WebviewPreload] Error handling request:', err)
+    window.postMessage(
+      {
+        type: `${type.replace('_REQUEST', '_RESPONSE')}`,
+        requestId,
+        error: err instanceof Error ? err.message : 'Unknown error'
+      },
+      event.origin
+    )
   }
 })
+
+console.log('[WebviewPreload] PostMessage handlers registered')
