@@ -40,6 +40,7 @@ const Settings: React.FC = () => {
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly' | 'local'>('stable')
+  const [showLocalOption, setShowLocalOption] = useState<boolean>(false)
 
   // Library settings state
   const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
@@ -103,6 +104,7 @@ const Settings: React.FC = () => {
     loadSystemMonitorSetting()
     loadEngineChannel()
     loadEditorChannel()
+    checkDevMode()
     window.griptapeAPI.refreshConfig()
 
     const handleWorkspaceChanged = (event: any, directory: string) => {
@@ -163,6 +165,15 @@ const Settings: React.FC = () => {
       setEditorChannel(channel)
     } catch (err) {
       console.error('Failed to load editor channel:', err)
+    }
+  }
+
+  const checkDevMode = async () => {
+    try {
+      const packaged = await window.electronAPI.isPackaged()
+      setShowLocalOption(!packaged)
+    } catch (err) {
+      console.error('Failed to check dev mode:', err)
     }
   }
 
@@ -890,11 +901,13 @@ const Settings: React.FC = () => {
               >
                 <option value="stable">Stable</option>
                 <option value="nightly">Nightly</option>
-                <option value="local">Local Development</option>
+                {showLocalOption && <option value="local">Local Development</option>}
               </select>
               <p className="text-xs text-muted-foreground mt-1">
                 Stable: Production editor with stable features. Nightly: Preview editor with latest
-                features (may be unstable). The editor will reload when you change this setting.
+                features (may be unstable).
+                {showLocalOption && ' Local: Development editor running on localhost:5173.'}
+                {' '}The editor will reload when you change this setting.
               </p>
             </div>
           </div>
