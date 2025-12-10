@@ -71,9 +71,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
               <h3 className="text-sm font-semibold text-foreground">Getting Started:</h3>
               <ol className="list-decimal list-inside space-y-2 text-sm">
                 <li>Ensure the engine is running (check the status below)</li>
-                <li>
-                  Click &quot;Open Editor&quot; to launch the visual workflow editor in your browser
-                </li>
+                <li>Click &quot;Open Editor&quot; to launch the visual workflow editor</li>
                 <li>
                   In the editor, look for an engine named &quot;Griptape Nodes Desktop&quot; and
                   click &quot;Start Session&quot;

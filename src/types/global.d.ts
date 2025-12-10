@@ -277,9 +277,9 @@ declare global {
       ) => Promise<{ success: boolean; error?: string }>
       getAvailableEngineChannels: () => Promise<string[]>
       isChannelSwitchInProgress: () => Promise<boolean>
-      getEditorChannel: () => Promise<'stable' | 'nightly'>
+      getEditorChannel: () => Promise<'stable' | 'nightly' | 'local'>
       setEditorChannel: (
-        channel: 'stable' | 'nightly'
+        channel: 'stable' | 'nightly' | 'local'
       ) => Promise<{ success: boolean; error?: string }>
     }
     systemMonitorAPI: {
