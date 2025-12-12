@@ -121,6 +121,7 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
 contextBridge.exposeInMainWorld('updateAPI', {
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
   isSupported: () => ipcRenderer.invoke('update:is-supported'),
+  getPendingUpdate: () => ipcRenderer.invoke('update:get-pending'),
   onDownloadStarted: (callback: () => void) => {
     ipcRenderer.on('update:download-started', callback)
   },
@@ -138,6 +139,18 @@ contextBridge.exposeInMainWorld('updateAPI', {
   },
   removeDownloadComplete: (callback: () => void) => {
     ipcRenderer.removeListener('update:download-complete', callback)
+  },
+  onUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => {
+    ipcRenderer.on('update:available', callback)
+  },
+  removeUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => {
+    ipcRenderer.removeListener('update:available', callback)
+  },
+  onUpdateReadyToInstall: (callback: (event: any, updateInfo: any) => void) => {
+    ipcRenderer.on('update:ready-to-install', callback)
+  },
+  removeUpdateReadyToInstall: (callback: (event: any, updateInfo: any) => void) => {
+    ipcRenderer.removeListener('update:ready-to-install', callback)
   }
 })
 
@@ -202,7 +215,13 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   isChannelSwitchInProgress: () => ipcRenderer.invoke('settings:is-channel-switch-in-progress'),
   getEditorChannel: () => ipcRenderer.invoke('settings:get-editor-channel'),
   setEditorChannel: (channel: 'stable' | 'nightly') =>
-    ipcRenderer.invoke('settings:set-editor-channel', channel)
+    ipcRenderer.invoke('settings:set-editor-channel', channel),
+  getAutoDownloadUpdates: () => ipcRenderer.invoke('settings:get-auto-download-updates'),
+  setAutoDownloadUpdates: (enabled: boolean) =>
+    ipcRenderer.invoke('settings:set-auto-download-updates', enabled),
+  getDismissedUpdateVersion: () => ipcRenderer.invoke('settings:get-dismissed-update-version'),
+  setDismissedUpdateVersion: (version: string | null) =>
+    ipcRenderer.invoke('settings:set-dismissed-update-version', version)
 })
 
 contextBridge.exposeInMainWorld('systemMonitorAPI', {

@@ -461,7 +461,84 @@ app.on('ready', async () => {
       logger.error('Failed to collect initial environment info:', error)
     }
   })()
+
+  // Check for updates on startup (async in background)
+  checkForUpdatesOnStartup()
 })
+
+// Store pending update info so renderer can retrieve it
+let pendingUpdateInfo: { info: any; isReadyToInstall: boolean } | null = null
+
+async function checkForUpdatesOnStartup() {
+  // Short delay to ensure window is minimally ready
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+
+  if (!updateService.isUpdateSupported()) {
+    logger.info('UpdateService: Skipping startup update check (not supported)')
+    return
+  }
+
+  try {
+    const updateManager = updateService.getUpdateManager()
+    const updateInfo = await updateManager.checkForUpdatesAsync()
+
+    if (!updateInfo) {
+      logger.info('UpdateService: No updates available at startup')
+      return
+    }
+
+    logger.info(
+      `UpdateService: Update available at startup: ${updateInfo.TargetFullRelease?.Version}`
+    )
+
+    // Check for env variable override, otherwise use settings
+    const envOverride = process.env.FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE
+    let autoDownload: boolean
+    if (envOverride !== undefined) {
+      autoDownload = envOverride.toLowerCase() === 'true'
+      logger.info(`UpdateService: Auto-download override from env: ${autoDownload}`)
+    } else {
+      autoDownload = settingsService.getAutoDownloadUpdates()
+    }
+
+    if (autoDownload) {
+      // Auto-download enabled: download and auto-install immediately
+      logger.info('UpdateService: Auto-downloading and installing update...')
+
+      // Emit download started event
+      BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send('update:download-started')
+      })
+
+      await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
+        BrowserWindow.getAllWindows().forEach((window) => {
+          window.webContents.send('update:download-progress', progress)
+        })
+      })
+
+      // Emit download complete event
+      BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send('update:download-complete')
+      })
+
+      logger.info('UpdateService: Update downloaded, auto-applying update and restarting...')
+
+      // Auto-apply the update immediately - this will restart the app
+      updateManager.waitExitThenApplyUpdate(updateInfo)
+      app.quit()
+      return
+    } else {
+      // Auto-download disabled: just notify that update is available
+      logger.info('UpdateService: Notifying renderer of available update (auto-download disabled)')
+      pendingUpdateInfo = { info: updateInfo, isReadyToInstall: false }
+      BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send('update:available', updateInfo)
+      })
+    }
+  } catch (error) {
+    logger.error('UpdateService: Failed to check for updates at startup:', error)
+  }
+}
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -903,7 +980,6 @@ const setupIPC = () => {
     })
 
     await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
-      console.log(`Download progress: ${progress}%`)
       // Emit progress to all windows
       BrowserWindow.getAllWindows().forEach((window) => {
         window.webContents.send('update:download-progress', progress)
@@ -1598,6 +1674,10 @@ const setupIPC = () => {
     return updateService.isUpdateSupported()
   })
 
+  ipcMain.handle('update:get-pending', () => {
+    return pendingUpdateInfo
+  })
+
   // Onboarding service handlers
   ipcMain.handle('onboarding:is-complete', () => {
     return onboardingService.isOnboardingComplete()
@@ -1797,6 +1877,24 @@ const setupIPC = () => {
 
   ipcMain.handle('settings:set-show-system-monitor', (_, show: boolean) => {
     settingsService.setShowSystemMonitor(show)
+    return { success: true }
+  })
+
+  ipcMain.handle('settings:get-auto-download-updates', () => {
+    return settingsService.getAutoDownloadUpdates()
+  })
+
+  ipcMain.handle('settings:set-auto-download-updates', (_, enabled: boolean) => {
+    settingsService.setAutoDownloadUpdates(enabled)
+    return { success: true }
+  })
+
+  ipcMain.handle('settings:get-dismissed-update-version', () => {
+    return settingsService.getDismissedUpdateVersion()
+  })
+
+  ipcMain.handle('settings:set-dismissed-update-version', (_, version: string | null) => {
+    settingsService.setDismissedUpdateVersion(version)
     return { success: true }
   })
 

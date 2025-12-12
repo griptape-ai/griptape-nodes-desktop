@@ -5,7 +5,7 @@
   "description": "Griptape Nodes Desktop Application",
   "main": ".webpack/main",
   "scripts": {
-    "start": "electron-forge start",
+    "start": "set -a && [ -f .env ] && source .env; set +a && electron-forge start",
     "package": "electron-forge package",
     "pack:osx": "./scripts/build-osx.sh",
     "pack:linux": "./scripts/build-linux.sh",

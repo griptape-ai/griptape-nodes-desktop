@@ -33,6 +33,7 @@ const Settings: React.FC = () => {
   const [versionError, setVersionError] = useState<boolean>(false)
   const [channelError, setChannelError] = useState<boolean>(false)
   const [channelsError, setChannelsError] = useState<boolean>(false)
+  const [autoDownloadUpdates, setAutoDownloadUpdates] = useState<boolean>(true)
   const [upgradingEngine, setUpgradingEngine] = useState(false)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
@@ -104,6 +105,7 @@ const Settings: React.FC = () => {
     loadSystemMonitorSetting()
     loadEngineChannel()
     loadEditorChannel()
+    loadAutoDownloadSetting()
     checkDevMode()
     window.griptapeAPI.refreshConfig()
 
@@ -196,6 +198,26 @@ const Settings: React.FC = () => {
       console.error('Failed to save system monitor setting:', err)
       // Revert on error
       setShowSystemMonitor(!checked)
+    }
+  }
+
+  const loadAutoDownloadSetting = async () => {
+    try {
+      const enabled = await window.settingsAPI.getAutoDownloadUpdates()
+      setAutoDownloadUpdates(enabled)
+    } catch (err) {
+      console.error('Failed to load auto download setting:', err)
+    }
+  }
+
+  const handleToggleAutoDownload = async (checked: boolean) => {
+    setAutoDownloadUpdates(checked)
+    try {
+      await window.settingsAPI.setAutoDownloadUpdates(checked)
+    } catch (err) {
+      console.error('Failed to save auto download setting:', err)
+      // Revert on error
+      setAutoDownloadUpdates(!checked)
     }
   }
 
@@ -948,6 +970,27 @@ const Settings: React.FC = () => {
               >
                 {checkingForUpdates ? 'Checking...' : 'Check for Updates'}
               </button>
+            </div>
+
+            {/* Auto Download Toggle */}
+            <div className="pt-4 border-t border-border">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={autoDownloadUpdates}
+                  onChange={(e) => handleToggleAutoDownload(e.target.checked)}
+                  disabled={!updatesSupported}
+                  className="mt-1 w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <div className="flex-1">
+                  <span className="text-sm font-medium group-hover:text-foreground transition-colors">
+                    Download updates automatically
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    When enabled, updates will be downloaded automatically on start.
+                  </p>
+                </div>
+              </label>
             </div>
 
             <div>
