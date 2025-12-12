@@ -128,8 +128,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     app.get('/', (req, res) => {
       const { code, state, error, error_description } = req.query
 
-      // Log the code
-      logger.info('OAuth callback received - code:', code)
+      logger.debug('OAuth callback received')
 
       // Determine if authentication was successful
       const isSuccess = !!code && !error
@@ -476,18 +475,18 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
 
   private async handleAuthCode(code: string, state: string) {
     try {
-      logger.info('Handling auth code:', code, 'state:', state)
+      logger.debug('Handling auth code exchange')
 
       // Exchange code for tokens
       const tokens = await this.exchangeCodeForTokens(code)
-      logger.info('Got tokens:', tokens)
+      logger.debug('Tokens received')
 
       // Calculate expiration timestamp
       const expiresAt = Math.floor(Date.now() / 1000) + (tokens.expires_in || 86400)
 
       // Get user info
       const userInfo = await this.getUserInfo(tokens.access_token)
-      logger.info('Got user info:', userInfo)
+      logger.debug('User info retrieved')
 
       // Check if we already have an API key, only generate if needed
       let apiKey = this.store.get('apiKey')
