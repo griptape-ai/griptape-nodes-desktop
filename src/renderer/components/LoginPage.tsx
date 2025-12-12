@@ -1,9 +1,11 @@
-import { LogIn, X } from 'lucide-react'
+import { LogIn, X, Download, RotateCcw } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../utils/utils'
 import headerLogoSrc from '../../assets/griptape_nodes_header_logo.svg'
 import animatedNodesSrc from '../../assets/animated_nodes.svg'
+import UpdateBanner from './UpdateBanner'
+import { useUpdateBanner } from '../hooks/useUpdateBanner'
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth()
@@ -11,6 +13,20 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [rememberCredentials, setRememberCredentials] = useState(true)
   const [platform, setPlatform] = useState<NodeJS.Platform | null>(null)
+
+  // Update banner state from shared hook
+  const {
+    updateInfo,
+    isUpdateReadyToInstall,
+    updateVersion,
+    shouldShowUpdateBanner: baseShouldShowBanner,
+    handleDismissUpdate
+  } = useUpdateBanner()
+
+  // LoginPage-specific update download progress state
+  const [updateDownloading, setUpdateDownloading] = useState(false)
+  const [updateProgress, setUpdateProgress] = useState(0)
+  const [updateRestarting, setUpdateRestarting] = useState(false)
 
   // Load saved credential storage preference and platform on mount
   useEffect(() => {
@@ -27,6 +43,37 @@ const LoginPage: React.FC = () => {
     }
     loadPreference()
   }, [])
+
+  // Listen for update download events
+  useEffect(() => {
+    const handleDownloadStarted = () => {
+      setUpdateDownloading(true)
+      setUpdateProgress(0)
+    }
+
+    const handleDownloadProgress = (_event: any, progress: number) => {
+      setUpdateProgress(progress)
+    }
+
+    const handleDownloadComplete = () => {
+      setUpdateDownloading(false)
+      setUpdateProgress(100)
+      setUpdateRestarting(true)
+    }
+
+    window.updateAPI.onDownloadStarted(handleDownloadStarted)
+    window.updateAPI.onDownloadProgress(handleDownloadProgress)
+    window.updateAPI.onDownloadComplete(handleDownloadComplete)
+
+    return () => {
+      window.updateAPI.removeDownloadStarted(handleDownloadStarted)
+      window.updateAPI.removeDownloadProgress(handleDownloadProgress)
+      window.updateAPI.removeDownloadComplete(handleDownloadComplete)
+    }
+  }, [])
+
+  // Determine if we should show the update banner (hide during download/restart)
+  const shouldShowUpdateBanner = baseShouldShowBanner && !updateDownloading && !updateRestarting
 
   const handleCheckboxChange = async (checked: boolean) => {
     setRememberCredentials(checked)
@@ -78,6 +125,43 @@ const LoginPage: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center draggable">
       <div className="w-screen h-screen flex flex-col bg-gray-900 border-t border-blue-500/30 non-draggable">
+        {/* Update Available Banner */}
+        {shouldShowUpdateBanner && (
+          <UpdateBanner
+            version={updateVersion}
+            isReadyToInstall={isUpdateReadyToInstall}
+            updateInfo={updateInfo}
+            onDismiss={handleDismissUpdate}
+          />
+        )}
+
+        {/* Auto-Download Progress Banner */}
+        {(updateDownloading || updateRestarting) && (
+          <div className="flex items-center justify-center gap-3 py-2 pr-4 pl-24 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+            {updateRestarting ? (
+              <>
+                <RotateCcw className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
+                <span className="text-sm text-blue-700 dark:text-blue-300">
+                  Restarting to install update...
+                </span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm text-blue-700 dark:text-blue-300">
+                  Downloading update... {updateProgress}% — App will restart when complete
+                </span>
+                <div className="w-32 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-300"
+                    style={{ width: `${updateProgress}%` }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Content area */}
         <div className="flex-1 overflow-y-auto px-8 py-12 flex flex-col items-center">
           <div className="w-full max-w-3xl flex flex-col items-center flex-1 justify-center">

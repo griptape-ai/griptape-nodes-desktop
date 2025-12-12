@@ -50,4 +50,22 @@ export class SettingsService {
     this.store.set('editorChannel', channel)
     logger.info('SettingsService: editorChannel set to', channel)
   }
+
+  getAutoDownloadUpdates(): boolean {
+    return this.store.get('autoDownloadUpdates', false)
+  }
+
+  setAutoDownloadUpdates(enabled: boolean): void {
+    this.store.set('autoDownloadUpdates', enabled)
+    logger.info('SettingsService: autoDownloadUpdates set to', enabled)
+  }
+
+  getDismissedUpdateVersion(): string | null {
+    return this.store.get('dismissedUpdateVersion', null)
+  }
+
+  setDismissedUpdateVersion(version: string | null): void {
+    this.store.set('dismissedUpdateVersion', version)
+    logger.info('SettingsService: dismissedUpdateVersion set to', version)
+  }
 }

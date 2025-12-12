@@ -6,10 +6,21 @@ import Settings from '../pages/Settings'
 import { Header } from './Header'
 import { EditorWebview } from './EditorWebview'
 import UpdateProgressNotification from './UpdateProgressNotification'
+import UpdateBanner from './UpdateBanner'
+import { useUpdateBanner } from '../hooks/useUpdateBanner'
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
+
+  // Update banner state from shared hook
+  const {
+    updateInfo,
+    isUpdateReadyToInstall,
+    updateVersion,
+    shouldShowUpdateBanner,
+    handleDismissUpdate
+  } = useUpdateBanner()
 
   // Notify main process when page changes
   useEffect(() => {
@@ -76,6 +87,16 @@ const MainApp: React.FC = () => {
           onPageChange={setCurrentPage}
           showSystemMonitor={showSystemMonitor}
         />
+
+        {/* Update Banner */}
+        {shouldShowUpdateBanner && (
+          <UpdateBanner
+            version={updateVersion}
+            isReadyToInstall={isUpdateReadyToInstall}
+            updateInfo={updateInfo}
+            onDismiss={handleDismissUpdate}
+          />
+        )}
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden">

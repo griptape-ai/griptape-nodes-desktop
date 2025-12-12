@@ -233,12 +233,17 @@ declare global {
     updateAPI: {
       checkForUpdates: () => Promise<{ success: boolean }>
       isSupported: () => Promise<boolean>
+      getPendingUpdate: () => Promise<{ info: any; isReadyToInstall: boolean } | null>
       onDownloadStarted: (callback: () => void) => void
       onDownloadProgress: (callback: (event: any, progress: number) => void) => void
       onDownloadComplete: (callback: () => void) => void
       removeDownloadStarted: (callback: () => void) => void
       removeDownloadProgress: (callback: (event: any, progress: number) => void) => void
       removeDownloadComplete: (callback: () => void) => void
+      onUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => void
+      removeUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => void
+      onUpdateReadyToInstall: (callback: (event: any, updateInfo: any) => void) => void
+      removeUpdateReadyToInstall: (callback: (event: any, updateInfo: any) => void) => void
     }
     onboardingAPI: {
       isOnboardingComplete: () => Promise<boolean>
@@ -281,6 +286,10 @@ declare global {
       setEditorChannel: (
         channel: 'stable' | 'nightly' | 'local'
       ) => Promise<{ success: boolean; error?: string }>
+      getAutoDownloadUpdates: () => Promise<boolean>
+      setAutoDownloadUpdates: (enabled: boolean) => Promise<{ success: boolean }>
+      getDismissedUpdateVersion: () => Promise<string | null>
+      setDismissedUpdateVersion: (version: string | null) => Promise<{ success: boolean }>
     }
     systemMonitorAPI: {
       getMetrics: () => Promise<{
