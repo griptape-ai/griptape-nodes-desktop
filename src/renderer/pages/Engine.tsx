@@ -1,6 +1,5 @@
 import Convert from 'ansi-to-html'
 import React, { useEffect, useRef, useMemo, useCallback, memo, useState } from 'react'
-import { List, type RowComponentProps } from 'react-window'
 import { Play, Square, RotateCcw, Copy, Check } from 'lucide-react'
 import { useEngine } from '../contexts/EngineContext'
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
@@ -36,7 +35,7 @@ const Engine: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false)
   const [commandInput, setCommandInput] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
-  const listRef = useRef<any>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const commandInputRef = useRef<HTMLInputElement>(null)
   const wasAtBottomRef = useRef(true)
@@ -79,30 +78,24 @@ const Engine: React.FC = () => {
     if (listRef.current && logs.length > 0) {
       // Always scroll to bottom on initial load or when new logs are added and we're at bottom
       if (logsAdded && wasAtBottomRef.current) {
-        // Double RAF to ensure List has re-rendered with new items
+        // Double RAF to ensure div has re-rendered with new items
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            listRef.current?.scrollToRow({
-              index: logs.length - 1,
-              align: 'end',
-              behavior: 'instant'
-            })
+            if (listRef.current) {
+              listRef.current.scrollTop = listRef.current.scrollHeight
+            }
           })
         })
       }
     }
   }, [logs.length]) // Only re-run when count changes
 
-  // Force scroll to bottom on mount after List is ready
+  // Force scroll to bottom on mount after div is ready
   useEffect(() => {
     wasAtBottomRef.current = true
     const timer = setInterval(() => {
       if (listRef.current && logs.length > 0) {
-        listRef.current.scrollToRow({
-          index: logs.length - 1,
-          align: 'end',
-          behavior: 'instant'
-        })
+        listRef.current.scrollTop = listRef.current.scrollHeight
         clearInterval(timer)
       }
     }, 100)
@@ -129,11 +122,6 @@ const Engine: React.FC = () => {
       minute: '2-digit',
       second: '2-digit'
     })
-  }, [])
-
-  const getItemSize = useCallback(() => {
-    // Reduced height for tighter spacing
-    return 20
   }, [])
 
   const copyLogsToClipboard = useCallback(async () => {
@@ -203,7 +191,15 @@ const Engine: React.FC = () => {
   }
 
   const LogRow = memo(
-    ({ index, style, logs: logList }: RowComponentProps<{ logs: typeof logs }>) => {
+    ({
+      index,
+      style,
+      logs: logList
+    }: {
+      index: number
+      style: React.CSSProperties
+      logs: typeof logs
+    }) => {
       const log = logList[index]
 
       const processedMessage = useMemo(() => {
@@ -298,7 +294,7 @@ const Engine: React.FC = () => {
             {formatTimestamp(log.timestamp)}
           </span>
           <span
-            className={`flex-1 font-mono text-sm leading-tight whitespace-pre overflow-x-auto ${
+            className={`flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-words ${
               log.type === 'stderr' ? 'text-red-600 dark:text-red-400' : ''
             }`}
             dangerouslySetInnerHTML={processedMessage}
@@ -458,19 +454,19 @@ const Engine: React.FC = () => {
               No logs available
             </div>
           ) : (
-            <List
-              listRef={listRef}
-              rowComponent={LogRow}
-              rowCount={logs.length}
-              rowHeight={getItemSize}
-              rowProps={{ logs }}
+            <div
+              ref={listRef}
               onScroll={handleScroll}
-              className="terminal-scrollbar h-full w-full"
+              className="terminal-scrollbar h-full w-full overflow-y-auto"
               style={{
                 backgroundColor: 'rgb(17 24 39)',
                 color: '#e5e7eb'
               }}
-            />
+            >
+              {logs.map((log, index) => (
+                <LogRow key={index} index={index} style={{}} logs={logs} />
+              ))}
+            </div>
           )}
         </div>
       </div>
