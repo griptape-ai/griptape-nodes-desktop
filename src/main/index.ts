@@ -178,6 +178,12 @@ const createWindow = () => {
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY)
 
+  // Configure window.open to open in system browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
+  })
+
   // Open the DevTools in development only
   if (!isPackaged()) {
     mainWindow.webContents.openDevTools()
@@ -249,6 +255,13 @@ app.on('ready', async () => {
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() === 'webview') {
       logger.info('[Webview] New webview created, setting up handlers')
+
+      // Configure window.open to open in system browser
+      contents.setWindowOpenHandler(({ url }) => {
+        shell.openExternal(url)
+        return { action: 'deny' }
+      })
+
       // Handle permission requests for camera, microphone, etc.
       contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
         const allowedPermissions = [
