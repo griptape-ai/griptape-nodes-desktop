@@ -915,7 +915,7 @@ const Settings: React.FC = () => {
 
         {/* Release Channel Section */}
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h2 className="text-lg font-semibold mb-4">Release Channel</h2>
+          <h2 className="text-lg font-semibold mb-4">Desktop App Release Channel</h2>
           {!updatesSupported && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4 mb-4">
               <p className="text-sm font-medium text-yellow-600 dark:text-yellow-500">
@@ -951,7 +951,7 @@ const Settings: React.FC = () => {
             </div>
 
             <div>
-              <p className="text-sm font-medium mb-2">Change Release Channel</p>
+              <p className="text-sm font-medium mb-2">Change Desktop App Release Channel</p>
               {channelsError && (
                 <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mb-2">
                   <p className="text-xs text-destructive">Failed to load available channels</p>
