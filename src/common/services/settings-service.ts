@@ -52,7 +52,7 @@ export class SettingsService {
   }
 
   getAutoDownloadUpdates(): boolean {
-    return this.store.get('autoDownloadUpdates', true)
+    return this.store.get('autoDownloadUpdates', false)
   }
 
   setAutoDownloadUpdates(enabled: boolean): void {

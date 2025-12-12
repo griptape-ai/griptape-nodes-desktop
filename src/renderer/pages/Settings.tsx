@@ -33,7 +33,7 @@ const Settings: React.FC = () => {
   const [versionError, setVersionError] = useState<boolean>(false)
   const [channelError, setChannelError] = useState<boolean>(false)
   const [channelsError, setChannelsError] = useState<boolean>(false)
-  const [autoDownloadUpdates, setAutoDownloadUpdates] = useState<boolean>(true)
+  const [autoDownloadUpdates, setAutoDownloadUpdates] = useState<boolean>(false)
   const [upgradingEngine, setUpgradingEngine] = useState(false)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')

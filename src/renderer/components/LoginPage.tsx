@@ -137,26 +137,30 @@ const LoginPage: React.FC = () => {
 
         {/* Auto-Download Progress Banner */}
         {(updateDownloading || updateRestarting) && (
-          <div className="flex items-center justify-center gap-3 py-2 pr-4 pl-24 bg-blue-600 text-white">
-            {updateRestarting ? (
-              <>
-                <RotateCcw className="w-4 h-4 animate-spin" />
-                <span className="text-sm font-medium">Restarting to install update...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                <span className="text-sm font-medium">
-                  Downloading update... {updateProgress}% (will restart when complete)
-                </span>
-                <div className="w-32 h-2 bg-blue-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-white transition-all duration-300"
-                    style={{ width: `${updateProgress}%` }}
-                  />
-                </div>
-              </>
-            )}
+          <div className="flex items-center justify-between py-2 pr-4 pl-24 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2">
+              {updateRestarting ? (
+                <>
+                  <RotateCcw className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
+                  <span className="text-sm text-blue-700 dark:text-blue-300">
+                    Restarting to install update...
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm text-blue-700 dark:text-blue-300">
+                    Downloading update... {updateProgress}% — App will restart when complete
+                  </span>
+                  <div className="w-32 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 transition-all duration-300"
+                      style={{ width: `${updateProgress}%` }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
 
