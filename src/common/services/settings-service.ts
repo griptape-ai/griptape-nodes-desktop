@@ -51,13 +51,22 @@ export class SettingsService {
     logger.info('SettingsService: editorChannel set to', channel)
   }
 
-  getAutoDownloadUpdates(): boolean {
-    return this.store.get('autoDownloadUpdates', false)
+  getUpdateBehavior(): 'auto-update' | 'prompt' | 'silence' {
+    // Migration: if old boolean setting exists, convert it
+    const oldValue = this.store.get('autoDownloadUpdates')
+    if (typeof oldValue === 'boolean') {
+      const newValue = oldValue ? 'auto-update' : 'prompt'
+      this.store.set('updateBehavior', newValue)
+      this.store.delete('autoDownloadUpdates')
+      logger.info('SettingsService: Migrated autoDownloadUpdates to updateBehavior:', newValue)
+      return newValue
+    }
+    return this.store.get('updateBehavior', 'prompt')
   }
 
-  setAutoDownloadUpdates(enabled: boolean): void {
-    this.store.set('autoDownloadUpdates', enabled)
-    logger.info('SettingsService: autoDownloadUpdates set to', enabled)
+  setUpdateBehavior(behavior: 'auto-update' | 'prompt' | 'silence'): void {
+    this.store.set('updateBehavior', behavior)
+    logger.info('SettingsService: updateBehavior set to', behavior)
   }
 
   getDismissedUpdateVersion(): string | null {

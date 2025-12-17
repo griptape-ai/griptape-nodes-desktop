@@ -286,8 +286,10 @@ declare global {
       setEditorChannel: (
         channel: 'stable' | 'nightly' | 'local'
       ) => Promise<{ success: boolean; error?: string }>
-      getAutoDownloadUpdates: () => Promise<boolean>
-      setAutoDownloadUpdates: (enabled: boolean) => Promise<{ success: boolean }>
+      getUpdateBehavior: () => Promise<'auto-update' | 'prompt' | 'silence'>
+      setUpdateBehavior: (
+        behavior: 'auto-update' | 'prompt' | 'silence'
+      ) => Promise<{ success: boolean }>
       getDismissedUpdateVersion: () => Promise<string | null>
       setDismissedUpdateVersion: (version: string | null) => Promise<{ success: boolean }>
     }

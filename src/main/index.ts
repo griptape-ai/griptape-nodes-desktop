@@ -493,16 +493,17 @@ async function checkForUpdatesOnStartup() {
 
     // Check for env variable override, otherwise use settings
     const envOverride = process.env.FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE
-    let autoDownload: boolean
+    let updateBehavior: 'auto-update' | 'prompt' | 'silence'
     if (envOverride !== undefined) {
-      autoDownload = envOverride.toLowerCase() === 'true'
-      logger.info(`UpdateService: Auto-download override from env: ${autoDownload}`)
+      // Map env override to new behavior: true = auto-update, false = prompt
+      updateBehavior = envOverride.toLowerCase() === 'true' ? 'auto-update' : 'prompt'
+      logger.info(`UpdateService: Update behavior override from env: ${updateBehavior}`)
     } else {
-      autoDownload = settingsService.getAutoDownloadUpdates()
+      updateBehavior = settingsService.getUpdateBehavior()
     }
 
-    if (autoDownload) {
-      // Auto-download enabled: download and auto-install immediately
+    if (updateBehavior === 'auto-update') {
+      // Auto-update enabled: download and auto-install immediately
       logger.info('UpdateService: Auto-downloading and installing update...')
 
       // Emit download started event
@@ -527,13 +528,16 @@ async function checkForUpdatesOnStartup() {
       updateManager.waitExitThenApplyUpdate(updateInfo)
       app.quit()
       return
-    } else {
-      // Auto-download disabled: just notify that update is available
-      logger.info('UpdateService: Notifying renderer of available update (auto-download disabled)')
+    } else if (updateBehavior === 'prompt') {
+      // Prompt for update: notify that update is available
+      logger.info('UpdateService: Notifying renderer of available update (prompt mode)')
       pendingUpdateInfo = { info: updateInfo, isReadyToInstall: false }
       BrowserWindow.getAllWindows().forEach((window) => {
         window.webContents.send('update:available', updateInfo)
       })
+    } else {
+      // Silence updates: do not notify
+      logger.info('UpdateService: Updates silenced, not notifying user')
     }
   } catch (error) {
     logger.error('UpdateService: Failed to check for updates at startup:', error)
@@ -1881,12 +1885,12 @@ const setupIPC = () => {
     return { success: true }
   })
 
-  ipcMain.handle('settings:get-auto-download-updates', () => {
-    return settingsService.getAutoDownloadUpdates()
+  ipcMain.handle('settings:get-update-behavior', () => {
+    return settingsService.getUpdateBehavior()
   })
 
-  ipcMain.handle('settings:set-auto-download-updates', (_, enabled: boolean) => {
-    settingsService.setAutoDownloadUpdates(enabled)
+  ipcMain.handle('settings:set-update-behavior', (_, behavior: 'auto-update' | 'prompt' | 'silence') => {
+    settingsService.setUpdateBehavior(behavior)
     return { success: true }
   })
 

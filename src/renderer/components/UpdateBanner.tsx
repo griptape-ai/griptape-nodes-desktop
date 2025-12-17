@@ -33,7 +33,7 @@ const UpdateBanner: React.FC<UpdateBannerProps> = ({
     try {
       // Optionally enable auto-updates before installing
       if (enableAutoUpdates) {
-        await window.settingsAPI.setAutoDownloadUpdates(true)
+        await window.settingsAPI.setUpdateBehavior('auto-update')
       }
 
       await window.velopackApi.downloadUpdates(updateInfo)
@@ -50,7 +50,7 @@ const UpdateBanner: React.FC<UpdateBannerProps> = ({
   const handleRestartAndEnableAutoUpdates = async () => {
     setIsApplying(true)
     try {
-      await window.settingsAPI.setAutoDownloadUpdates(true)
+      await window.settingsAPI.setUpdateBehavior('auto-update')
       await window.velopackApi.applyUpdates(updateInfo)
     } catch (err) {
       console.error('Failed to apply update:', err)

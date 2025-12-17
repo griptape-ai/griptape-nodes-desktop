@@ -216,9 +216,9 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   getEditorChannel: () => ipcRenderer.invoke('settings:get-editor-channel'),
   setEditorChannel: (channel: 'stable' | 'nightly') =>
     ipcRenderer.invoke('settings:set-editor-channel', channel),
-  getAutoDownloadUpdates: () => ipcRenderer.invoke('settings:get-auto-download-updates'),
-  setAutoDownloadUpdates: (enabled: boolean) =>
-    ipcRenderer.invoke('settings:set-auto-download-updates', enabled),
+  getUpdateBehavior: () => ipcRenderer.invoke('settings:get-update-behavior'),
+  setUpdateBehavior: (behavior: 'auto-update' | 'prompt' | 'silence') =>
+    ipcRenderer.invoke('settings:set-update-behavior', behavior),
   getDismissedUpdateVersion: () => ipcRenderer.invoke('settings:get-dismissed-update-version'),
   setDismissedUpdateVersion: (version: string | null) =>
     ipcRenderer.invoke('settings:set-dismissed-update-version', version)
