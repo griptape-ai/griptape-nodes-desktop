@@ -492,12 +492,22 @@ async function checkForUpdatesOnStartup() {
     )
 
     // Check for env variable override, otherwise use settings
-    const envOverride = process.env.FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE
+    // FAKE_UPDATE_BEHAVIOR can be: 'auto-update', 'prompt', or 'silence'
+    // Legacy FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: 'true' = auto-update, 'false' = prompt
+    const envBehavior = process.env.FAKE_UPDATE_BEHAVIOR
+    const legacyEnvOverride = process.env.FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE
     let updateBehavior: 'auto-update' | 'prompt' | 'silence'
-    if (envOverride !== undefined) {
-      // Map env override to new behavior: true = auto-update, false = prompt
-      updateBehavior = envOverride.toLowerCase() === 'true' ? 'auto-update' : 'prompt'
-      logger.info(`UpdateService: Update behavior override from env: ${updateBehavior}`)
+    if (envBehavior !== undefined) {
+      // New env var: directly set behavior
+      const validBehaviors = ['auto-update', 'prompt', 'silence']
+      updateBehavior = validBehaviors.includes(envBehavior)
+        ? (envBehavior as 'auto-update' | 'prompt' | 'silence')
+        : 'prompt'
+      logger.info(`UpdateService: Update behavior override from FAKE_UPDATE_BEHAVIOR: ${updateBehavior}`)
+    } else if (legacyEnvOverride !== undefined) {
+      // Legacy env var: map boolean to behavior
+      updateBehavior = legacyEnvOverride.toLowerCase() === 'true' ? 'auto-update' : 'prompt'
+      logger.info(`UpdateService: Update behavior override from FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: ${updateBehavior}`)
     } else {
       updateBehavior = settingsService.getUpdateBehavior()
     }
@@ -522,11 +532,13 @@ async function checkForUpdatesOnStartup() {
         window.webContents.send('update:download-complete')
       })
 
-      logger.info('UpdateService: Update downloaded, auto-applying update and restarting...')
+      logger.info('UpdateService: Update downloaded, showing banner for user to restart')
 
-      // Auto-apply the update immediately - this will restart the app
-      updateManager.waitExitThenApplyUpdate(updateInfo)
-      app.quit()
+      // Store pending update and notify renderer to show "Restart Now" banner
+      pendingUpdateInfo = { info: updateInfo, isReadyToInstall: true }
+      BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send('update:ready-to-install', updateInfo)
+      })
       return
     } else if (updateBehavior === 'prompt') {
       // Prompt for update: notify that update is available

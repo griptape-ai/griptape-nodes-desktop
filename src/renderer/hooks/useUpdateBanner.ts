@@ -5,7 +5,9 @@ interface UpdateBannerState {
   isUpdateReadyToInstall: boolean
   updateVersion: string | undefined
   shouldShowUpdateBanner: boolean
+  updateBehavior: 'auto-update' | 'prompt' | 'silence'
   handleDismissUpdate: () => Promise<void>
+  handleDownloadComplete: () => void
 }
 
 /**
@@ -16,18 +18,23 @@ export function useUpdateBanner(): UpdateBannerState {
   const [updateInfo, setUpdateInfo] = useState<any>(null)
   const [isUpdateReadyToInstall, setIsUpdateReadyToInstall] = useState(false)
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null)
+  const [updateBehavior, setUpdateBehavior] = useState<'auto-update' | 'prompt' | 'silence'>('prompt')
 
-  // Load dismissed update version on mount
+  // Load dismissed update version and update behavior on mount
   useEffect(() => {
-    const loadDismissedVersion = async () => {
+    const loadSettings = async () => {
       try {
-        const version = await window.settingsAPI.getDismissedUpdateVersion()
+        const [version, behavior] = await Promise.all([
+          window.settingsAPI.getDismissedUpdateVersion(),
+          window.settingsAPI.getUpdateBehavior()
+        ])
         setDismissedVersion(version)
+        setUpdateBehavior(behavior)
       } catch (err) {
-        console.error('Failed to load dismissed update version:', err)
+        console.error('Failed to load update settings:', err)
       }
     }
-    loadDismissedVersion()
+    loadSettings()
   }, [])
 
   // Listen for update events from main process
@@ -78,6 +85,13 @@ export function useUpdateBanner(): UpdateBannerState {
     setUpdateInfo(null)
   }, [updateInfo])
 
+  // Called when download completes in the banner - mark update as ready to install
+  const handleDownloadComplete = useCallback(() => {
+    setIsUpdateReadyToInstall(true)
+    // Also refresh the update behavior in case user enabled auto-updates during download
+    window.settingsAPI.getUpdateBehavior().then(setUpdateBehavior).catch(console.error)
+  }, [])
+
   const updateVersion = updateInfo?.TargetFullRelease?.Version
   const shouldShowUpdateBanner = updateInfo && updateVersion && updateVersion !== dismissedVersion
 
@@ -86,6 +100,8 @@ export function useUpdateBanner(): UpdateBannerState {
     isUpdateReadyToInstall,
     updateVersion,
     shouldShowUpdateBanner,
-    handleDismissUpdate
+    updateBehavior,
+    handleDismissUpdate,
+    handleDownloadComplete
   }
 }

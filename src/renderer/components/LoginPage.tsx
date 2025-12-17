@@ -1,4 +1,4 @@
-import { LogIn, X, Download, RotateCcw } from 'lucide-react'
+import { LogIn, X, Download } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../utils/utils'
@@ -20,13 +20,14 @@ const LoginPage: React.FC = () => {
     isUpdateReadyToInstall,
     updateVersion,
     shouldShowUpdateBanner: baseShouldShowBanner,
-    handleDismissUpdate
+    updateBehavior,
+    handleDismissUpdate,
+    handleDownloadComplete: hookDownloadComplete
   } = useUpdateBanner()
 
   // LoginPage-specific update download progress state
   const [updateDownloading, setUpdateDownloading] = useState(false)
   const [updateProgress, setUpdateProgress] = useState(0)
-  const [updateRestarting, setUpdateRestarting] = useState(false)
 
   // Load saved credential storage preference and platform on mount
   useEffect(() => {
@@ -58,7 +59,8 @@ const LoginPage: React.FC = () => {
     const handleDownloadComplete = () => {
       setUpdateDownloading(false)
       setUpdateProgress(100)
-      setUpdateRestarting(true)
+      // Don't set restarting state - the UpdateBanner with isReadyToInstall=true
+      // will show via the useUpdateBanner hook when update:ready-to-install fires
     }
 
     window.updateAPI.onDownloadStarted(handleDownloadStarted)
@@ -72,8 +74,8 @@ const LoginPage: React.FC = () => {
     }
   }, [])
 
-  // Determine if we should show the update banner (hide during download/restart)
-  const shouldShowUpdateBanner = baseShouldShowBanner && !updateDownloading && !updateRestarting
+  // Determine if we should show the update banner (hide during download)
+  const shouldShowUpdateBanner = baseShouldShowBanner && !updateDownloading
 
   const handleCheckboxChange = async (checked: boolean) => {
     setRememberCredentials(checked)
@@ -132,33 +134,24 @@ const LoginPage: React.FC = () => {
             isReadyToInstall={isUpdateReadyToInstall}
             updateInfo={updateInfo}
             onDismiss={handleDismissUpdate}
+            updateBehavior={updateBehavior}
+            onDownloadComplete={hookDownloadComplete}
           />
         )}
 
         {/* Auto-Download Progress Banner */}
-        {(updateDownloading || updateRestarting) && (
+        {updateDownloading && (
           <div className="flex items-center justify-center gap-3 py-2 pr-4 pl-24 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
-            {updateRestarting ? (
-              <>
-                <RotateCcw className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
-                <span className="text-sm text-blue-700 dark:text-blue-300">
-                  Restarting to install update...
-                </span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm text-blue-700 dark:text-blue-300">
-                  Downloading update... {updateProgress}% — App will restart when complete
-                </span>
-                <div className="w-32 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 transition-all duration-300"
-                    style={{ width: `${updateProgress}%` }}
-                  />
-                </div>
-              </>
-            )}
+            <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm text-blue-700 dark:text-blue-300">
+              Downloading update... {updateProgress}%
+            </span>
+            <div className="w-32 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-600 transition-all duration-300"
+                style={{ width: `${updateProgress}%` }}
+              />
+            </div>
           </div>
         )}
 

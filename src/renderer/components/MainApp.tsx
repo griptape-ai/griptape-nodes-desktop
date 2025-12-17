@@ -19,7 +19,9 @@ const MainApp: React.FC = () => {
     isUpdateReadyToInstall,
     updateVersion,
     shouldShowUpdateBanner,
-    handleDismissUpdate
+    updateBehavior,
+    handleDismissUpdate,
+    handleDownloadComplete
   } = useUpdateBanner()
 
   // Notify main process when page changes
@@ -95,6 +97,9 @@ const MainApp: React.FC = () => {
             isReadyToInstall={isUpdateReadyToInstall}
             updateInfo={updateInfo}
             onDismiss={handleDismissUpdate}
+            updateBehavior={updateBehavior}
+            onDownloadComplete={handleDownloadComplete}
+            onNavigateToSettings={() => setCurrentPage('settings')}
           />
         )}
 
