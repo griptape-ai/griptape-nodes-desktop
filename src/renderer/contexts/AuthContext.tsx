@@ -97,8 +97,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.log('Stored tokens are expired or missing expiration time')
 
             if (result.tokens.refresh_token) {
-              console.log('Attempting to refresh tokens using refresh_token...')
-              const refreshResult = await window.oauthAPI.refreshToken(result.tokens.refresh_token)
+              console.log('Attempting to refresh tokens...')
+              const refreshResult = await window.oauthAPI.refreshToken()
 
               if (refreshResult.success && refreshResult.tokens) {
                 console.log('Token refresh successful')
@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const refreshTokens = async () => {
       try {
         console.log('Auto-refreshing tokens...')
-        const refreshResult = await window.oauthAPI.refreshToken(tokens.refresh_token!)
+        const refreshResult = await window.oauthAPI.refreshToken()
 
         if (refreshResult.success && refreshResult.tokens) {
           console.log('Auto token refresh successful')

@@ -29,6 +29,8 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   private authResolve: ((value: any) => void) | null = null
   private authReject: ((reason?: any) => void) | null = null
   private store: Store<AuthData>
+  // Mutex to prevent concurrent token refresh attempts (prevents "reused refresh token" errors)
+  private refreshPromise: Promise<{ success: boolean; tokens?: any; error?: string }> | null = null
 
   constructor() {
     super()
@@ -339,7 +341,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     // Tokens expired, try to refresh
     if (stored.tokens?.refresh_token) {
       logger.info('Attempting silent token refresh...')
-      const refreshResult = await this.refreshTokens(stored.tokens.refresh_token)
+      const refreshResult = await this.refreshTokensInternal(stored.tokens.refresh_token)
 
       if (refreshResult.success) {
         logger.info('Silent login successful - tokens refreshed')
@@ -356,8 +358,9 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     return false
   }
 
-  // Refresh access token using refresh token
-  async refreshTokens(
+  // Internal method to refresh tokens - should not be called directly from outside
+  // Use attemptTokenRefresh() instead which handles mutex and uses stored token
+  private async refreshTokensInternal(
     refreshToken: string
   ): Promise<{ success: boolean; tokens?: any; error?: string }> {
     try {
@@ -412,6 +415,44 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  }
+
+  // Public method to attempt token refresh using stored credentials
+  // Uses mutex to prevent concurrent refresh attempts (which cause "reused refresh token" errors)
+  async attemptTokenRefresh(): Promise<{ success: boolean; tokens?: any; error?: string }> {
+    // If a refresh is already in progress, return the existing promise
+    // This prevents concurrent refresh attempts from using the same token
+    if (this.refreshPromise) {
+      logger.info('Token refresh already in progress, waiting for existing request...')
+      return this.refreshPromise
+    }
+
+    // Get stored credentials - use the token from store (single source of truth)
+    const stored = this.getStoredCredentials()
+    if (!stored?.tokens?.refresh_token) {
+      logger.warn('No refresh token available in store')
+      return {
+        success: false,
+        error: 'No refresh token available'
+      }
+    }
+
+    // Check if tokens are still valid (no need to refresh)
+    if (!this.isTokenExpired(stored.expiresAt)) {
+      logger.info('Tokens still valid, no refresh needed')
+      return {
+        success: true,
+        tokens: stored.tokens
+      }
+    }
+
+    // Create the refresh promise and store it (mutex)
+    this.refreshPromise = this.refreshTokensInternal(stored.tokens.refresh_token).finally(() => {
+      // Clear the promise when done (success or failure)
+      this.refreshPromise = null
+    })
+
+    return this.refreshPromise
   }
 
   async login(): Promise<void> {
