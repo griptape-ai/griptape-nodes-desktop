@@ -503,11 +503,15 @@ async function checkForUpdatesOnStartup() {
       updateBehavior = validBehaviors.includes(envBehavior)
         ? (envBehavior as 'auto-update' | 'prompt' | 'silence')
         : 'prompt'
-      logger.info(`UpdateService: Update behavior override from FAKE_UPDATE_BEHAVIOR: ${updateBehavior}`)
+      logger.info(
+        `UpdateService: Update behavior override from FAKE_UPDATE_BEHAVIOR: ${updateBehavior}`
+      )
     } else if (legacyEnvOverride !== undefined) {
       // Legacy env var: map boolean to behavior
       updateBehavior = legacyEnvOverride.toLowerCase() === 'true' ? 'auto-update' : 'prompt'
-      logger.info(`UpdateService: Update behavior override from FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: ${updateBehavior}`)
+      logger.info(
+        `UpdateService: Update behavior override from FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: ${updateBehavior}`
+      )
     } else {
       updateBehavior = settingsService.getUpdateBehavior()
     }
@@ -516,29 +520,41 @@ async function checkForUpdatesOnStartup() {
       // Auto-update enabled: download and auto-install immediately
       logger.info('UpdateService: Auto-downloading and installing update...')
 
-      // Emit download started event
+      // Emit download started event with update info
       BrowserWindow.getAllWindows().forEach((window) => {
-        window.webContents.send('update:download-started')
+        window.webContents.send('update:download-started', updateInfo)
       })
 
-      await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
-        BrowserWindow.getAllWindows().forEach((window) => {
-          window.webContents.send('update:download-progress', progress)
+      try {
+        await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
+          BrowserWindow.getAllWindows().forEach((window) => {
+            window.webContents.send('update:download-progress', progress)
+          })
         })
-      })
 
-      // Emit download complete event
-      BrowserWindow.getAllWindows().forEach((window) => {
-        window.webContents.send('update:download-complete')
-      })
+        // Emit download complete event
+        BrowserWindow.getAllWindows().forEach((window) => {
+          window.webContents.send('update:download-complete')
+        })
 
-      logger.info('UpdateService: Update downloaded, showing banner for user to restart')
+        logger.info('UpdateService: Update downloaded, showing banner for user to restart')
 
-      // Store pending update and notify renderer to show "Restart Now" banner
-      pendingUpdateInfo = { info: updateInfo, isReadyToInstall: true }
-      BrowserWindow.getAllWindows().forEach((window) => {
-        window.webContents.send('update:ready-to-install', updateInfo)
-      })
+        // Store pending update and notify renderer to show "Restart Now" banner
+        pendingUpdateInfo = { info: updateInfo, isReadyToInstall: true }
+        BrowserWindow.getAllWindows().forEach((window) => {
+          window.webContents.send('update:ready-to-install', updateInfo)
+        })
+      } catch (downloadError) {
+        logger.error('UpdateService: Failed to download update:', downloadError)
+
+        // Emit download failed event so renderer can show error banner
+        const errorMessage =
+          downloadError instanceof Error ? downloadError.message : 'Download failed'
+        pendingUpdateInfo = { info: updateInfo, isReadyToInstall: false }
+        BrowserWindow.getAllWindows().forEach((window) => {
+          window.webContents.send('update:download-failed', updateInfo, errorMessage)
+        })
+      }
       return
     } else if (updateBehavior === 'prompt') {
       // Prompt for update: notify that update is available
@@ -649,9 +665,9 @@ const downloadAndInstallUpdateWithDialog = async (
 
   logger.info('UpdateService: Downloading update...')
 
-  // Emit download start event
+  // Emit download start event with update info
   BrowserWindow.getAllWindows().forEach((window) => {
-    window.webContents.send('update:download-started')
+    window.webContents.send('update:download-started', updateInfo)
   })
 
   await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
@@ -990,9 +1006,9 @@ const setupIPC = () => {
     }
     const updateManager = updateService.getUpdateManager()
 
-    // Emit download start event
+    // Emit download start event with update info
     BrowserWindow.getAllWindows().forEach((window) => {
-      window.webContents.send('update:download-started')
+      window.webContents.send('update:download-started', updateInfo)
     })
 
     await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
@@ -1901,10 +1917,13 @@ const setupIPC = () => {
     return settingsService.getUpdateBehavior()
   })
 
-  ipcMain.handle('settings:set-update-behavior', (_, behavior: 'auto-update' | 'prompt' | 'silence') => {
-    settingsService.setUpdateBehavior(behavior)
-    return { success: true }
-  })
+  ipcMain.handle(
+    'settings:set-update-behavior',
+    (_, behavior: 'auto-update' | 'prompt' | 'silence') => {
+      settingsService.setUpdateBehavior(behavior)
+      return { success: true }
+    }
+  )
 
   ipcMain.handle('settings:get-dismissed-update-version', () => {
     return settingsService.getDismissedUpdateVersion()

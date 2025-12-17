@@ -1,4 +1,4 @@
-import { LogIn, X, Download } from 'lucide-react'
+import { LogIn, X } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../utils/utils'
@@ -19,15 +19,13 @@ const LoginPage: React.FC = () => {
     updateInfo,
     isUpdateReadyToInstall,
     updateVersion,
-    shouldShowUpdateBanner: baseShouldShowBanner,
-    updateBehavior,
+    shouldShowUpdateBanner,
+    downloadError,
+    isDownloading,
+    downloadProgress,
     handleDismissUpdate,
-    handleDownloadComplete: hookDownloadComplete
+    clearDownloadError
   } = useUpdateBanner()
-
-  // LoginPage-specific update download progress state
-  const [updateDownloading, setUpdateDownloading] = useState(false)
-  const [updateProgress, setUpdateProgress] = useState(0)
 
   // Load saved credential storage preference and platform on mount
   useEffect(() => {
@@ -44,38 +42,6 @@ const LoginPage: React.FC = () => {
     }
     loadPreference()
   }, [])
-
-  // Listen for update download events
-  useEffect(() => {
-    const handleDownloadStarted = () => {
-      setUpdateDownloading(true)
-      setUpdateProgress(0)
-    }
-
-    const handleDownloadProgress = (_event: any, progress: number) => {
-      setUpdateProgress(progress)
-    }
-
-    const handleDownloadComplete = () => {
-      setUpdateDownloading(false)
-      setUpdateProgress(100)
-      // Don't set restarting state - the UpdateBanner with isReadyToInstall=true
-      // will show via the useUpdateBanner hook when update:ready-to-install fires
-    }
-
-    window.updateAPI.onDownloadStarted(handleDownloadStarted)
-    window.updateAPI.onDownloadProgress(handleDownloadProgress)
-    window.updateAPI.onDownloadComplete(handleDownloadComplete)
-
-    return () => {
-      window.updateAPI.removeDownloadStarted(handleDownloadStarted)
-      window.updateAPI.removeDownloadProgress(handleDownloadProgress)
-      window.updateAPI.removeDownloadComplete(handleDownloadComplete)
-    }
-  }, [])
-
-  // Determine if we should show the update banner (hide during download)
-  const shouldShowUpdateBanner = baseShouldShowBanner && !updateDownloading
 
   const handleCheckboxChange = async (checked: boolean) => {
     setRememberCredentials(checked)
@@ -128,31 +94,17 @@ const LoginPage: React.FC = () => {
     <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center draggable">
       <div className="w-screen h-screen flex flex-col bg-gray-900 border-t border-blue-500/30 non-draggable">
         {/* Update Available Banner */}
-        {shouldShowUpdateBanner && (
+        {(shouldShowUpdateBanner || downloadError) && (
           <UpdateBanner
             version={updateVersion}
             isReadyToInstall={isUpdateReadyToInstall}
             updateInfo={updateInfo}
             onDismiss={handleDismissUpdate}
-            updateBehavior={updateBehavior}
-            onDownloadComplete={hookDownloadComplete}
+            externalError={downloadError}
+            onClearExternalError={clearDownloadError}
+            isDownloading={isDownloading}
+            downloadProgress={downloadProgress}
           />
-        )}
-
-        {/* Auto-Download Progress Banner */}
-        {updateDownloading && (
-          <div className="flex items-center justify-center gap-3 py-2 pr-4 pl-24 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
-            <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-sm text-blue-700 dark:text-blue-300">
-              Downloading update... {updateProgress}%
-            </span>
-            <div className="w-32 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-600 transition-all duration-300"
-                style={{ width: `${updateProgress}%` }}
-              />
-            </div>
-          </div>
         )}
 
         {/* Content area */}

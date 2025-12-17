@@ -33,7 +33,9 @@ const Settings: React.FC = () => {
   const [versionError, setVersionError] = useState<boolean>(false)
   const [channelError, setChannelError] = useState<boolean>(false)
   const [channelsError, setChannelsError] = useState<boolean>(false)
-  const [updateBehavior, setUpdateBehavior] = useState<'auto-update' | 'prompt' | 'silence'>('prompt')
+  const [updateBehavior, setUpdateBehavior] = useState<'auto-update' | 'prompt' | 'silence'>(
+    'prompt'
+  )
   const [upgradingEngine, setUpgradingEngine] = useState(false)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
@@ -114,10 +116,25 @@ const Settings: React.FC = () => {
       setLoadingWorkspace(false)
     }
 
+    // Listen for scroll-to-updates event from UpdateBanner
+    const handleScrollToUpdates = () => {
+      const element = document.getElementById('desktop-app-updates')
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        // Add a brief highlight effect
+        element.classList.add('ring-2', 'ring-primary', 'ring-offset-2')
+        setTimeout(() => {
+          element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2')
+        }, 2000)
+      }
+    }
+
     window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged)
+    window.addEventListener('scroll-to-updates', handleScrollToUpdates)
 
     return () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
+      window.removeEventListener('scroll-to-updates', handleScrollToUpdates)
     }
   }, [loadEnvironmentInfo])
 
@@ -937,7 +954,10 @@ const Settings: React.FC = () => {
         </div>
 
         {/* Release Channel Section */}
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div
+          id="desktop-app-updates"
+          className="bg-card rounded-lg shadow-sm border border-border p-6"
+        >
           <h2 className="text-lg font-semibold mb-4">Desktop App Release Channel</h2>
           {!updatesSupported && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4 mb-4">
@@ -979,7 +999,11 @@ const Settings: React.FC = () => {
                 <p className="text-sm font-medium mb-2">Update Behavior</p>
                 <select
                   value={updateBehavior}
-                  onChange={(e) => handleUpdateBehaviorChange(e.target.value as 'auto-update' | 'prompt' | 'silence')}
+                  onChange={(e) =>
+                    handleUpdateBehaviorChange(
+                      e.target.value as 'auto-update' | 'prompt' | 'silence'
+                    )
+                  }
                   disabled={!updatesSupported}
                   className={cn(
                     'w-full px-3 py-2 text-sm rounded-md',
@@ -993,7 +1017,9 @@ const Settings: React.FC = () => {
                   <option value="silence">Silence Updates</option>
                 </select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Auto-Update: Automatically download and install updates on start. Prompt for Update: Show a notification when updates are available. Silence Updates: Do not notify about updates.
+                  Auto-Update: Automatically download and install updates on start. Prompt for
+                  Update: Show a notification when updates are available. Silence Updates: Do not
+                  notify about updates.
                 </p>
               </div>
             </div>
