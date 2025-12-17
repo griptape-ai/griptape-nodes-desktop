@@ -164,7 +164,7 @@ declare global {
         }
       }>
       hasExistingEncryptedStore: () => Promise<boolean>
-      refreshToken: (refreshToken: string) => Promise<{
+      refreshToken: () => Promise<{
         success: boolean
         tokens?: {
           access_token: string

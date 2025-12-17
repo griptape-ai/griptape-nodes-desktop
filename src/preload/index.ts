@@ -53,7 +53,7 @@ contextBridge.exposeInMainWorld('oauthAPI', {
   logout: () => ipcRenderer.invoke('auth:logout'),
   cancel: () => ipcRenderer.invoke('auth:cancel'),
   checkAuth: () => ipcRenderer.invoke('auth:check'),
-  refreshToken: (refreshToken: string) => ipcRenderer.invoke('auth:refresh-token', refreshToken),
+  refreshToken: () => ipcRenderer.invoke('auth:refresh-token'),
   willPromptForKeychain: () => ipcRenderer.invoke('auth:will-prompt-keychain'),
   hasExistingEncryptedStore: () => ipcRenderer.invoke('auth:has-existing-encrypted-store'),
   loadFromPersistentStore: () => ipcRenderer.invoke('auth:load-from-persistent-store'),

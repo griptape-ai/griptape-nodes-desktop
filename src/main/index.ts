@@ -1267,8 +1267,9 @@ const setupIPC = () => {
   ipcMain.handle('auth:cancel', () => authService.cancelLogin())
 
   // Handle Auth Token Refresh
-  ipcMain.handle('auth:refresh-token', async (event, refreshToken: string) => {
-    return await authService.refreshTokens(refreshToken)
+  // Uses centralized refresh with mutex to prevent concurrent refresh attempts
+  ipcMain.handle('auth:refresh-token', async () => {
+    return await authService.attemptTokenRefresh()
   })
 
   // Handle notification that tokens were updated (for broadcasting to webviews)
