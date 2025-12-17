@@ -514,7 +514,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     }
   }
 
-  private async handleAuthCode(code: string, state: string) {
+  private async handleAuthCode(code: string, _state: string) {
     try {
       logger.debug('Handling auth code exchange')
 

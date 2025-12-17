@@ -5,7 +5,11 @@ interface UpdateBannerState {
   isUpdateReadyToInstall: boolean
   updateVersion: string | undefined
   shouldShowUpdateBanner: boolean
+  downloadError: string | null
+  isDownloading: boolean
+  downloadProgress: number
   handleDismissUpdate: () => Promise<void>
+  clearDownloadError: () => void
 }
 
 /**
@@ -16,6 +20,9 @@ export function useUpdateBanner(): UpdateBannerState {
   const [updateInfo, setUpdateInfo] = useState<any>(null)
   const [isUpdateReadyToInstall, setIsUpdateReadyToInstall] = useState(false)
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
 
   // Load dismissed update version on mount
   useEffect(() => {
@@ -35,15 +42,45 @@ export function useUpdateBanner(): UpdateBannerState {
     const handleUpdateAvailable = (_event: any, info: any) => {
       setUpdateInfo(info)
       setIsUpdateReadyToInstall(false)
+      setDownloadError(null)
     }
 
     const handleUpdateReadyToInstall = (_event: any, info: any) => {
       setUpdateInfo(info)
       setIsUpdateReadyToInstall(true)
+      setIsDownloading(false)
+      setDownloadError(null)
+    }
+
+    const handleDownloadFailed = (_event: any, info: any, _errorMessage: string) => {
+      setUpdateInfo(info)
+      setIsUpdateReadyToInstall(false)
+      setIsDownloading(false)
+      setDownloadError('App update download failed.')
+    }
+
+    const handleDownloadStarted = (_event: any, info: any) => {
+      setUpdateInfo(info)
+      setIsDownloading(true)
+      setDownloadProgress(0)
+      setDownloadError(null)
+    }
+
+    const handleDownloadProgress = (_event: any, progress: number) => {
+      setDownloadProgress(progress)
+    }
+
+    const handleDownloadComplete = () => {
+      setIsDownloading(false)
+      setDownloadProgress(100)
     }
 
     window.updateAPI.onUpdateAvailable(handleUpdateAvailable)
     window.updateAPI.onUpdateReadyToInstall(handleUpdateReadyToInstall)
+    window.updateAPI.onDownloadFailed(handleDownloadFailed)
+    window.updateAPI.onDownloadStarted(handleDownloadStarted)
+    window.updateAPI.onDownloadProgress(handleDownloadProgress)
+    window.updateAPI.onDownloadComplete(handleDownloadComplete)
 
     // Check for any pending update info that was set before we mounted
     const checkPendingUpdate = async () => {
@@ -62,6 +99,10 @@ export function useUpdateBanner(): UpdateBannerState {
     return () => {
       window.updateAPI.removeUpdateAvailable(handleUpdateAvailable)
       window.updateAPI.removeUpdateReadyToInstall(handleUpdateReadyToInstall)
+      window.updateAPI.removeDownloadFailed(handleDownloadFailed)
+      window.updateAPI.removeDownloadStarted(handleDownloadStarted)
+      window.updateAPI.removeDownloadProgress(handleDownloadProgress)
+      window.updateAPI.removeDownloadComplete(handleDownloadComplete)
     }
   }, [])
 
@@ -78,14 +119,24 @@ export function useUpdateBanner(): UpdateBannerState {
     setUpdateInfo(null)
   }, [updateInfo])
 
+  // Clear download error (e.g., when user clicks Retry)
+  const clearDownloadError = useCallback(() => {
+    setDownloadError(null)
+  }, [])
+
   const updateVersion = updateInfo?.TargetFullRelease?.Version
-  const shouldShowUpdateBanner = updateInfo && updateVersion && updateVersion !== dismissedVersion
+  const shouldShowUpdateBanner =
+    (updateInfo && updateVersion && updateVersion !== dismissedVersion) || isDownloading
 
   return {
     updateInfo,
     isUpdateReadyToInstall,
     updateVersion,
     shouldShowUpdateBanner,
-    handleDismissUpdate
+    downloadError,
+    isDownloading,
+    downloadProgress,
+    handleDismissUpdate,
+    clearDownloadError
   }
 }

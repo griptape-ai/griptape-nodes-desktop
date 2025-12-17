@@ -122,7 +122,7 @@ contextBridge.exposeInMainWorld('updateAPI', {
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
   isSupported: () => ipcRenderer.invoke('update:is-supported'),
   getPendingUpdate: () => ipcRenderer.invoke('update:get-pending'),
-  onDownloadStarted: (callback: () => void) => {
+  onDownloadStarted: (callback: (event: any, updateInfo: any) => void) => {
     ipcRenderer.on('update:download-started', callback)
   },
   onDownloadProgress: (callback: (event: any, progress: number) => void) => {
@@ -131,7 +131,7 @@ contextBridge.exposeInMainWorld('updateAPI', {
   onDownloadComplete: (callback: () => void) => {
     ipcRenderer.on('update:download-complete', callback)
   },
-  removeDownloadStarted: (callback: () => void) => {
+  removeDownloadStarted: (callback: (event: any, updateInfo: any) => void) => {
     ipcRenderer.removeListener('update:download-started', callback)
   },
   removeDownloadProgress: (callback: (event: any, progress: number) => void) => {
@@ -139,6 +139,12 @@ contextBridge.exposeInMainWorld('updateAPI', {
   },
   removeDownloadComplete: (callback: () => void) => {
     ipcRenderer.removeListener('update:download-complete', callback)
+  },
+  onDownloadFailed: (callback: (event: any, updateInfo: any, errorMessage: string) => void) => {
+    ipcRenderer.on('update:download-failed', callback)
+  },
+  removeDownloadFailed: (callback: (event: any, updateInfo: any, errorMessage: string) => void) => {
+    ipcRenderer.removeListener('update:download-failed', callback)
   },
   onUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => {
     ipcRenderer.on('update:available', callback)
@@ -216,9 +222,9 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   getEditorChannel: () => ipcRenderer.invoke('settings:get-editor-channel'),
   setEditorChannel: (channel: 'stable' | 'nightly') =>
     ipcRenderer.invoke('settings:set-editor-channel', channel),
-  getAutoDownloadUpdates: () => ipcRenderer.invoke('settings:get-auto-download-updates'),
-  setAutoDownloadUpdates: (enabled: boolean) =>
-    ipcRenderer.invoke('settings:set-auto-download-updates', enabled),
+  getUpdateBehavior: () => ipcRenderer.invoke('settings:get-update-behavior'),
+  setUpdateBehavior: (behavior: 'auto-update' | 'prompt' | 'silence') =>
+    ipcRenderer.invoke('settings:set-update-behavior', behavior),
   getDismissedUpdateVersion: () => ipcRenderer.invoke('settings:get-dismissed-update-version'),
   setDismissedUpdateVersion: (version: string | null) =>
     ipcRenderer.invoke('settings:set-dismissed-update-version', version)

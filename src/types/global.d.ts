@@ -234,12 +234,18 @@ declare global {
       checkForUpdates: () => Promise<{ success: boolean }>
       isSupported: () => Promise<boolean>
       getPendingUpdate: () => Promise<{ info: any; isReadyToInstall: boolean } | null>
-      onDownloadStarted: (callback: () => void) => void
+      onDownloadStarted: (callback: (event: any, updateInfo: any) => void) => void
       onDownloadProgress: (callback: (event: any, progress: number) => void) => void
       onDownloadComplete: (callback: () => void) => void
-      removeDownloadStarted: (callback: () => void) => void
+      removeDownloadStarted: (callback: (event: any, updateInfo: any) => void) => void
       removeDownloadProgress: (callback: (event: any, progress: number) => void) => void
       removeDownloadComplete: (callback: () => void) => void
+      onDownloadFailed: (
+        callback: (event: any, updateInfo: any, errorMessage: string) => void
+      ) => void
+      removeDownloadFailed: (
+        callback: (event: any, updateInfo: any, errorMessage: string) => void
+      ) => void
       onUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => void
       removeUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => void
       onUpdateReadyToInstall: (callback: (event: any, updateInfo: any) => void) => void
@@ -286,8 +292,10 @@ declare global {
       setEditorChannel: (
         channel: 'stable' | 'nightly' | 'local'
       ) => Promise<{ success: boolean; error?: string }>
-      getAutoDownloadUpdates: () => Promise<boolean>
-      setAutoDownloadUpdates: (enabled: boolean) => Promise<{ success: boolean }>
+      getUpdateBehavior: () => Promise<'auto-update' | 'prompt' | 'silence'>
+      setUpdateBehavior: (
+        behavior: 'auto-update' | 'prompt' | 'silence'
+      ) => Promise<{ success: boolean }>
       getDismissedUpdateVersion: () => Promise<string | null>
       setDismissedUpdateVersion: (version: string | null) => Promise<{ success: boolean }>
     }

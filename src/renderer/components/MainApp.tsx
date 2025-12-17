@@ -5,7 +5,6 @@ import Engine from '../pages/Engine'
 import Settings from '../pages/Settings'
 import { Header } from './Header'
 import { EditorWebview } from './EditorWebview'
-import UpdateProgressNotification from './UpdateProgressNotification'
 import UpdateBanner from './UpdateBanner'
 import { useUpdateBanner } from '../hooks/useUpdateBanner'
 
@@ -19,7 +18,11 @@ const MainApp: React.FC = () => {
     isUpdateReadyToInstall,
     updateVersion,
     shouldShowUpdateBanner,
-    handleDismissUpdate
+    downloadError,
+    isDownloading,
+    downloadProgress,
+    handleDismissUpdate,
+    clearDownloadError
   } = useUpdateBanner()
 
   // Notify main process when page changes
@@ -89,12 +92,23 @@ const MainApp: React.FC = () => {
         />
 
         {/* Update Banner */}
-        {shouldShowUpdateBanner && (
+        {(shouldShowUpdateBanner || downloadError) && (
           <UpdateBanner
             version={updateVersion}
             isReadyToInstall={isUpdateReadyToInstall}
             updateInfo={updateInfo}
             onDismiss={handleDismissUpdate}
+            onNavigateToSettings={() => {
+              setCurrentPage('settings')
+              // Dispatch event after a short delay to allow Settings to mount
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('scroll-to-updates'))
+              }, 100)
+            }}
+            externalError={downloadError}
+            onClearExternalError={clearDownloadError}
+            isDownloading={isDownloading}
+            downloadProgress={downloadProgress}
           />
         )}
 
@@ -106,9 +120,6 @@ const MainApp: React.FC = () => {
           {/* Persistent EditorWebview - always mounted, visibility controlled */}
           <EditorWebview isVisible={currentPage === 'editor'} />
         </main>
-
-        {/* Update Progress Notification */}
-        <UpdateProgressNotification />
       </div>
     </EngineProvider>
   )

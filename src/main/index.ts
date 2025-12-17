@@ -492,48 +492,80 @@ async function checkForUpdatesOnStartup() {
     )
 
     // Check for env variable override, otherwise use settings
-    const envOverride = process.env.FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE
-    let autoDownload: boolean
-    if (envOverride !== undefined) {
-      autoDownload = envOverride.toLowerCase() === 'true'
-      logger.info(`UpdateService: Auto-download override from env: ${autoDownload}`)
+    // FAKE_UPDATE_BEHAVIOR can be: 'auto-update', 'prompt', or 'silence'
+    // Legacy FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: 'true' = auto-update, 'false' = prompt
+    const envBehavior = process.env.FAKE_UPDATE_BEHAVIOR
+    const legacyEnvOverride = process.env.FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE
+    let updateBehavior: 'auto-update' | 'prompt' | 'silence'
+    if (envBehavior !== undefined) {
+      // New env var: directly set behavior
+      const validBehaviors = ['auto-update', 'prompt', 'silence']
+      updateBehavior = validBehaviors.includes(envBehavior)
+        ? (envBehavior as 'auto-update' | 'prompt' | 'silence')
+        : 'prompt'
+      logger.info(
+        `UpdateService: Update behavior override from FAKE_UPDATE_BEHAVIOR: ${updateBehavior}`
+      )
+    } else if (legacyEnvOverride !== undefined) {
+      // Legacy env var: map boolean to behavior
+      updateBehavior = legacyEnvOverride.toLowerCase() === 'true' ? 'auto-update' : 'prompt'
+      logger.info(
+        `UpdateService: Update behavior override from FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: ${updateBehavior}`
+      )
     } else {
-      autoDownload = settingsService.getAutoDownloadUpdates()
+      updateBehavior = settingsService.getUpdateBehavior()
     }
 
-    if (autoDownload) {
-      // Auto-download enabled: download and auto-install immediately
+    if (updateBehavior === 'auto-update') {
+      // Auto-update enabled: download and auto-install immediately
       logger.info('UpdateService: Auto-downloading and installing update...')
 
-      // Emit download started event
+      // Emit download started event with update info
       BrowserWindow.getAllWindows().forEach((window) => {
-        window.webContents.send('update:download-started')
+        window.webContents.send('update:download-started', updateInfo)
       })
 
-      await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
-        BrowserWindow.getAllWindows().forEach((window) => {
-          window.webContents.send('update:download-progress', progress)
+      try {
+        await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
+          BrowserWindow.getAllWindows().forEach((window) => {
+            window.webContents.send('update:download-progress', progress)
+          })
         })
-      })
 
-      // Emit download complete event
-      BrowserWindow.getAllWindows().forEach((window) => {
-        window.webContents.send('update:download-complete')
-      })
+        // Emit download complete event
+        BrowserWindow.getAllWindows().forEach((window) => {
+          window.webContents.send('update:download-complete')
+        })
 
-      logger.info('UpdateService: Update downloaded, auto-applying update and restarting...')
+        logger.info('UpdateService: Update downloaded, showing banner for user to restart')
 
-      // Auto-apply the update immediately - this will restart the app
-      updateManager.waitExitThenApplyUpdate(updateInfo)
-      app.quit()
+        // Store pending update and notify renderer to show "Restart Now" banner
+        pendingUpdateInfo = { info: updateInfo, isReadyToInstall: true }
+        BrowserWindow.getAllWindows().forEach((window) => {
+          window.webContents.send('update:ready-to-install', updateInfo)
+        })
+      } catch (downloadError) {
+        logger.error('UpdateService: Failed to download update:', downloadError)
+
+        // Emit download failed event so renderer can show error banner
+        const errorMessage =
+          downloadError instanceof Error ? downloadError.message : 'Download failed'
+        pendingUpdateInfo = { info: updateInfo, isReadyToInstall: false }
+        BrowserWindow.getAllWindows().forEach((window) => {
+          window.webContents.send('update:download-failed', updateInfo, errorMessage)
+        })
+      }
       return
-    } else {
-      // Auto-download disabled: just notify that update is available
-      logger.info('UpdateService: Notifying renderer of available update (auto-download disabled)')
+    } else if (updateBehavior === 'prompt') {
+      // Prompt for update: notify that update is available
+      logger.info('UpdateService: Notifying renderer of available update (prompt mode)')
       pendingUpdateInfo = { info: updateInfo, isReadyToInstall: false }
       BrowserWindow.getAllWindows().forEach((window) => {
         window.webContents.send('update:available', updateInfo)
       })
+    } else {
+      // Silence updates: do not notify
+      logger.info('UpdateService: Updates silenced, not notifying user')
     }
   } catch (error) {
     logger.error('UpdateService: Failed to check for updates at startup:', error)
@@ -633,9 +665,9 @@ const downloadAndInstallUpdateWithDialog = async (
 
   logger.info('UpdateService: Downloading update...')
 
-  // Emit download start event
+  // Emit download start event with update info
   BrowserWindow.getAllWindows().forEach((window) => {
-    window.webContents.send('update:download-started')
+    window.webContents.send('update:download-started', updateInfo)
   })
 
   await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
@@ -974,9 +1006,9 @@ const setupIPC = () => {
     }
     const updateManager = updateService.getUpdateManager()
 
-    // Emit download start event
+    // Emit download start event with update info
     BrowserWindow.getAllWindows().forEach((window) => {
-      window.webContents.send('update:download-started')
+      window.webContents.send('update:download-started', updateInfo)
     })
 
     await updateManager.downloadUpdateAsync(updateInfo, (progress) => {
@@ -1881,14 +1913,17 @@ const setupIPC = () => {
     return { success: true }
   })
 
-  ipcMain.handle('settings:get-auto-download-updates', () => {
-    return settingsService.getAutoDownloadUpdates()
+  ipcMain.handle('settings:get-update-behavior', () => {
+    return settingsService.getUpdateBehavior()
   })
 
-  ipcMain.handle('settings:set-auto-download-updates', (_, enabled: boolean) => {
-    settingsService.setAutoDownloadUpdates(enabled)
-    return { success: true }
-  })
+  ipcMain.handle(
+    'settings:set-update-behavior',
+    (_, behavior: 'auto-update' | 'prompt' | 'silence') => {
+      settingsService.setUpdateBehavior(behavior)
+      return { success: true }
+    }
+  )
 
   ipcMain.handle('settings:get-dismissed-update-version', () => {
     return settingsService.getDismissedUpdateVersion()
