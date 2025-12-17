@@ -1,7 +1,7 @@
 .PHONY: start package typecheck lint format format/check generate/icons \
         pack/osx pack/linux pack/windows pack/windows/arm64 \
         publish/osx publish/linux publish/windows publish/windows/arm64 \
-        help
+        version/patch version/minor version/major help
 
 # Development
 start: ## Start app in development mode
@@ -52,6 +52,16 @@ publish/windows/arm64: ## Publish Windows ARM64 build
 # Utilities
 generate/icons: ## Generate app icons from source
 	npm run generate-icons
+
+# Versioning
+version/patch: ## Bump patch version (0.0.X)
+	npm version patch --no-git-tag-version
+
+version/minor: ## Bump minor version (0.X.0)
+	npm version minor --no-git-tag-version
+
+version/major: ## Bump major version (X.0.0)
+	npm version major --no-git-tag-version
 
 # Help
 help: ## Show this help message
