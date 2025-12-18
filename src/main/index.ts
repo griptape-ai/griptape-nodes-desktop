@@ -1301,7 +1301,13 @@ const setupIPC = () => {
   // Handle Auth Token Refresh
   // Uses centralized refresh with mutex to prevent concurrent refresh attempts
   ipcMain.handle('auth:refresh-token', async () => {
-    return await authService.attemptTokenRefresh()
+    logger.info('[auth:refresh-token] Renderer requesting token refresh via IPC')
+    const result = await authService.attemptTokenRefresh()
+    logger.info('[auth:refresh-token] Refresh result:', {
+      success: result.success,
+      error: result.error
+    })
+    return result
   })
 
   // Handle notification that tokens were updated (for broadcasting to webviews)

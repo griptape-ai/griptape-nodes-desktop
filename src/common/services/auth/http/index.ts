@@ -338,10 +338,13 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       return true
     }
 
-    // Tokens expired, try to refresh
+    // Tokens expired, try to refresh using the mutex-protected method
+    // This prevents concurrent refresh attempts from both startup and renderer
     if (stored.tokens?.refresh_token) {
-      logger.info('Attempting silent token refresh...')
-      const refreshResult = await this.refreshTokensInternal(stored.tokens.refresh_token)
+      logger.info(
+        '[attemptSilentLogin] Tokens expired, requesting refresh via attemptTokenRefresh()...'
+      )
+      const refreshResult = await this.attemptTokenRefresh()
 
       if (refreshResult.success) {
         logger.info('Silent login successful - tokens refreshed')
@@ -423,9 +426,13 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     // If a refresh is already in progress, return the existing promise
     // This prevents concurrent refresh attempts from using the same token
     if (this.refreshPromise) {
-      logger.info('Token refresh already in progress, waiting for existing request...')
+      logger.info(
+        '[attemptTokenRefresh] Refresh already in progress, waiting for existing request (mutex active)...'
+      )
       return this.refreshPromise
     }
+
+    logger.info('[attemptTokenRefresh] Starting new token refresh (no existing request)')
 
     // Get stored credentials - use the token from store (single source of truth)
     const stored = this.getStoredCredentials()
