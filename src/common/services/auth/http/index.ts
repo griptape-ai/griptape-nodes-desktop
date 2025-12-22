@@ -51,31 +51,41 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
 
   // Load credentials from existing persistent store (triggers keychain access on macOS)
   // This should be called on app start if credential storage was previously enabled
-  loadFromPersistentStore(): void {
+  loadFromPersistentStore(): { success: boolean; error?: string } {
     if (this.store instanceof PersistentStore) {
       logger.info('HttpAuthService: Store already persistent')
-      return
+      return { success: true }
     }
 
     if (!this.hasExistingEncryptedStore()) {
       logger.info('HttpAuthService: No existing encrypted store found')
-      return
+      return { success: false, error: 'No encrypted store found' }
     }
 
     logger.info('HttpAuthService: Loading from persistent store')
 
-    // Replace in-memory store with persistent store
-    this.store = new PersistentStore<AuthData>('auth-credentials', true)
+    try {
+      // Replace in-memory store with persistent store
+      this.store = new PersistentStore<AuthData>('auth-credentials', true)
 
-    // Set up event listeners for the persistent store
-    ;(this.store as PersistentStore<AuthData>).on('change:apiKey', (apiKey: string) => {
-      this.emit('apiKey', apiKey)
-    })
+      // Set up event listeners for the persistent store
+      ;(this.store as PersistentStore<AuthData>).on('change:apiKey', (apiKey: string) => {
+        this.emit('apiKey', apiKey)
+      })
 
-    // Propagate the initial state
-    const apiKey = this.store.get('apiKey')
-    if (apiKey && typeof apiKey === 'string') {
-      this.emit('apiKey', apiKey)
+      // Try to read and decrypt the API key to verify keychain/DPAPI access works
+      // This will throw if decryption fails (e.g., keychain access denied)
+      const apiKey = this.store.get('apiKey')
+      if (apiKey && typeof apiKey === 'string') {
+        this.emit('apiKey', apiKey)
+      }
+
+      return { success: true }
+    } catch (error) {
+      logger.error('HttpAuthService: Failed to load from persistent store:', error)
+      // Revert to in-memory store on error
+      this.store = new InMemoryStore<AuthData>()
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }
 
@@ -106,10 +116,12 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
 
   // Start a local dev server in some kind of lifecycle hook.
   async start() {
-    // Attempt to load from persistent store if it exists
-    if (this.hasExistingEncryptedStore()) {
-      this.loadFromPersistentStore()
-    }
+    // Note: We intentionally do NOT auto-load from persistent store here.
+    // The renderer's AuthContext will call loadFromPersistentStore() if:
+    // 1. The user has enabled credential storage (credentialStorageEnabled)
+    // 2. An encrypted store file exists
+    // This ensures we respect the user's preference and don't trigger
+    // unexpected keychain prompts on macOS.
 
     // Propagate the initial state for in-memory store
     if (this.store instanceof InMemoryStore) {

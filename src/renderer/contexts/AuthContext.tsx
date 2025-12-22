@@ -80,7 +80,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (credentialStorageEnabled) {
           const hasEncryptedStore = await window.oauthAPI.hasExistingEncryptedStore()
           if (hasEncryptedStore) {
-            await window.oauthAPI.loadFromPersistentStore()
+            const loadResult = await window.oauthAPI.loadFromPersistentStore()
+            if (!loadResult.success) {
+              // Failed to load (e.g., keychain access denied) - disable credential storage
+              console.warn('Failed to load from persistent store:', loadResult.error)
+              await window.onboardingAPI.setCredentialStoragePreference(false)
+            }
           }
         }
 

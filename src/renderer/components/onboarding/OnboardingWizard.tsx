@@ -28,13 +28,22 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
         platform === 'darwin' && credentialStorageEnabled && !hasExistingStore
 
       // For non-macOS platforms, auto-enable credential storage if user opted in
-      // Windows/Linux don't need keychain permission, so we enable silently
+      // Windows uses DPAPI, Linux uses libsecret - both work without prompts
       if (platform !== 'darwin' && credentialStorageEnabled && !hasExistingStore) {
         try {
-          await window.onboardingAPI.enableCredentialStorage()
-          console.log('Auto-enabled credential storage for non-macOS platform')
+          const result = await window.onboardingAPI.enableCredentialStorage()
+          if (result.success) {
+            console.log('Auto-enabled credential storage for non-macOS platform')
+          } else {
+            // Encryption failed - disable credential storage so user knows they need to re-login
+            console.error('Failed to enable credential storage:', result.error)
+            await window.onboardingAPI.setCredentialStoragePreference(false)
+            console.log('Disabled credential storage preference due to encryption failure')
+          }
         } catch (error) {
           console.error('Failed to auto-enable credential storage:', error)
+          // Disable the preference so the UI reflects reality
+          await window.onboardingAPI.setCredentialStoragePreference(false)
         }
       }
 

@@ -113,29 +113,31 @@ export class PersistentStore<T extends Record<string, any>> extends Store<T> {
 
   private encryptValue(value: string): string {
     if (!safeStorage.isEncryptionAvailable()) {
-      logger.warn('PersistentStore: Encryption not available, storing unencrypted')
-      return value
+      throw new Error('Encryption not available on this platform')
     }
     try {
       const encrypted = safeStorage.encryptString(value)
       return encrypted.toString('hex')
     } catch (error) {
       logger.error('PersistentStore: Encryption failed:', error)
-      return value
+      throw new Error(
+        `Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 
   private decryptValue(encryptedHex: string): string {
     if (!safeStorage.isEncryptionAvailable()) {
-      logger.warn('PersistentStore: Decryption not available, returning as-is')
-      return encryptedHex
+      throw new Error('Decryption not available on this platform')
     }
     try {
       const buffer = Buffer.from(encryptedHex, 'hex')
       return safeStorage.decryptString(buffer)
-    } catch (_error) {
-      logger.warn('PersistentStore: Decryption failed, assuming unencrypted value')
-      return encryptedHex
+    } catch (error) {
+      logger.error('PersistentStore: Decryption failed:', error)
+      throw new Error(
+        `Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 }
