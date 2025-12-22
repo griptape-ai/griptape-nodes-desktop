@@ -1023,6 +1023,12 @@ const setupIPC = () => {
       window.webContents.send('update:download-complete')
     })
 
+    // Store pending update and notify renderer that update is ready to install
+    pendingUpdateInfo = { info: updateInfo, isReadyToInstall: true }
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('update:ready-to-install', updateInfo)
+    })
+
     return true
   })
 
