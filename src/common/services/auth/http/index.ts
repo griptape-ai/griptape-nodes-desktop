@@ -462,12 +462,18 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     return this.refreshPromise
   }
 
-  async login(): Promise<void> {
+  async login(): Promise<{ success: boolean; tokens?: any; user?: any; apiKey?: string }> {
     // Try silent login first
     const silentLoginSuccessful = await this.attemptSilentLogin()
     if (silentLoginSuccessful) {
       logger.info('Login successful via stored credentials')
-      return
+      const stored = this.getStoredCredentials()
+      return {
+        success: true,
+        tokens: stored?.tokens,
+        user: stored?.user,
+        apiKey: stored?.apiKey
+      }
     }
 
     // If silent login failed, proceed with browser-based OAuth flow
