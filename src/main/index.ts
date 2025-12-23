@@ -1285,6 +1285,10 @@ const setupIPC = () => {
     logger.info('[Webview Auth] Editor requesting logout')
     try {
       authService.clearCredentials()
+
+      // Reset credential storage preference (consistent with auth:logout)
+      onboardingService.setCredentialStorageEnabled(false)
+
       event.returnValue = { success: true }
 
       // Notify all windows that user logged out
@@ -1750,16 +1754,47 @@ const setupIPC = () => {
     return { success: true }
   })
 
-  ipcMain.handle('onboarding:enable-credential-storage', () => {
-    authService.enablePersistence()
-    onboardingService.setCredentialStorageEnabled(true)
-    onboardingService.setKeychainAccessGranted(true)
-    return { success: true }
+  ipcMain.handle('onboarding:enable-credential-storage', async () => {
+    try {
+      // Test encryption first to ensure keychain access is granted
+      // This triggers the macOS keychain prompt if needed
+      const { safeStorage } = await import('electron')
+
+      if (!safeStorage.isEncryptionAvailable()) {
+        return {
+          success: false,
+          error: 'Encryption not available on this platform'
+        }
+      }
+
+      // Try to encrypt a test string - this triggers the keychain prompt on macOS
+      const testString = 'test-credential-storage'
+      const encrypted = safeStorage.encryptString(testString)
+      const decrypted = safeStorage.decryptString(encrypted)
+
+      if (decrypted !== testString) {
+        return {
+          success: false,
+          error: 'Encryption verification failed'
+        }
+      }
+
+      // Encryption works, now enable persistence
+      authService.enablePersistence()
+      onboardingService.setCredentialStorageEnabled(true)
+      onboardingService.setKeychainAccessGranted(true)
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to enable credential storage:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Keychain access denied'
+      }
+    }
   })
 
   ipcMain.handle('auth:load-from-persistent-store', () => {
-    authService.loadFromPersistentStore()
-    return { success: true }
+    return authService.loadFromPersistentStore()
   })
 
   ipcMain.handle('onboarding:is-keychain-verification-seen', () => {

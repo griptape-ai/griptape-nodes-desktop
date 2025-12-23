@@ -15,9 +15,15 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
     // Enable credential storage - this will trigger the keychain prompt
     // and migrate credentials from in-memory to encrypted persistent store
     try {
-      await window.onboardingAPI.enableCredentialStorage()
-      console.log('Credential storage enabled, keychain access granted')
+      const result = await window.onboardingAPI.enableCredentialStorage()
 
+      if (!result.success) {
+        console.error('Keychain access denied:', result.error)
+        setStage('error')
+        return
+      }
+
+      console.log('Credential storage enabled, keychain access granted')
       setStage('success')
       // Wait a moment to show success before continuing
       setTimeout(() => {

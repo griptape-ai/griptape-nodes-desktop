@@ -176,7 +176,7 @@ declare global {
         error?: string
       }>
       willPromptForKeychain: () => Promise<boolean>
-      loadFromPersistentStore: () => Promise<{ success: boolean }>
+      loadFromPersistentStore: () => Promise<{ success: boolean; error?: string }>
       notifyTokensUpdated: () => Promise<void>
     }
     engineAPI: {
@@ -257,7 +257,7 @@ declare global {
       setCredentialStoragePreference: (enabled: boolean) => Promise<{ success: boolean }>
       completeOnboarding: (credentialStorageEnabled: boolean) => Promise<{ success: boolean }>
       resetOnboarding: () => Promise<{ success: boolean }>
-      enableCredentialStorage: () => Promise<{ success: boolean }>
+      enableCredentialStorage: () => Promise<{ success: boolean; error?: string }>
       testEncryption: () => Promise<{ success: boolean; error?: string }>
       isKeychainVerificationSeen: () => Promise<boolean>
       setKeychainVerificationSeen: (seen: boolean) => Promise<{ success: boolean }>
