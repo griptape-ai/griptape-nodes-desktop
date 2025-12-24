@@ -3,6 +3,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron'
 import type { UpdateInfo } from 'velopack'
+import type { UpdateBehavior } from '@/types/global'
 
 interface VelopackBridgeApi {
   getVersion: () => Promise<string>
@@ -223,11 +224,48 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   setEditorChannel: (channel: 'stable' | 'nightly') =>
     ipcRenderer.invoke('settings:set-editor-channel', channel),
   getUpdateBehavior: () => ipcRenderer.invoke('settings:get-update-behavior'),
-  setUpdateBehavior: (behavior: 'auto-update' | 'prompt' | 'silence') =>
+  setUpdateBehavior: (behavior: UpdateBehavior) =>
     ipcRenderer.invoke('settings:set-update-behavior', behavior),
   getDismissedUpdateVersion: () => ipcRenderer.invoke('settings:get-dismissed-update-version'),
   setDismissedUpdateVersion: (version: string | null) =>
-    ipcRenderer.invoke('settings:set-dismissed-update-version', version)
+    ipcRenderer.invoke('settings:set-dismissed-update-version', version),
+  getDismissedEngineUpdateVersion: () =>
+    ipcRenderer.invoke('settings:get-dismissed-engine-update-version'),
+  setDismissedEngineUpdateVersion: (version: string | null) =>
+    ipcRenderer.invoke('settings:set-dismissed-engine-update-version', version),
+  getEngineUpdateBehavior: () => ipcRenderer.invoke('settings:get-engine-update-behavior'),
+  setEngineUpdateBehavior: (behavior: UpdateBehavior) =>
+    ipcRenderer.invoke('settings:set-engine-update-behavior', behavior)
+})
+
+contextBridge.exposeInMainWorld('engineUpdateAPI', {
+  checkForUpdate: () => ipcRenderer.invoke('gtn:check-for-engine-update'),
+  performUpdate: () => ipcRenderer.invoke('gtn:perform-engine-update'),
+  getPendingUpdate: () => ipcRenderer.invoke('gtn:get-pending-engine-update'),
+  onUpdateAvailable: (callback: (event: any, info: any) => void) => {
+    ipcRenderer.on('engine-update:available', callback)
+  },
+  removeUpdateAvailable: (callback: (event: any, info: any) => void) => {
+    ipcRenderer.removeListener('engine-update:available', callback)
+  },
+  onUpdateStarted: (callback: (event: any) => void) => {
+    ipcRenderer.on('engine-update:started', callback)
+  },
+  removeUpdateStarted: (callback: (event: any) => void) => {
+    ipcRenderer.removeListener('engine-update:started', callback)
+  },
+  onUpdateComplete: (callback: (event: any) => void) => {
+    ipcRenderer.on('engine-update:complete', callback)
+  },
+  removeUpdateComplete: (callback: (event: any) => void) => {
+    ipcRenderer.removeListener('engine-update:complete', callback)
+  },
+  onUpdateFailed: (callback: (event: any, error: string) => void) => {
+    ipcRenderer.on('engine-update:failed', callback)
+  },
+  removeUpdateFailed: (callback: (event: any, error: string) => void) => {
+    ipcRenderer.removeListener('engine-update:failed', callback)
+  }
 })
 
 contextBridge.exposeInMainWorld('systemMonitorAPI', {

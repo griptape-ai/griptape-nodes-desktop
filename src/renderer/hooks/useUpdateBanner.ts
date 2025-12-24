@@ -4,6 +4,7 @@ interface UpdateBannerState {
   updateInfo: any
   isUpdateReadyToInstall: boolean
   updateVersion: string | undefined
+  currentVersion: string | undefined
   shouldShowUpdateBanner: boolean
   downloadError: string | null
   isDownloading: boolean
@@ -23,18 +24,23 @@ export function useUpdateBanner(): UpdateBannerState {
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
+  const [currentVersion, setCurrentVersion] = useState<string | undefined>(undefined)
 
-  // Load dismissed update version on mount
+  // Load dismissed update version and current version on mount
   useEffect(() => {
-    const loadDismissedVersion = async () => {
+    const loadInitialData = async () => {
       try {
-        const version = await window.settingsAPI.getDismissedUpdateVersion()
-        setDismissedVersion(version)
+        const [dismissed, current] = await Promise.all([
+          window.settingsAPI.getDismissedUpdateVersion(),
+          window.velopackApi.getVersion()
+        ])
+        setDismissedVersion(dismissed)
+        setCurrentVersion(current)
       } catch (err) {
-        console.error('Failed to load dismissed update version:', err)
+        console.error('Failed to load update banner initial data:', err)
       }
     }
-    loadDismissedVersion()
+    loadInitialData()
   }, [])
 
   // Listen for update events from main process
@@ -132,6 +138,7 @@ export function useUpdateBanner(): UpdateBannerState {
     updateInfo,
     isUpdateReadyToInstall,
     updateVersion,
+    currentVersion,
     shouldShowUpdateBanner,
     downloadError,
     isDownloading,

@@ -19,6 +19,7 @@ const LoginPage: React.FC = () => {
     updateInfo,
     isUpdateReadyToInstall,
     updateVersion,
+    currentVersion,
     shouldShowUpdateBanner,
     downloadError,
     isDownloading,
@@ -97,6 +98,7 @@ const LoginPage: React.FC = () => {
         {(shouldShowUpdateBanner || downloadError) && (
           <UpdateBanner
             version={updateVersion}
+            currentVersion={currentVersion}
             isReadyToInstall={isUpdateReadyToInstall}
             updateInfo={updateInfo}
             onDismiss={handleDismissUpdate}

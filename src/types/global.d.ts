@@ -8,6 +8,14 @@ export interface EngineLog {
 
 export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'initializing' | 'error'
 
+/**
+ * Update behavior setting for both app and engine updates.
+ * - 'auto-update': Automatically download and install updates on startup
+ * - 'prompt': Show a notification banner when updates are available
+ * - 'silence': Do not check for or notify about updates
+ */
+export type UpdateBehavior = 'auto-update' | 'prompt' | 'silence'
+
 declare global {
   interface Window {
     pythonAPI: {
@@ -292,12 +300,47 @@ declare global {
       setEditorChannel: (
         channel: 'stable' | 'nightly' | 'local'
       ) => Promise<{ success: boolean; error?: string }>
-      getUpdateBehavior: () => Promise<'auto-update' | 'prompt' | 'silence'>
-      setUpdateBehavior: (
-        behavior: 'auto-update' | 'prompt' | 'silence'
-      ) => Promise<{ success: boolean }>
+      getUpdateBehavior: () => Promise<UpdateBehavior>
+      setUpdateBehavior: (behavior: UpdateBehavior) => Promise<{ success: boolean }>
       getDismissedUpdateVersion: () => Promise<string | null>
       setDismissedUpdateVersion: (version: string | null) => Promise<{ success: boolean }>
+      getDismissedEngineUpdateVersion: () => Promise<string | null>
+      setDismissedEngineUpdateVersion: (version: string | null) => Promise<{ success: boolean }>
+      getEngineUpdateBehavior: () => Promise<UpdateBehavior>
+      setEngineUpdateBehavior: (behavior: UpdateBehavior) => Promise<{ success: boolean }>
+    }
+    engineUpdateAPI: {
+      checkForUpdate: () => Promise<{
+        success: boolean
+        currentVersion?: string
+        latestVersion?: string | null
+        updateAvailable?: boolean
+        error?: string
+      }>
+      performUpdate: () => Promise<{ success: boolean; error?: string }>
+      getPendingUpdate: () => Promise<{
+        currentVersion: string
+        latestVersion: string | null
+        updateAvailable: boolean
+      } | null>
+      onUpdateAvailable: (
+        callback: (
+          event: any,
+          info: { currentVersion: string; latestVersion: string | null; updateAvailable: boolean }
+        ) => void
+      ) => void
+      removeUpdateAvailable: (
+        callback: (
+          event: any,
+          info: { currentVersion: string; latestVersion: string | null; updateAvailable: boolean }
+        ) => void
+      ) => void
+      onUpdateStarted: (callback: (event: any) => void) => void
+      removeUpdateStarted: (callback: (event: any) => void) => void
+      onUpdateComplete: (callback: (event: any) => void) => void
+      removeUpdateComplete: (callback: (event: any) => void) => void
+      onUpdateFailed: (callback: (event: any, error: string) => void) => void
+      removeUpdateFailed: (callback: (event: any, error: string) => void) => void
     }
     systemMonitorAPI: {
       getMetrics: () => Promise<{

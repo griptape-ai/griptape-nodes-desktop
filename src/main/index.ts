@@ -29,11 +29,13 @@ import { logger } from '@/main/utils/logger'
 import { isPackaged } from '@/main/utils/is-packaged'
 import { PythonService } from '../common/services/python/python-service'
 import { UpdateService } from '../common/services/update/update-service'
+import { FakeEngineUpdateManager } from '../common/services/update/fake-update-manager'
 import { OnboardingService } from '../common/services/onboarding-service'
 import { UsageMetricsService } from '../common/services/usage-metrics-service'
 import { DeviceIdService } from '../common/services/device-id-service'
 import { SystemMonitorService } from '../common/services/system-monitor-service'
 import { SettingsService } from '../common/services/settings-service'
+import type { UpdateBehavior } from '@/types/global'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string
@@ -464,10 +466,65 @@ app.on('ready', async () => {
 
   // Check for updates on startup (async in background)
   checkForUpdatesOnStartup()
+
+  // Check for engine updates on startup (async in background)
+  checkForEngineUpdatesOnStartup()
 })
 
 // Store pending update info so renderer can retrieve it
 let pendingUpdateInfo: { info: any; isReadyToInstall: boolean } | null = null
+
+// Store pending engine update info so renderer can retrieve it
+let pendingEngineUpdateInfo: {
+  currentVersion: string
+  latestVersion: string | null
+  updateAvailable: boolean
+} | null = null
+
+// Track if engine update is in progress (prevents app restart during engine update)
+let isEngineUpdateInProgress = false
+
+/** Helper to broadcast IPC event to all renderer windows */
+function broadcastToRenderer(channel: string, ...args: any[]) {
+  BrowserWindow.getAllWindows().forEach((window) => {
+    window.webContents.send(channel, ...args)
+  })
+}
+
+/**
+ * Performs engine update: stops engine, upgrades, restarts, and notifies renderer.
+ * Used by both auto-update on startup and manual update from banner.
+ */
+async function performEngineUpdate(): Promise<{ success: boolean; error?: string }> {
+  isEngineUpdateInProgress = true
+  broadcastToRenderer('engine-update:started')
+
+  try {
+    await engineService.stopEngine()
+
+    if (FakeEngineUpdateManager.isEnabled()) {
+      const fakeManager = new FakeEngineUpdateManager()
+      await fakeManager.performUpdate()
+    } else {
+      await gtnService.upgradeGtn()
+    }
+
+    await engineService.startEngine()
+
+    logger.info('EngineUpdateService: Update complete')
+    broadcastToRenderer('engine-update:complete')
+
+    return { success: true }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    logger.error('EngineUpdateService: Update failed:', error)
+    broadcastToRenderer('engine-update:failed', errorMessage)
+
+    return { success: false, error: errorMessage }
+  } finally {
+    isEngineUpdateInProgress = false
+  }
+}
 
 async function checkForUpdatesOnStartup() {
   // Short delay to ensure window is minimally ready
@@ -476,6 +533,12 @@ async function checkForUpdatesOnStartup() {
   if (!updateService.isUpdateSupported()) {
     logger.info('UpdateService: Skipping startup update check (not supported)')
     return
+  }
+
+  // In dev mode with fake updates, clear dismissed version so banner shows each time
+  if (!isPackaged() && process.env.FAKE_UPDATE_AVAILABLE === 'true') {
+    logger.info('UpdateService: Clearing dismissed version for fake update testing')
+    settingsService.setDismissedUpdateVersion(null)
   }
 
   try {
@@ -496,12 +559,12 @@ async function checkForUpdatesOnStartup() {
     // Legacy FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: 'true' = auto-update, 'false' = prompt
     const envBehavior = process.env.FAKE_UPDATE_BEHAVIOR
     const legacyEnvOverride = process.env.FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE
-    let updateBehavior: 'auto-update' | 'prompt' | 'silence'
+    let updateBehavior: UpdateBehavior
     if (envBehavior !== undefined) {
       // New env var: directly set behavior
-      const validBehaviors = ['auto-update', 'prompt', 'silence']
-      updateBehavior = validBehaviors.includes(envBehavior)
-        ? (envBehavior as 'auto-update' | 'prompt' | 'silence')
+      const validBehaviors: UpdateBehavior[] = ['auto-update', 'prompt', 'silence']
+      updateBehavior = validBehaviors.includes(envBehavior as UpdateBehavior)
+        ? (envBehavior as UpdateBehavior)
         : 'prompt'
       logger.info(
         `UpdateService: Update behavior override from FAKE_UPDATE_BEHAVIOR: ${updateBehavior}`
@@ -517,8 +580,8 @@ async function checkForUpdatesOnStartup() {
     }
 
     if (updateBehavior === 'auto-update') {
-      // Auto-update enabled: download and auto-install immediately
-      logger.info('UpdateService: Auto-downloading and installing update...')
+      // Auto-update enabled: download automatically, then show "Restart Now" banner
+      logger.info('UpdateService: Auto-downloading update...')
 
       // Emit download started event with update info
       BrowserWindow.getAllWindows().forEach((window) => {
@@ -569,6 +632,70 @@ async function checkForUpdatesOnStartup() {
     }
   } catch (error) {
     logger.error('UpdateService: Failed to check for updates at startup:', error)
+  }
+}
+
+async function checkForEngineUpdatesOnStartup() {
+  try {
+    // Wait for GTN service to be ready
+    await gtnService.waitForReady()
+
+    // In dev mode with fake engine updates, clear dismissed version so banner shows each time
+    if (FakeEngineUpdateManager.isEnabled()) {
+      logger.info('EngineUpdateService: Clearing dismissed version for fake engine update testing')
+      settingsService.setDismissedEngineUpdateVersion(null)
+    }
+
+    // Check engine update behavior setting (separate from app update behavior)
+    // Allow env var override for dev testing
+    const behaviorOverride = FakeEngineUpdateManager.getBehaviorOverride()
+    const engineUpdateBehavior = behaviorOverride ?? settingsService.getEngineUpdateBehavior()
+    if (engineUpdateBehavior === 'silence') {
+      logger.info('EngineUpdateService: Updates silenced, skipping engine update check')
+      return
+    }
+
+    logger.info('EngineUpdateService: Checking for engine updates on startup...')
+
+    const result = await gtnService.checkForEngineUpdate()
+
+    if (!result.updateAvailable) {
+      logger.info('EngineUpdateService: No engine updates available')
+      return
+    }
+
+    // Check if this version was dismissed (only for prompt mode)
+    if (engineUpdateBehavior === 'prompt') {
+      const dismissedVersion = settingsService.getDismissedEngineUpdateVersion()
+      if (result.latestVersion === dismissedVersion) {
+        logger.info(
+          `EngineUpdateService: Engine update v${result.latestVersion} was previously dismissed`
+        )
+        return
+      }
+    }
+
+    logger.info(
+      `EngineUpdateService: Engine update available: v${result.currentVersion} -> v${result.latestVersion}`
+    )
+
+    // Store pending update info so banner can display version
+    pendingEngineUpdateInfo = result
+
+    // Notify renderer about available update (for both auto-update and prompt modes)
+    // This ensures the banner has version info to display
+    broadcastToRenderer('engine-update:available', result)
+
+    // Handle auto-update behavior
+    if (engineUpdateBehavior === 'auto-update') {
+      logger.info('EngineUpdateService: Auto-updating engine...')
+      const updateResult = await performEngineUpdate()
+      if (updateResult.success) {
+        pendingEngineUpdateInfo = null
+      }
+    }
+  } catch (error) {
+    logger.error('EngineUpdateService: Failed to check for engine updates at startup:', error)
   }
 }
 
@@ -1033,11 +1160,29 @@ const setupIPC = () => {
   })
 
   ipcMain.handle('velopack:apply-update', async (_, updateInfo) => {
-    if (!updateService.isUpdateSupported()) {
-      throw new Error('Updates not supported in development mode')
+    // Wait for engine update to complete before restarting
+    if (isEngineUpdateInProgress) {
+      logger.info('UpdateService: Waiting for engine update to complete before restarting...')
+      await new Promise<void>((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (!isEngineUpdateInProgress) {
+            clearInterval(checkInterval)
+            resolve()
+          }
+        }, 500)
+      })
+      logger.info('UpdateService: Engine update complete, proceeding with restart')
     }
+
     const updateManager = updateService.getUpdateManager()
     updateManager.waitExitThenApplyUpdate(updateInfo)
+
+    // In dev mode (fake updates), relaunch the app to simulate restart
+    if (!updateService.isUpdateSupported()) {
+      logger.info('FakeUpdateManager: Simulating app restart...')
+      app.relaunch()
+    }
+
     app.quit()
     return true
   })
@@ -1659,6 +1804,33 @@ const setupIPC = () => {
     }
   })
 
+  // Engine update handlers
+  ipcMain.handle('gtn:check-for-engine-update', async () => {
+    try {
+      await gtnService.waitForReady()
+      const result = await gtnService.checkForEngineUpdate()
+      return { success: true, ...result }
+    } catch (error) {
+      logger.error('Failed to check for engine update:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('gtn:get-pending-engine-update', () => {
+    return pendingEngineUpdateInfo
+  })
+
+  ipcMain.handle('gtn:perform-engine-update', async () => {
+    const result = await performEngineUpdate()
+    if (result.success) {
+      pendingEngineUpdateInfo = null
+    }
+    return result
+  })
+
   // Engine channel handlers
   ipcMain.handle('settings:get-engine-channel', () => {
     return settingsService.getEngineChannel()
@@ -1964,13 +2136,10 @@ const setupIPC = () => {
     return settingsService.getUpdateBehavior()
   })
 
-  ipcMain.handle(
-    'settings:set-update-behavior',
-    (_, behavior: 'auto-update' | 'prompt' | 'silence') => {
-      settingsService.setUpdateBehavior(behavior)
-      return { success: true }
-    }
-  )
+  ipcMain.handle('settings:set-update-behavior', (_, behavior: UpdateBehavior) => {
+    settingsService.setUpdateBehavior(behavior)
+    return { success: true }
+  })
 
   ipcMain.handle('settings:get-dismissed-update-version', () => {
     return settingsService.getDismissedUpdateVersion()
@@ -1978,6 +2147,24 @@ const setupIPC = () => {
 
   ipcMain.handle('settings:set-dismissed-update-version', (_, version: string | null) => {
     settingsService.setDismissedUpdateVersion(version)
+    return { success: true }
+  })
+
+  ipcMain.handle('settings:get-dismissed-engine-update-version', () => {
+    return settingsService.getDismissedEngineUpdateVersion()
+  })
+
+  ipcMain.handle('settings:set-dismissed-engine-update-version', (_, version: string | null) => {
+    settingsService.setDismissedEngineUpdateVersion(version)
+    return { success: true }
+  })
+
+  ipcMain.handle('settings:get-engine-update-behavior', () => {
+    return settingsService.getEngineUpdateBehavior()
+  })
+
+  ipcMain.handle('settings:set-engine-update-behavior', (_, behavior: UpdateBehavior) => {
+    settingsService.setEngineUpdateBehavior(behavior)
     return { success: true }
   })
 
