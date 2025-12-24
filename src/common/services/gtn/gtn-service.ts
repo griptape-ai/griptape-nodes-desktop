@@ -22,6 +22,7 @@ import { PythonService } from '../python/python-service'
 import { HttpAuthService } from '../auth/http'
 import { OnboardingService } from '../onboarding-service'
 import { SettingsService } from '../settings-service'
+import { FakeEngineUpdateManager } from '../update/fake-update-manager'
 import Store from 'electron-store'
 
 async function findFiles(dir: string, target: string): Promise<string[]> {
@@ -505,6 +506,130 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   async getGtnVersion(): Promise<string> {
     const child = await this.runGtn(['self', 'version'])
     return await collectStdout(child)
+  }
+
+  /**
+   * Check for available engine updates by running `gtn self version` without --no-update flag.
+   * This command checks PyPI/GitHub for the latest version and prompts if an update is available.
+   *
+   * In development mode, if FAKE_ENGINE_UPDATE_AVAILABLE=true is set, uses FakeEngineUpdateManager.
+   *
+   * @returns Object with currentVersion, latestVersion, and updateAvailable flag
+   */
+  async checkForEngineUpdate(): Promise<{
+    currentVersion: string
+    latestVersion: string | null
+    updateAvailable: boolean
+  }> {
+    // Use fake engine update manager if enabled (for dev testing)
+    if (FakeEngineUpdateManager.isEnabled()) {
+      const fakeManager = new FakeEngineUpdateManager()
+      return fakeManager.checkForUpdate()
+    }
+
+    logger.info('Checking for engine updates...')
+
+    // Wait for GTN to be available
+    while (!this.gtnExecutablePath) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+
+    const env = getEnv(this.userDataDir)
+    const cwd = getCwd(this.userDataDir)
+
+    // Run gtn self version WITHOUT --no-update flag to allow update check
+    const child = spawn(this.gtnExecutablePath, ['self', 'version'], { env, cwd })
+
+    // Pattern to match update prompt
+    // Example: "Your current engine version, v0.60.0, is behind the latest release, v0.66.2."
+    const updatePattern =
+      /Your current engine version, v([\d.]+), is behind the latest release, v([\d.]+)/
+
+    // Pattern to extract version from final output line
+    // Matches both: "v0.60.0 (pypi)" and "v0.60.0 (git - e172e80)"
+    const versionPattern = /v([\d.]+)\s+\((pypi|git\s*-\s*[a-f0-9]+)\)/i
+
+    let currentVersion = ''
+    let latestVersion: string | null = null
+    let updateAvailable = false
+    let outputBuffer = ''
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        // If process hasn't completed after 30s, kill it and return what we have
+        logger.warn('Engine update check timed out')
+        child.kill()
+        resolve({
+          currentVersion: currentVersion || 'unknown',
+          latestVersion,
+          updateAvailable
+        })
+      }, 30000)
+
+      child.stdout?.on('data', (data: Buffer) => {
+        const text = data.toString()
+        outputBuffer += text
+        logger.debug('gtn self version stdout:', text)
+
+        // Check for update prompt
+        const updateMatch = outputBuffer.match(updatePattern)
+        if (updateMatch) {
+          currentVersion = updateMatch[1]
+          latestVersion = updateMatch[2]
+          updateAvailable = true
+          logger.info(
+            `Engine update available: current v${currentVersion}, latest v${latestVersion}`
+          )
+
+          // Send "n" to stdin to decline the update and let the command complete
+          if (child.stdin && !child.stdin.destroyed) {
+            child.stdin.write('n\n')
+          }
+        }
+
+        // Check for version output (final line)
+        const versionMatch = text.match(versionPattern)
+        if (versionMatch && !currentVersion) {
+          currentVersion = versionMatch[1]
+        }
+      })
+
+      child.stderr?.on('data', (data: Buffer) => {
+        logger.debug('gtn self version stderr:', data.toString())
+      })
+
+      child.on('exit', (code) => {
+        clearTimeout(timeout)
+
+        if (code !== 0 && code !== null) {
+          logger.warn(`gtn self version exited with code ${code}`)
+        }
+
+        // If we didn't find the current version in the update prompt, try to parse it from output
+        if (!currentVersion) {
+          const versionMatch = outputBuffer.match(versionPattern)
+          if (versionMatch) {
+            currentVersion = versionMatch[1]
+          }
+        }
+
+        logger.info(
+          `Engine update check complete: current=${currentVersion}, latest=${latestVersion}, updateAvailable=${updateAvailable}`
+        )
+
+        resolve({
+          currentVersion: currentVersion || 'unknown',
+          latestVersion,
+          updateAvailable
+        })
+      })
+
+      child.on('error', (error) => {
+        clearTimeout(timeout)
+        logger.error('Engine update check failed:', error)
+        reject(error)
+      })
+    })
   }
 
   async upgradeGtn(): Promise<void> {

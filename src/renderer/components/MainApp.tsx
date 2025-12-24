@@ -6,7 +6,9 @@ import Settings from '../pages/Settings'
 import { Header } from './Header'
 import { EditorWebview } from './EditorWebview'
 import UpdateBanner from './UpdateBanner'
+import EngineUpdateBanner from './EngineUpdateBanner'
 import { useUpdateBanner } from '../hooks/useUpdateBanner'
+import { useEngineUpdateBanner } from '../hooks/useEngineUpdateBanner'
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -17,6 +19,7 @@ const MainApp: React.FC = () => {
     updateInfo,
     isUpdateReadyToInstall,
     updateVersion,
+    currentVersion,
     shouldShowUpdateBanner,
     downloadError,
     isDownloading,
@@ -24,6 +27,17 @@ const MainApp: React.FC = () => {
     handleDismissUpdate,
     clearDownloadError
   } = useUpdateBanner()
+
+  // Engine update banner state
+  const {
+    updateInfo: engineUpdateInfo,
+    isUpdating: isEngineUpdating,
+    updateError: engineUpdateError,
+    shouldShowBanner: shouldShowEngineUpdateBanner,
+    handleDismiss: handleDismissEngineUpdate,
+    handleUpdate: handleEngineUpdate,
+    clearError: clearEngineUpdateError
+  } = useEngineUpdateBanner()
 
   // Notify main process when page changes
   useEffect(() => {
@@ -95,12 +109,12 @@ const MainApp: React.FC = () => {
         {(shouldShowUpdateBanner || downloadError) && (
           <UpdateBanner
             version={updateVersion}
+            currentVersion={currentVersion}
             isReadyToInstall={isUpdateReadyToInstall}
             updateInfo={updateInfo}
             onDismiss={handleDismissUpdate}
             onNavigateToSettings={() => {
               setCurrentPage('settings')
-              // Dispatch event after a short delay to allow Settings to mount
               setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('scroll-to-updates'))
               }, 100)
@@ -109,6 +123,25 @@ const MainApp: React.FC = () => {
             onClearExternalError={clearDownloadError}
             isDownloading={isDownloading}
             downloadProgress={downloadProgress}
+          />
+        )}
+
+        {/* Engine Update Banner */}
+        {shouldShowEngineUpdateBanner && engineUpdateInfo && (
+          <EngineUpdateBanner
+            currentVersion={engineUpdateInfo.currentVersion}
+            latestVersion={engineUpdateInfo.latestVersion || ''}
+            isUpdating={isEngineUpdating}
+            error={engineUpdateError}
+            onDismiss={handleDismissEngineUpdate}
+            onUpdate={handleEngineUpdate}
+            onClearError={clearEngineUpdateError}
+            onNavigateToSettings={() => {
+              setCurrentPage('settings')
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('scroll-to-engine-updates'))
+              }, 100)
+            }}
           />
         )}
 

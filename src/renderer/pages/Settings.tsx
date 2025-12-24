@@ -36,6 +36,9 @@ const Settings: React.FC = () => {
   const [updateBehavior, setUpdateBehavior] = useState<'auto-update' | 'prompt' | 'silence'>(
     'prompt'
   )
+  const [engineUpdateBehavior, setEngineUpdateBehavior] = useState<
+    'auto-update' | 'prompt' | 'silence'
+  >('prompt')
   const [upgradingEngine, setUpgradingEngine] = useState(false)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
@@ -108,6 +111,7 @@ const Settings: React.FC = () => {
     loadEngineChannel()
     loadEditorChannel()
     loadUpdateBehaviorSetting()
+    loadEngineUpdateBehaviorSetting()
     checkDevMode()
     window.griptapeAPI.refreshConfig()
 
@@ -116,12 +120,11 @@ const Settings: React.FC = () => {
       setLoadingWorkspace(false)
     }
 
-    // Listen for scroll-to-updates event from UpdateBanner
-    const handleScrollToUpdates = () => {
-      const element = document.getElementById('desktop-app-updates')
+    // Helper to scroll to and highlight a section
+    const scrollToAndHighlight = (elementId: string) => {
+      const element = document.getElementById(elementId)
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        // Add a brief highlight effect
         element.classList.add('ring-2', 'ring-primary', 'ring-offset-2')
         setTimeout(() => {
           element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2')
@@ -129,12 +132,17 @@ const Settings: React.FC = () => {
       }
     }
 
+    const handleScrollToUpdates = () => scrollToAndHighlight('desktop-app-updates')
+    const handleScrollToEngineUpdates = () => scrollToAndHighlight('engine-updates')
+
     window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged)
     window.addEventListener('scroll-to-updates', handleScrollToUpdates)
+    window.addEventListener('scroll-to-engine-updates', handleScrollToEngineUpdates)
 
     return () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
       window.removeEventListener('scroll-to-updates', handleScrollToUpdates)
+      window.removeEventListener('scroll-to-engine-updates', handleScrollToEngineUpdates)
     }
   }, [loadEnvironmentInfo])
 
@@ -227,6 +235,15 @@ const Settings: React.FC = () => {
     }
   }
 
+  const loadEngineUpdateBehaviorSetting = async () => {
+    try {
+      const behavior = await window.settingsAPI.getEngineUpdateBehavior()
+      setEngineUpdateBehavior(behavior)
+    } catch (err) {
+      console.error('Failed to load engine update behavior setting:', err)
+    }
+  }
+
   const handleUpdateBehaviorChange = async (newBehavior: 'auto-update' | 'prompt' | 'silence') => {
     const previousBehavior = updateBehavior
     setUpdateBehavior(newBehavior)
@@ -236,6 +253,20 @@ const Settings: React.FC = () => {
       console.error('Failed to save update behavior setting:', err)
       // Revert on error
       setUpdateBehavior(previousBehavior)
+    }
+  }
+
+  const handleEngineUpdateBehaviorChange = async (
+    newBehavior: 'auto-update' | 'prompt' | 'silence'
+  ) => {
+    const previousBehavior = engineUpdateBehavior
+    setEngineUpdateBehavior(newBehavior)
+    try {
+      await window.settingsAPI.setEngineUpdateBehavior(newBehavior)
+    } catch (err) {
+      console.error('Failed to save engine update behavior setting:', err)
+      // Revert on error
+      setEngineUpdateBehavior(previousBehavior)
     }
   }
 
@@ -808,7 +839,7 @@ const Settings: React.FC = () => {
         )}
 
         {/* Engine Updates Section */}
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div id="engine-updates" className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h2 className="text-lg font-semibold mb-4">Engine Updates</h2>
           <div className="space-y-4">
             {/* Engine Channel Selector */}
@@ -831,6 +862,35 @@ const Settings: React.FC = () => {
               <p className="text-xs text-muted-foreground mt-1">
                 Stable: Official releases from PyPI. Nightly: Latest development build from GitHub
                 (may be unstable).
+              </p>
+            </div>
+
+            {/* Engine Update Behavior Dropdown */}
+            <div>
+              <p className="text-sm font-medium mb-2">Update Behavior</p>
+              <select
+                value={engineUpdateBehavior}
+                onChange={(e) =>
+                  handleEngineUpdateBehaviorChange(
+                    e.target.value as 'auto-update' | 'prompt' | 'silence'
+                  )
+                }
+                disabled={switchingChannel || upgradingEngine}
+                className={cn(
+                  'w-full px-3 py-2 text-sm rounded-md',
+                  'bg-background border border-input',
+                  'focus:outline-none focus:ring-2 focus:ring-ring',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                <option value="auto-update">Auto-Update</option>
+                <option value="prompt">Prompt for Update</option>
+                <option value="silence">Silence Updates</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Auto-Update: Automatically install engine updates on startup. Prompt for Update:
+                Show a notification banner when updates are available. Silence Updates: Do not check
+                for or notify about engine updates.
               </p>
             </div>
 

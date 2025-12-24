@@ -77,4 +77,22 @@ export class SettingsService {
     this.store.set('dismissedUpdateVersion', version)
     logger.info('SettingsService: dismissedUpdateVersion set to', version)
   }
+
+  getDismissedEngineUpdateVersion(): string | null {
+    return this.store.get('dismissedEngineUpdateVersion', null)
+  }
+
+  setDismissedEngineUpdateVersion(version: string | null): void {
+    this.store.set('dismissedEngineUpdateVersion', version)
+    logger.info('SettingsService: dismissedEngineUpdateVersion set to', version)
+  }
+
+  getEngineUpdateBehavior(): 'auto-update' | 'prompt' | 'silence' {
+    return this.store.get('engineUpdateBehavior', 'prompt')
+  }
+
+  setEngineUpdateBehavior(behavior: 'auto-update' | 'prompt' | 'silence'): void {
+    this.store.set('engineUpdateBehavior', behavior)
+    logger.info('SettingsService: engineUpdateBehavior set to', behavior)
+  }
 }
