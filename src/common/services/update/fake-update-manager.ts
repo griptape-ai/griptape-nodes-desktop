@@ -1,5 +1,6 @@
 import { logger } from '@/main/utils/logger'
 import type { UpdateManager, UpdateInfo, VelopackAsset } from 'velopack'
+import type { UpdateBehavior } from '@/types/global'
 
 /**
  * Configuration options for FakeUpdateManager (App Updates).
@@ -272,7 +273,7 @@ export class FakeEngineUpdateManager {
    * Get the engine update behavior override from environment variable.
    * Returns null if not set (use settings value).
    */
-  static getBehaviorOverride(): 'auto-update' | 'prompt' | 'silence' | null {
+  static getBehaviorOverride(): UpdateBehavior | null {
     const value = process.env.FAKE_ENGINE_UPDATE_BEHAVIOR
     if (value === 'auto-update' || value === 'prompt' || value === 'silence') {
       return value

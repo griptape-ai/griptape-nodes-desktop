@@ -35,6 +35,7 @@ import { UsageMetricsService } from '../common/services/usage-metrics-service'
 import { DeviceIdService } from '../common/services/device-id-service'
 import { SystemMonitorService } from '../common/services/system-monitor-service'
 import { SettingsService } from '../common/services/settings-service'
+import type { UpdateBehavior } from '@/types/global'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string
@@ -558,12 +559,12 @@ async function checkForUpdatesOnStartup() {
     // Legacy FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: 'true' = auto-update, 'false' = prompt
     const envBehavior = process.env.FAKE_UPDATE_BEHAVIOR
     const legacyEnvOverride = process.env.FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE
-    let updateBehavior: 'auto-update' | 'prompt' | 'silence'
+    let updateBehavior: UpdateBehavior
     if (envBehavior !== undefined) {
       // New env var: directly set behavior
-      const validBehaviors = ['auto-update', 'prompt', 'silence']
-      updateBehavior = validBehaviors.includes(envBehavior)
-        ? (envBehavior as 'auto-update' | 'prompt' | 'silence')
+      const validBehaviors: UpdateBehavior[] = ['auto-update', 'prompt', 'silence']
+      updateBehavior = validBehaviors.includes(envBehavior as UpdateBehavior)
+        ? (envBehavior as UpdateBehavior)
         : 'prompt'
       logger.info(
         `UpdateService: Update behavior override from FAKE_UPDATE_BEHAVIOR: ${updateBehavior}`
@@ -2135,13 +2136,10 @@ const setupIPC = () => {
     return settingsService.getUpdateBehavior()
   })
 
-  ipcMain.handle(
-    'settings:set-update-behavior',
-    (_, behavior: 'auto-update' | 'prompt' | 'silence') => {
-      settingsService.setUpdateBehavior(behavior)
-      return { success: true }
-    }
-  )
+  ipcMain.handle('settings:set-update-behavior', (_, behavior: UpdateBehavior) => {
+    settingsService.setUpdateBehavior(behavior)
+    return { success: true }
+  })
 
   ipcMain.handle('settings:get-dismissed-update-version', () => {
     return settingsService.getDismissedUpdateVersion()
@@ -2165,13 +2163,10 @@ const setupIPC = () => {
     return settingsService.getEngineUpdateBehavior()
   })
 
-  ipcMain.handle(
-    'settings:set-engine-update-behavior',
-    (_, behavior: 'auto-update' | 'prompt' | 'silence') => {
-      settingsService.setEngineUpdateBehavior(behavior)
-      return { success: true }
-    }
-  )
+  ipcMain.handle('settings:set-engine-update-behavior', (_, behavior: UpdateBehavior) => {
+    settingsService.setEngineUpdateBehavior(behavior)
+    return { success: true }
+  })
 
   // System monitor handlers
   ipcMain.handle('system-monitor:get-metrics', async () => {

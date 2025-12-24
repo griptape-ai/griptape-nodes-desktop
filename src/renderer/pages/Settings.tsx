@@ -5,6 +5,7 @@ import { useEngine } from '../contexts/EngineContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
+import type { UpdateBehavior } from '@/types/global'
 
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
@@ -33,12 +34,8 @@ const Settings: React.FC = () => {
   const [versionError, setVersionError] = useState<boolean>(false)
   const [channelError, setChannelError] = useState<boolean>(false)
   const [channelsError, setChannelsError] = useState<boolean>(false)
-  const [updateBehavior, setUpdateBehavior] = useState<'auto-update' | 'prompt' | 'silence'>(
-    'prompt'
-  )
-  const [engineUpdateBehavior, setEngineUpdateBehavior] = useState<
-    'auto-update' | 'prompt' | 'silence'
-  >('prompt')
+  const [updateBehavior, setUpdateBehavior] = useState<UpdateBehavior>('prompt')
+  const [engineUpdateBehavior, setEngineUpdateBehavior] = useState<UpdateBehavior>('prompt')
   const [upgradingEngine, setUpgradingEngine] = useState(false)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
@@ -244,7 +241,7 @@ const Settings: React.FC = () => {
     }
   }
 
-  const handleUpdateBehaviorChange = async (newBehavior: 'auto-update' | 'prompt' | 'silence') => {
+  const handleUpdateBehaviorChange = async (newBehavior: UpdateBehavior) => {
     const previousBehavior = updateBehavior
     setUpdateBehavior(newBehavior)
     try {
@@ -256,9 +253,7 @@ const Settings: React.FC = () => {
     }
   }
 
-  const handleEngineUpdateBehaviorChange = async (
-    newBehavior: 'auto-update' | 'prompt' | 'silence'
-  ) => {
+  const handleEngineUpdateBehaviorChange = async (newBehavior: UpdateBehavior) => {
     const previousBehavior = engineUpdateBehavior
     setEngineUpdateBehavior(newBehavior)
     try {
@@ -870,11 +865,7 @@ const Settings: React.FC = () => {
               <p className="text-sm font-medium mb-2">Update Behavior</p>
               <select
                 value={engineUpdateBehavior}
-                onChange={(e) =>
-                  handleEngineUpdateBehaviorChange(
-                    e.target.value as 'auto-update' | 'prompt' | 'silence'
-                  )
-                }
+                onChange={(e) => handleEngineUpdateBehaviorChange(e.target.value as UpdateBehavior)}
                 disabled={switchingChannel || upgradingEngine}
                 className={cn(
                   'w-full px-3 py-2 text-sm rounded-md',
@@ -1059,11 +1050,7 @@ const Settings: React.FC = () => {
                 <p className="text-sm font-medium mb-2">Update Behavior</p>
                 <select
                   value={updateBehavior}
-                  onChange={(e) =>
-                    handleUpdateBehaviorChange(
-                      e.target.value as 'auto-update' | 'prompt' | 'silence'
-                    )
-                  }
+                  onChange={(e) => handleUpdateBehaviorChange(e.target.value as UpdateBehavior)}
                   disabled={!updatesSupported}
                   className={cn(
                     'w-full px-3 py-2 text-sm rounded-md',

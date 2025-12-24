@@ -1,5 +1,6 @@
 import Store from 'electron-store'
 import { logger } from '@/main/utils/logger'
+import type { UpdateBehavior } from '@/types/global'
 
 export class SettingsService {
   private store: any
@@ -51,11 +52,11 @@ export class SettingsService {
     logger.info('SettingsService: editorChannel set to', channel)
   }
 
-  getUpdateBehavior(): 'auto-update' | 'prompt' | 'silence' {
+  getUpdateBehavior(): UpdateBehavior {
     // Migration: if old boolean setting exists, convert it
     const oldValue = this.store.get('autoDownloadUpdates')
     if (typeof oldValue === 'boolean') {
-      const newValue = oldValue ? 'auto-update' : 'prompt'
+      const newValue: UpdateBehavior = oldValue ? 'auto-update' : 'prompt'
       this.store.set('updateBehavior', newValue)
       this.store.delete('autoDownloadUpdates')
       logger.info('SettingsService: Migrated autoDownloadUpdates to updateBehavior:', newValue)
@@ -64,7 +65,7 @@ export class SettingsService {
     return this.store.get('updateBehavior', 'prompt')
   }
 
-  setUpdateBehavior(behavior: 'auto-update' | 'prompt' | 'silence'): void {
+  setUpdateBehavior(behavior: UpdateBehavior): void {
     this.store.set('updateBehavior', behavior)
     logger.info('SettingsService: updateBehavior set to', behavior)
   }
@@ -87,11 +88,11 @@ export class SettingsService {
     logger.info('SettingsService: dismissedEngineUpdateVersion set to', version)
   }
 
-  getEngineUpdateBehavior(): 'auto-update' | 'prompt' | 'silence' {
+  getEngineUpdateBehavior(): UpdateBehavior {
     return this.store.get('engineUpdateBehavior', 'prompt')
   }
 
-  setEngineUpdateBehavior(behavior: 'auto-update' | 'prompt' | 'silence'): void {
+  setEngineUpdateBehavior(behavior: UpdateBehavior): void {
     this.store.set('engineUpdateBehavior', behavior)
     logger.info('SettingsService: engineUpdateBehavior set to', behavior)
   }

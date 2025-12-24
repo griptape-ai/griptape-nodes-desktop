@@ -8,6 +8,14 @@ export interface EngineLog {
 
 export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'initializing' | 'error'
 
+/**
+ * Update behavior setting for both app and engine updates.
+ * - 'auto-update': Automatically download and install updates on startup
+ * - 'prompt': Show a notification banner when updates are available
+ * - 'silence': Do not check for or notify about updates
+ */
+export type UpdateBehavior = 'auto-update' | 'prompt' | 'silence'
+
 declare global {
   interface Window {
     pythonAPI: {
@@ -292,18 +300,14 @@ declare global {
       setEditorChannel: (
         channel: 'stable' | 'nightly' | 'local'
       ) => Promise<{ success: boolean; error?: string }>
-      getUpdateBehavior: () => Promise<'auto-update' | 'prompt' | 'silence'>
-      setUpdateBehavior: (
-        behavior: 'auto-update' | 'prompt' | 'silence'
-      ) => Promise<{ success: boolean }>
+      getUpdateBehavior: () => Promise<UpdateBehavior>
+      setUpdateBehavior: (behavior: UpdateBehavior) => Promise<{ success: boolean }>
       getDismissedUpdateVersion: () => Promise<string | null>
       setDismissedUpdateVersion: (version: string | null) => Promise<{ success: boolean }>
       getDismissedEngineUpdateVersion: () => Promise<string | null>
       setDismissedEngineUpdateVersion: (version: string | null) => Promise<{ success: boolean }>
-      getEngineUpdateBehavior: () => Promise<'auto-update' | 'prompt' | 'silence'>
-      setEngineUpdateBehavior: (
-        behavior: 'auto-update' | 'prompt' | 'silence'
-      ) => Promise<{ success: boolean }>
+      getEngineUpdateBehavior: () => Promise<UpdateBehavior>
+      setEngineUpdateBehavior: (behavior: UpdateBehavior) => Promise<{ success: boolean }>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{
