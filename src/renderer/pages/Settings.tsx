@@ -7,6 +7,25 @@ import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 import type { UpdateBehavior } from '@/types/global'
 
+const UpdateBehaviorDescription: React.FC = () => (
+  <p className="text-xs text-muted-foreground mt-1">
+    Auto-Update: Automatically download and install updates on startup.
+    <br />
+    Prompt: Show a notification banner when updates are available.
+    <br />
+    Silence: Do not check for or notify about updates.
+  </p>
+)
+
+const ChannelDescription: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
+  <p className="text-xs text-muted-foreground mt-1">
+    Stable: Official releases with stable features.
+    <br />
+    Nightly: Latest development build (may be unstable).
+    {children}
+  </p>
+)
+
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
   const {
@@ -112,7 +131,7 @@ const Settings: React.FC = () => {
     checkDevMode()
     window.griptapeAPI.refreshConfig()
 
-    const handleWorkspaceChanged = (event: any, directory: string) => {
+    const handleWorkspaceChanged = (_event: any, directory: string) => {
       setWorkspaceDir(directory)
       setLoadingWorkspace(false)
     }
@@ -854,10 +873,7 @@ const Settings: React.FC = () => {
                 <option value="stable">Stable (PyPI releases)</option>
                 <option value="nightly">Nightly (Latest development build)</option>
               </select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Stable: Official releases from PyPI. Nightly: Latest development build from GitHub
-                (may be unstable).
-              </p>
+              <ChannelDescription />
             </div>
 
             {/* Engine Update Behavior Dropdown */}
@@ -878,11 +894,7 @@ const Settings: React.FC = () => {
                 <option value="prompt">Prompt for Update</option>
                 <option value="silence">Silence Updates</option>
               </select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Auto-Update: Automatically install engine updates on startup. Prompt for Update:
-                Show a notification banner when updates are available. Silence Updates: Do not check
-                for or notify about engine updates.
-              </p>
+              <UpdateBehaviorDescription />
             </div>
 
             <div className="flex items-center justify-between">
@@ -994,12 +1006,14 @@ const Settings: React.FC = () => {
                 <option value="nightly">Nightly</option>
                 {showLocalOption && <option value="local">Local Development</option>}
               </select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Stable: Production editor with stable features. Nightly: Preview editor with latest
-                features (may be unstable).
-                {showLocalOption && ' Local: Development editor running on localhost:5173.'} The
-                editor will reload when you change this setting.
-              </p>
+              <ChannelDescription>
+                {showLocalOption && (
+                  <>
+                    <br />
+                    Local: Development editor running on localhost:5173.
+                  </>
+                )}
+              </ChannelDescription>
             </div>
           </div>
         </div>
@@ -1063,11 +1077,7 @@ const Settings: React.FC = () => {
                   <option value="prompt">Prompt for Update</option>
                   <option value="silence">Silence Updates</option>
                 </select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Auto-Update: Automatically download and install updates on start. Prompt for
-                  Update: Show a notification when updates are available. Silence Updates: Do not
-                  notify about updates.
-                </p>
+                <UpdateBehaviorDescription />
               </div>
             </div>
 
