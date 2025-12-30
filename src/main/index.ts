@@ -465,10 +465,19 @@ app.on('ready', async () => {
   })()
 
   // Check for updates on startup (async in background)
-  checkForUpdatesOnStartup()
+  checkForAppUpdates(true)
 
   // Check for engine updates on startup (async in background)
-  checkForEngineUpdatesOnStartup()
+  checkForEngineUpdates(true)
+
+  // Set up periodic update checks (every 6 hours)
+  const SIX_HOURS_MS = 6 * 60 * 60 * 1000
+  setInterval(() => {
+    logger.info('UpdateService: Running periodic update check...')
+    checkForAppUpdates(false)
+    checkForEngineUpdates(false)
+  }, SIX_HOURS_MS)
+  logger.info('UpdateService: Periodic update check scheduled (every 6 hours)')
 })
 
 // Store pending update info so renderer can retrieve it
@@ -526,20 +535,24 @@ async function performEngineUpdate(): Promise<{ success: boolean; error?: string
   }
 }
 
-async function checkForUpdatesOnStartup() {
-  // Short delay to ensure window is minimally ready
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+async function checkForAppUpdates(isStartup: boolean = true) {
+  if (isStartup) {
+    // Short delay to ensure window is minimally ready
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+  }
 
   if (!updateService.isUpdateSupported()) {
-    logger.info('UpdateService: Skipping startup update check (not supported)')
+    logger.info(`UpdateService: Skipping update check (not supported)`)
     return
   }
 
-  // In dev mode with fake updates, clear dismissed version so banner shows each time
-  if (!isPackaged() && process.env.FAKE_UPDATE_AVAILABLE === 'true') {
+  // In dev mode with fake updates on startup, clear dismissed version so banner shows each time
+  if (isStartup && !isPackaged() && process.env.FAKE_UPDATE_AVAILABLE === 'true') {
     logger.info('UpdateService: Clearing dismissed version for fake update testing')
     settingsService.setDismissedUpdateVersion(null)
   }
+
+  logger.info(`UpdateService: Checking for updates (${isStartup ? 'startup' : 'periodic'})...`)
 
   try {
     const updateManager = updateService.getUpdateManager()
@@ -631,17 +644,17 @@ async function checkForUpdatesOnStartup() {
       logger.info('UpdateService: Updates silenced, not notifying user')
     }
   } catch (error) {
-    logger.error('UpdateService: Failed to check for updates at startup:', error)
+    logger.error('UpdateService: Failed to check for updates:', error)
   }
 }
 
-async function checkForEngineUpdatesOnStartup() {
+async function checkForEngineUpdates(isStartup: boolean = true) {
   try {
     // Wait for GTN service to be ready
     await gtnService.waitForReady()
 
-    // In dev mode with fake engine updates, clear dismissed version so banner shows each time
-    if (FakeEngineUpdateManager.isEnabled()) {
+    // In dev mode with fake engine updates on startup, clear dismissed version so banner shows each time
+    if (isStartup && FakeEngineUpdateManager.isEnabled()) {
       logger.info('EngineUpdateService: Clearing dismissed version for fake engine update testing')
       settingsService.setDismissedEngineUpdateVersion(null)
     }
@@ -655,7 +668,9 @@ async function checkForEngineUpdatesOnStartup() {
       return
     }
 
-    logger.info('EngineUpdateService: Checking for engine updates on startup...')
+    logger.info(
+      `EngineUpdateService: Checking for engine updates (${isStartup ? 'startup' : 'periodic'})...`
+    )
 
     const result = await gtnService.checkForEngineUpdate()
 
@@ -695,7 +710,7 @@ async function checkForEngineUpdatesOnStartup() {
       }
     }
   } catch (error) {
-    logger.error('EngineUpdateService: Failed to check for engine updates at startup:', error)
+    logger.error('EngineUpdateService: Failed to check for engine updates:', error)
   }
 }
 
