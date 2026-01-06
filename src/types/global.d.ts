@@ -130,6 +130,8 @@ declare global {
         }
         error?: string
       }>
+      onEnvironmentInfoUpdated: (callback: (event: any, info: any) => void) => void
+      removeEnvironmentInfoUpdated: (callback: (event: any, info: any) => void) => void
     }
     oauthAPI: {
       login: () => Promise<{

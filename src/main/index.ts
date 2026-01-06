@@ -520,6 +520,22 @@ async function performEngineUpdate(): Promise<{ success: boolean; error?: string
 
     await engineService.startEngine()
 
+    // Refresh environment info to get updated version
+    try {
+      const envInfo = await environmentInfoService.collectEnvironmentInfo(
+        {
+          pythonService,
+          uvService,
+          gtnService
+        },
+        __BUILD_INFO__
+      )
+      logger.info('EngineUpdateService: Environment info refreshed after update')
+      broadcastToRenderer('environment-info:updated', envInfo)
+    } catch (envError) {
+      logger.error('EngineUpdateService: Failed to refresh environment info:', envError)
+    }
+
     logger.info('EngineUpdateService: Update complete')
     broadcastToRenderer('engine-update:complete')
 
@@ -1865,6 +1881,22 @@ const setupIPC = () => {
 
       // Restart the engine with the new version
       await engineService.restartEngine()
+
+      // Refresh environment info to get updated version
+      try {
+        const envInfo = await environmentInfoService.collectEnvironmentInfo(
+          {
+            pythonService,
+            uvService,
+            gtnService
+          },
+          __BUILD_INFO__
+        )
+        logger.info('Channel switch: Environment info refreshed')
+        broadcastToRenderer('environment-info:updated', envInfo)
+      } catch (envError) {
+        logger.error('Channel switch: Failed to refresh environment info:', envError)
+      }
 
       // Clear the in-progress flag after restart is complete
       settingsService.setChannelSwitchInProgress(false)

@@ -136,6 +136,13 @@ const Settings: React.FC = () => {
       setLoadingWorkspace(false)
     }
 
+    // Handle environment info updates from main process (e.g., after engine update via banner)
+    const handleEnvironmentInfoUpdated = (_event: any, info: any) => {
+      if (info) {
+        setEnvironmentInfo(info)
+      }
+    }
+
     // Helper to scroll to and highlight a section
     const scrollToAndHighlight = (elementId: string) => {
       const element = document.getElementById(elementId)
@@ -152,11 +159,13 @@ const Settings: React.FC = () => {
     const handleScrollToEngineUpdates = () => scrollToAndHighlight('engine-updates')
 
     window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged)
+    window.pythonAPI.onEnvironmentInfoUpdated(handleEnvironmentInfoUpdated)
     window.addEventListener('scroll-to-updates', handleScrollToUpdates)
     window.addEventListener('scroll-to-engine-updates', handleScrollToEngineUpdates)
 
     return () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
+      window.pythonAPI.removeEnvironmentInfoUpdated(handleEnvironmentInfoUpdated)
       window.removeEventListener('scroll-to-updates', handleScrollToUpdates)
       window.removeEventListener('scroll-to-engine-updates', handleScrollToEngineUpdates)
     }

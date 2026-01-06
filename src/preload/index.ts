@@ -46,7 +46,13 @@ contextBridge.exposeInMainWorld('electron', {
 contextBridge.exposeInMainWorld('pythonAPI', {
   getEnvironmentInfo: () => ipcRenderer.invoke('get-environment-info'),
   collectEnvironmentInfo: () => ipcRenderer.invoke('collect-environment-info'),
-  refreshEnvironmentInfo: () => ipcRenderer.invoke('refresh-environment-info')
+  refreshEnvironmentInfo: () => ipcRenderer.invoke('refresh-environment-info'),
+  onEnvironmentInfoUpdated: (callback: (event: any, info: any) => void) => {
+    ipcRenderer.on('environment-info:updated', callback)
+  },
+  removeEnvironmentInfoUpdated: (callback: (event: any, info: any) => void) => {
+    ipcRenderer.removeListener('environment-info:updated', callback)
+  }
 })
 
 contextBridge.exposeInMainWorld('oauthAPI', {
