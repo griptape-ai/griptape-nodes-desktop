@@ -7,6 +7,17 @@ on:
         description: 'Release channel (stable, beta, dev, etc.) - defaults to stable for main and branch name otherwise'
         required: false
         type: string
+      platform:
+        description: 'Platform to build for (default: all)'
+        required: false
+        type: choice
+        default: 'all'
+        options:
+          - all
+          - macos
+          - ubuntu
+          - rocky9
+          - windows
 
 jobs:
   validate:
@@ -63,6 +74,7 @@ jobs:
   release:
     needs: validate
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
 
     permissions:
       id-token: write # required for OIDC
@@ -70,18 +82,96 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            container: null
+            distro: null
+          - os: ubuntu-latest
+            container: null
+            distro: ubuntu
+          - os: ubuntu-latest
+            container: rockylinux:9
+            distro: rocky9
+          - os: windows-latest
+            container: null
+            distro: null
 
     steps:
+      - name: Check if platform should be built
+        id: platform_check
+        run: |
+          SELECTED_PLATFORM="${{ inputs.platform }}"
+          CURRENT_DISTRO="${{ matrix.distro }}"
+
+          # Determine the platform identifier for this matrix entry
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            if [ "$CURRENT_DISTRO" == "rocky9" ]; then
+              PLATFORM_ID="rocky9"
+            else
+              PLATFORM_ID="ubuntu"
+            fi
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            PLATFORM_ID="macos"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            PLATFORM_ID="windows"
+          fi
+
+          echo "Selected platform: $SELECTED_PLATFORM"
+          echo "Current platform: $PLATFORM_ID"
+
+          # Skip if platform doesn't match (unless 'all' is selected)
+          if [[ "$SELECTED_PLATFORM" != "all" && "$SELECTED_PLATFORM" != "$PLATFORM_ID" ]]; then
+            echo "Skipping build for $PLATFORM_ID (selected: $SELECTED_PLATFORM)"
+            echo "SKIP=true" >> $GITHUB_ENV
+          else
+            echo "Building for $PLATFORM_ID"
+            echo "SKIP=false" >> $GITHUB_ENV
+          fi
+        shell: bash
+
+      - name: Install Rocky Linux dependencies
+        if: env.SKIP != 'true' && matrix.container == 'rockylinux:9'
+        run: |
+          dnf install -y epel-release
+          dnf config-manager --set-enabled crb
+          dnf install -y \
+            git \
+            git-lfs \
+            jq \
+            tar \
+            xz \
+            which \
+            libXScrnSaver \
+            alsa-lib \
+            gtk3 \
+            nss \
+            libdrm \
+            mesa-libgbm \
+            libxkbcommon \
+            libxkbcommon-x11 \
+            at-spi2-atk \
+            cups-libs \
+            libXcomposite \
+            libXdamage \
+            libXrandr \
+            pango \
+            cairo \
+            libXtst
+          dnf groupinstall -y "Development Tools"
+          git lfs install
+
       - name: Checkout Repository
+        if: env.SKIP != 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
           lfs: true
 
       - name: Check if tag already exists
+        if: env.SKIP != 'true'
         run: |
           USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          DISTRO="${{ matrix.distro }}"
           VERSION=$(jq -r .version package.json)
 
           # Determine OS and architecture for channel naming
@@ -106,11 +196,20 @@ jobs:
             ARCH="x64"
           fi
 
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+          # Construct full channel name: {os}-{arch}-{distro}-{channel} for Linux, {os}-{arch}-{channel} otherwise
+          if [ -n "$DISTRO" ]; then
+            FULL_CHANNEL="${OS}-${ARCH}-${DISTRO}-${USER_CHANNEL}"
+          else
+            FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+          fi
 
           # Tag naming logic
           if [[ "$USER_CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+            if [ -n "$DISTRO" ]; then
+              TAG_NAME="v${VERSION}-${OS}-${ARCH}-${DISTRO}"
+            else
+              TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+            fi
           else
             TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
           fi
@@ -128,7 +227,7 @@ jobs:
         shell: bash
 
       - name: Configure AWS creds via OIDC
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::246367841364:role/GriptapeNodesDesktopGithubActions
@@ -136,31 +235,32 @@ jobs:
           role-session-name: gha-${{ github.run_id }}
 
       - name: Setup Node.js
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Setup .NET
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.x
 
       - name: Install Velopack CLI
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         run: dotnet tool install -g vpk
 
       - name: Install Dependencies
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         run: npm ci
 
       - name: Setup platform variables
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         id: platform
         run: |
           USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          DISTRO="${{ matrix.distro }}"
 
           # Determine OS and architecture for channel naming
           if [ "$RUNNER_OS" == "Linux" ]; then
@@ -184,23 +284,29 @@ jobs:
             ARCH="x64"
           fi
 
-          # Construct full channel name: {os}-{arch}-{channel}
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+          # Construct full channel name: {os}-{arch}-{distro}-{channel} for Linux, {os}-{arch}-{channel} otherwise
+          if [ -n "$DISTRO" ]; then
+            FULL_CHANNEL="${OS}-${ARCH}-${DISTRO}-${USER_CHANNEL}"
+          else
+            FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+          fi
 
           # Set environment variables for subsequent steps
           echo "OS=$OS" >> $GITHUB_ENV
           echo "ARCH=$ARCH" >> $GITHUB_ENV
+          echo "DISTRO=$DISTRO" >> $GITHUB_ENV
           echo "USER_CHANNEL=$USER_CHANNEL" >> $GITHUB_ENV
           echo "FULL_CHANNEL=$FULL_CHANNEL" >> $GITHUB_ENV
 
           echo "Platform: $OS-$ARCH"
+          echo "Distro: $DISTRO"
           echo "Channel: $USER_CHANNEL"
           echo "Full channel: $FULL_CHANNEL"
         shell: bash
 
       - name: Install Apple certificates and notary profile
         id: install_certs
-        if: env.DONE != 'true' && runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
+        if: env.SKIP != 'true' && env.DONE != 'true' && runner.os == 'macOS' && env.MAC_CERTS_P12 != ''
         env:
           MAC_CERTS_P12: ${{ secrets.MAC_CERTS_P12 }}
           MAC_CERTS_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
@@ -229,18 +335,18 @@ jobs:
           xcrun notarytool store-credentials --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" --keychain "$KEYCHAIN_PATH" velopack-profile
 
       - name: Install AzureSignTool
-        if: env.DONE != 'true' && runner.os == 'Windows'
+        if: env.SKIP != 'true' && env.DONE != 'true' && runner.os == 'Windows'
         run: dotnet tool install -g AzureSignTool
 
       - name: Download previous Velopack releases
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         run: |
           echo "Downloading previous releases for channel: $FULL_CHANNEL"
           vpk download s3 --bucket griptape-nodes-desktop-releases --region us-west-2 --channel "$FULL_CHANNEL" --prefix "$USER_CHANNEL/"
         shell: bash
 
       - name: Build with Velopack
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         run: |
           echo "Building for channel: $FULL_CHANNEL"
 
@@ -265,7 +371,7 @@ jobs:
           AZURE_KEY_VAULT_TENANT_ID: ${{ secrets.AZURE_KEY_VAULT_TENANT_ID }}
 
       - name: Retrieve notarization logs on failure
-        if: failure() && runner.os == 'macOS' && env.DONE != 'true'
+        if: failure() && runner.os == 'macOS' && env.SKIP != 'true' && env.DONE != 'true'
         run: |
           echo "Retrieving notarization history..."
           xcrun notarytool history --keychain-profile "velopack-profile" --keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
@@ -288,21 +394,26 @@ jobs:
         shell: bash
 
       - name: Create DMG (macOS only)
-        if: env.DONE != 'true' && runner.os == 'macOS'
+        if: env.SKIP != 'true' && env.DONE != 'true' && runner.os == 'macOS'
         run: |
           echo "Creating DMG for channel: $FULL_CHANNEL"
           ./scripts/create-dmg.sh "$FULL_CHANNEL"
         shell: bash
 
       - name: Upload Velopack releases
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version")
 
           # Tag and release naming
           if [[ "$USER_CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
-            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${OS}-${ARCH})"
+            if [ -n "$DISTRO" ]; then
+              TAG_NAME="v${VERSION}-${OS}-${ARCH}-${DISTRO}"
+              RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${OS}-${ARCH}-${DISTRO})"
+            else
+              TAG_NAME="v${VERSION}-${OS}-${ARCH}"
+              RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${OS}-${ARCH})"
+            fi
           else
             TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
             RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${FULL_CHANNEL})"
@@ -316,7 +427,7 @@ jobs:
         shell: bash
 
       - name: Upload DMG to S3 (macOS only)
-        if: env.DONE != 'true' && runner.os == 'macOS'
+        if: env.SKIP != 'true' && env.DONE != 'true' && runner.os == 'macOS'
         run: |
           VERSION=$(node -p "require('./package.json').version")
           DMG_FILE="Releases/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
@@ -333,7 +444,7 @@ jobs:
         shell: bash
 
       - name: Upload Setup.exe to S3 (Windows only)
-        if: env.DONE != 'true' && runner.os == 'Windows'
+        if: env.SKIP != 'true' && env.DONE != 'true' && runner.os == 'Windows'
         run: |
           VERSION=$(node -p "require('./package.json').version")
           SETUP_FILE="Releases/GriptapeNodes-${VERSION}-${FULL_CHANNEL}-Setup.exe"
@@ -359,10 +470,10 @@ jobs:
         run: rm -f $RUNNER_TEMP/windows-cert.pfx
 
       - name: Upload GitHub Release Assets
-        if: env.DONE != 'true'
+        if: env.SKIP != 'true' && env.DONE != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: releases-${{ env.OS }}-${{ env.ARCH }}
+          name: releases-${{ env.OS }}-${{ env.ARCH }}${{ env.DISTRO != 'ubuntu' && env.DISTRO && format('-{0}', env.DISTRO) || '' }}
           path: Releases/
 
   create-github-release:
@@ -408,7 +519,8 @@ jobs:
 
           # Find the full installers from each platform
           MACOS_DMG=$(find artifacts/releases-osx-arm64 -name "GriptapeNodes-*.dmg" 2>/dev/null | head -1)
-          LINUX_APPIMAGE=$(find artifacts/releases-linux-* -name "*.AppImage" 2>/dev/null | head -1)
+          LINUX_UBUNTU_APPIMAGE=$(find artifacts/releases-linux-x64 -name "*.AppImage" 2>/dev/null | head -1)
+          LINUX_ROCKY_APPIMAGE=$(find artifacts/releases-linux-x64-rocky9 -name "*.AppImage" 2>/dev/null | head -1)
           WINDOWS_SETUP=$(find artifacts/releases-win-* -name "*-Setup.exe" 2>/dev/null | head -1)
 
           # Create release notes
@@ -417,7 +529,8 @@ jobs:
 
           Download the installer for your platform:
           - **macOS**: Download the .dmg file
-          - **Linux**: Download the .AppImage file
+          - **Linux (Ubuntu/Debian)**: Download the ubuntu .AppImage file
+          - **Linux (Rocky/RHEL)**: Download the rocky9 .AppImage file
           - **Windows**: Download the Setup.exe file
 
           ## Updates
@@ -431,7 +544,8 @@ jobs:
             --title "$RELEASE_NAME" \
             --notes-file release_notes.md \
             ${MACOS_DMG:+$MACOS_DMG} \
-            ${LINUX_APPIMAGE:+$LINUX_APPIMAGE} \
+            ${LINUX_UBUNTU_APPIMAGE:+$LINUX_UBUNTU_APPIMAGE} \
+            ${LINUX_ROCKY_APPIMAGE:+$LINUX_ROCKY_APPIMAGE} \
             ${WINDOWS_SETUP:+$WINDOWS_SETUP}
 
           echo "GitHub release created successfully!"
