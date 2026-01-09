@@ -408,16 +408,27 @@ jobs:
 
           # Find the full installers from each platform
           MACOS_DMG=$(find artifacts/releases-osx-arm64 -name "GriptapeNodes-*.dmg" 2>/dev/null | head -1)
-          LINUX_APPIMAGE=$(find artifacts/releases-linux-* -name "*.AppImage" 2>/dev/null | head -1)
+          LINUX_X64_APPIMAGE=$(find artifacts/releases-linux-x64 -name "*.AppImage" 2>/dev/null | head -1)
+          LINUX_ARM64_APPIMAGE=$(find artifacts/releases-linux-arm64 -name "*.AppImage" 2>/dev/null | head -1)
           WINDOWS_SETUP=$(find artifacts/releases-win-* -name "*-Setup.exe" 2>/dev/null | head -1)
+
+          # Debug: list all artifacts
+          echo "=== All artifacts ==="
+          find artifacts -type f -name "*.dmg" -o -name "*.AppImage" -o -name "*-Setup.exe" 2>/dev/null || true
+          echo "=== Found installers ==="
+          echo "MACOS_DMG: $MACOS_DMG"
+          echo "LINUX_X64_APPIMAGE: $LINUX_X64_APPIMAGE"
+          echo "LINUX_ARM64_APPIMAGE: $LINUX_ARM64_APPIMAGE"
+          echo "WINDOWS_SETUP: $WINDOWS_SETUP"
 
           # Create release notes
           cat > release_notes.md << 'EOF'
           ## Installation
 
           Download the installer for your platform:
-          - **macOS**: Download the .dmg file
-          - **Linux**: Download the .AppImage file
+          - **macOS (Apple Silicon)**: Download the .dmg file
+          - **Linux x64**: Download the linux-x64 .AppImage file
+          - **Linux ARM64**: Download the linux-arm64 .AppImage file
           - **Windows**: Download the Setup.exe file
 
           ## Updates
@@ -425,14 +436,15 @@ jobs:
           This application includes automatic updates served from our S3 distribution.
           EOF
 
-          # Create the release
+          # Create the release with all available installers
           gh release create "$TAG_NAME" \
             --target "${{ github.sha }}" \
             --title "$RELEASE_NAME" \
             --notes-file release_notes.md \
-            ${MACOS_DMG:+$MACOS_DMG} \
-            ${LINUX_APPIMAGE:+$LINUX_APPIMAGE} \
-            ${WINDOWS_SETUP:+$WINDOWS_SETUP}
+            ${MACOS_DMG:+"$MACOS_DMG"} \
+            ${LINUX_X64_APPIMAGE:+"$LINUX_X64_APPIMAGE"} \
+            ${LINUX_ARM64_APPIMAGE:+"$LINUX_ARM64_APPIMAGE"} \
+            ${WINDOWS_SETUP:+"$WINDOWS_SETUP"}
 
           echo "GitHub release created successfully!"
         shell: bash
