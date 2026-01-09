@@ -40,10 +40,10 @@ export class UpdateService {
     const updateUrl = channel ? `${this.baseUpdateUrl}/${logicalChannel}` : this.baseUpdateUrl
 
     // Create UpdateManager with URL and options
+    // Note: Only ExplicitChannel and AllowVersionDowngrade are supported in velopack 0.0.1053
     const options = {
       ExplicitChannel: channel,
-      AllowVersionDowngrade: true,
-      MaximumDeltasBeforeFallback: 10
+      AllowVersionDowngrade: true
     }
 
     logger.info(`UpdateService: Configured with channel: ${channel}, URL: ${updateUrl}`)

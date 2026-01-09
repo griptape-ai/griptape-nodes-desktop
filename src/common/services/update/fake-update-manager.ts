@@ -1,5 +1,6 @@
 import { logger } from '@/main/utils/logger'
-import type { UpdateManager, UpdateInfo, VelopackAsset } from 'velopack'
+import type { UpdateManager, UpdateInfo } from 'velopack'
+import type { VelopackAsset } from 'velopack/lib/bindings/VelopackAsset'
 import type { UpdateBehavior } from '@/types/global'
 
 /**
@@ -114,9 +115,8 @@ export class FakeUpdateManager
     return true
   }
 
-  getUpdatePendingRestart(): VelopackAsset | null {
-    if (!this.downloadedUpdate) return null
-    return this.downloadedUpdate.TargetFullRelease
+  getUpdatePendingRestart(): UpdateInfo | null {
+    return this.downloadedUpdate
   }
 
   async checkForUpdatesAsync(): Promise<UpdateInfo | null> {
@@ -137,7 +137,6 @@ export class FakeUpdateManager
 
     const updateInfo: UpdateInfo = {
       TargetFullRelease: this.createFakeAsset(this.config.targetVersion, 'Full'),
-      DeltasToTarget: [],
       IsDowngrade: false
     }
 
@@ -178,12 +177,12 @@ export class FakeUpdateManager
   }
 
   waitExitThenApplyUpdate(
-    update: UpdateInfo | VelopackAsset,
+    update: UpdateInfo,
     silent?: boolean,
     restart?: boolean,
     restartArgs?: string[]
   ): void {
-    const version = 'Version' in update ? update.Version : update.TargetFullRelease.Version
+    const version = update.TargetFullRelease.Version
 
     logger.info('FakeUpdateManager: waitExitThenApplyUpdate called', {
       version,
@@ -206,7 +205,7 @@ export class FakeUpdateManager
       FileName: `${this.config.packageId}-${version}-${type.toLowerCase()}.nupkg`,
       SHA1: 'fake-sha1-' + version,
       SHA256: 'fake-sha256-' + version,
-      Size: 50 * 1024 * 1024, // 50MB fake size
+      Size: BigInt(50 * 1024 * 1024), // 50MB fake size
       NotesMarkdown: '',
       NotesHtml: ''
     }

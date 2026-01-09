@@ -152,6 +152,22 @@ Onboarding state tracked in OnboardingService using electron-store.
 
 ## Important Technical Details
 
+### Velopack Version Constraint
+
+The `velopack` npm package is pinned to version **0.0.1053** for Linux compatibility:
+
+- **Reason**: Velopack versions >= 0.0.1120 include native binaries compiled against glibc 2.39
+- **Impact**: RHEL 9 derivatives (Rocky Linux 9, AlmaLinux 9) ship with glibc 2.34 and cannot run newer velopack binaries
+- **Constraint**: Version 0.0.1053 is the latest version that only requires glibc 2.34
+- **Do not upgrade** velopack without verifying glibc requirements of the new version
+
+To check glibc requirements of a velopack version:
+
+```bash
+npm pack velopack@<version> && tar -xzf velopack-*.tgz
+objdump -T package/lib/native/velopack_nodeffi_linux_x64_gnu.node | grep GLIBC_ | sort -V | tail -5
+```
+
 ### Cookie Encryption is Disabled
 
 - `EnableCookieEncryption` fuse is disabled to prevent keychain prompts on first launch
