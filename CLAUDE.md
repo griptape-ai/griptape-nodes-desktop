@@ -162,6 +162,7 @@ The `velopack` npm package is pinned to version **0.0.1053** for Linux compatibi
 - **Do not upgrade** velopack without verifying glibc requirements of the new version
 
 To check glibc requirements of a velopack version:
+
 ```bash
 npm pack velopack@<version> && tar -xzf velopack-*.tgz
 objdump -T package/lib/native/velopack_nodeffi_linux_x64_gnu.node | grep GLIBC_ | sort -V | tail -5
