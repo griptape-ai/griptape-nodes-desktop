@@ -1,9 +1,12 @@
 {
   "name": "griptape-nodes-desktop",
   "productName": "Griptape Nodes",
-  "version": "0.6.3",
+  "version": "0.6.12",
   "description": "Griptape Nodes Desktop Application",
   "main": ".webpack/main",
+  "_comments": {
+    "velopack": "Pinned to 0.0.1053 for glibc 2.34 compatibility (RHEL/Rocky 9). Versions >= 0.0.1120 require glibc 2.39."
+  },
   "scripts": {
     "start": "set -a && [ -f .env ] && source .env; set +a && electron-forge start",
     "package": "electron-forge package",
@@ -84,6 +87,6 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
-    "velopack": "^0.0.1369-g1d5c984"
+    "velopack": "0.0.1053"
   }
 }
