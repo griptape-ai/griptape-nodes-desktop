@@ -159,15 +159,28 @@ function buildEditContextMenu(
 }
 
 const createWindow = () => {
+  // Platform-specific window configuration
+  const isWindows = process.platform === 'win32'
+  const isMac = process.platform === 'darwin'
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1920,
     height: 1200,
     minWidth: 1280,
     minHeight: 800,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: process.platform === 'darwin' ? { x: 20, y: 18 } : undefined,
-    frame: process.platform === 'darwin' ? false : true,
+    // macOS: hiddenInset gives native traffic lights with inset content
+    // Windows: hidden with titleBarOverlay for custom title bar with native controls
+    // Linux: default frame
+    titleBarStyle: isMac ? 'hiddenInset' : isWindows ? 'hidden' : 'default',
+    // Windows only: overlay native window controls on top right
+    ...(isWindows && {
+      titleBarOverlay: {
+        color: '#09090b',
+        symbolColor: '#ffffff',
+        height: 36
+      }
+    }),
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       nodeIntegration: true,
@@ -2243,6 +2256,108 @@ const setupIPC = () => {
     BrowserWindow.getAllWindows().forEach((window) => {
       window.webContents.send('system-monitor:metrics-update', metrics)
     })
+  })
+
+  // Menu action handlers (for custom Windows title bar)
+  ipcMain.handle('menu:about', async () => {
+    await showAboutDialog()
+  })
+
+  ipcMain.handle('menu:check-for-updates', async () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    await checkForUpdatesWithDialog(focusedWindow || undefined)
+  })
+
+  ipcMain.handle('menu:app-settings', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      focusedWindow.webContents.send('navigate-to-settings')
+    }
+  })
+
+  ipcMain.handle('menu:reload', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      if (currentPage === 'editor') {
+        focusedWindow.webContents.send('editor:do-reload-webview')
+      } else {
+        focusedWindow.reload()
+      }
+    }
+  })
+
+  ipcMain.handle('menu:force-reload', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      focusedWindow.webContents.reloadIgnoringCache()
+    }
+  })
+
+  ipcMain.handle('menu:toggle-devtools', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      focusedWindow.webContents.toggleDevTools()
+    }
+  })
+
+  ipcMain.handle('menu:reset-zoom', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      focusedWindow.webContents.setZoomLevel(0)
+    }
+  })
+
+  ipcMain.handle('menu:zoom-in', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      const currentZoom = focusedWindow.webContents.getZoomLevel()
+      focusedWindow.webContents.setZoomLevel(currentZoom + 0.5)
+    }
+  })
+
+  ipcMain.handle('menu:zoom-out', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      const currentZoom = focusedWindow.webContents.getZoomLevel()
+      focusedWindow.webContents.setZoomLevel(currentZoom - 0.5)
+    }
+  })
+
+  ipcMain.handle('menu:toggle-fullscreen', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      focusedWindow.setFullScreen(!focusedWindow.isFullScreen())
+    }
+  })
+
+  ipcMain.handle('menu:minimize', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      focusedWindow.minimize()
+    }
+  })
+
+  ipcMain.handle('menu:maximize', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      if (focusedWindow.isMaximized()) {
+        focusedWindow.unmaximize()
+      } else {
+        focusedWindow.maximize()
+      }
+    }
+  })
+
+  ipcMain.handle('menu:is-maximized', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    return focusedWindow ? focusedWindow.isMaximized() : false
+  })
+
+  ipcMain.handle('menu:close', () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (focusedWindow) {
+      focusedWindow.close()
+    }
   })
 
   // Return getter function for current page

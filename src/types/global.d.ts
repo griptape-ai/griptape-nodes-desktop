@@ -373,6 +373,22 @@ declare global {
       onMetricsUpdate: (callback: (metrics: any) => void) => void
       removeMetricsUpdate: (callback: (metrics: any) => void) => void
     }
+    menuAPI: {
+      about: () => Promise<void>
+      checkForUpdates: () => Promise<void>
+      appSettings: () => Promise<void>
+      reload: () => Promise<void>
+      forceReload: () => Promise<void>
+      toggleDevTools: () => Promise<void>
+      resetZoom: () => Promise<void>
+      zoomIn: () => Promise<void>
+      zoomOut: () => Promise<void>
+      toggleFullscreen: () => Promise<void>
+      minimize: () => Promise<void>
+      maximize: () => Promise<void>
+      isMaximized: () => Promise<boolean>
+      close: () => Promise<void>
+    }
   }
 }
 

@@ -4,6 +4,7 @@ import Dashboard from '../pages/Dashboard'
 import Engine from '../pages/Engine'
 import Settings from '../pages/Settings'
 import { Header } from './Header'
+import { WindowsTitleBar } from './WindowsTitleBar'
 import { EditorWebview } from './EditorWebview'
 import UpdateBanner from './UpdateBanner'
 import EngineUpdateBanner from './EngineUpdateBanner'
@@ -13,6 +14,13 @@ import { useEngineUpdateBanner } from '../hooks/useEngineUpdateBanner'
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
+  const [platform, setPlatform] = useState<string>('')
+
+  useEffect(() => {
+    window.electronAPI.getPlatform().then(setPlatform)
+  }, [])
+
+  const isWindows = platform === 'win32'
 
   // Update banner state from shared hook
   const {
@@ -97,7 +105,10 @@ const MainApp: React.FC = () => {
 
   return (
     <EngineProvider>
-      <div className="flex flex-col h-screen bg-background">
+      <div className={`flex flex-col h-screen bg-background ${isWindows ? 'pt-9' : ''}`}>
+        {/* Windows Custom Title Bar */}
+        {isWindows && <WindowsTitleBar />}
+
         {/* Header with navigation */}
         <Header
           selectedPage={currentPage}

@@ -6,6 +6,8 @@ import { cn } from '../utils/utils'
 import { Tooltip, TooltipTrigger, TooltipContent } from './Tooltip'
 import { getStatusIcon, getStatusTooltip } from '../utils/engineStatusIcons'
 import { SystemMonitorToolbar } from './SystemMonitorToolbar'
+import markLightSrc from '../../assets/griptape_nodes_mark_light.svg'
+import markDarkSrc from '../../assets/griptape_nodes_mark_dark.svg'
 
 interface HeaderProps {
   className?: string
@@ -25,7 +27,14 @@ export function Header({
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const profileButtonRef = useRef<HTMLButtonElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const [platform, setPlatform] = useState<string>('')
+
+  useEffect(() => {
+    window.electronAPI.getPlatform().then(setPlatform)
+  }, [])
+
+  const isMac = platform === 'darwin'
+  const isWindows = platform === 'win32'
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -67,12 +76,21 @@ export function Header({
   return (
     <header
       className={cn(
-        'bg-card border-b border-border px-6 py-2 flex items-center gap-4 draggable',
+        'bg-card px-6 py-2 flex items-center gap-4 border-b border-border',
+        isMac && 'pl-24 draggable',
         className
       )}
     >
+      {/* App Logo - hidden on Windows (shown in title bar) */}
+      {!isWindows && (
+        <div className="flex items-center gap-2 flex-shrink-0 non-draggable">
+          <img src={markLightSrc} className="hidden w-7 h-7 dark:block" alt="Griptape Nodes" />
+          <img src={markDarkSrc} className="block w-7 h-7 dark:hidden" alt="Griptape Nodes" />
+        </div>
+      )}
+
       {/* Navigation Menu */}
-      <nav className={cn('flex-1 flex items-center gap-1', isMac && 'ml-20')}>
+      <nav className="flex-1 flex items-center gap-1">
         {menuItems.map((item) => {
           const Icon = item.icon
           const button = (
