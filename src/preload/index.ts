@@ -285,3 +285,21 @@ contextBridge.exposeInMainWorld('systemMonitorAPI', {
     ipcRenderer.removeListener('system-monitor:metrics-update', callback)
   }
 })
+
+// Menu API for custom Windows title bar
+contextBridge.exposeInMainWorld('menuAPI', {
+  about: () => ipcRenderer.invoke('menu:about'),
+  checkForUpdates: () => ipcRenderer.invoke('menu:check-for-updates'),
+  appSettings: () => ipcRenderer.invoke('menu:app-settings'),
+  reload: () => ipcRenderer.invoke('menu:reload'),
+  forceReload: () => ipcRenderer.invoke('menu:force-reload'),
+  toggleDevTools: () => ipcRenderer.invoke('menu:toggle-devtools'),
+  resetZoom: () => ipcRenderer.invoke('menu:reset-zoom'),
+  zoomIn: () => ipcRenderer.invoke('menu:zoom-in'),
+  zoomOut: () => ipcRenderer.invoke('menu:zoom-out'),
+  toggleFullscreen: () => ipcRenderer.invoke('menu:toggle-fullscreen'),
+  minimize: () => ipcRenderer.invoke('menu:minimize'),
+  maximize: () => ipcRenderer.invoke('menu:maximize'),
+  isMaximized: () => ipcRenderer.invoke('menu:is-maximized'),
+  close: () => ipcRenderer.invoke('menu:close')
+})
