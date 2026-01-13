@@ -125,14 +125,26 @@ export function WindowsTitleBar() {
       label: 'View',
       items: [
         { label: 'Reload', shortcut: 'Ctrl+R', action: () => window.menuAPI.reload() },
-        { label: 'Force Reload', shortcut: 'Ctrl+Shift+R', action: () => window.menuAPI.forceReload() },
-        { label: 'Toggle Developer Tools', shortcut: 'Ctrl+Shift+I', action: () => window.menuAPI.toggleDevTools() },
+        {
+          label: 'Force Reload',
+          shortcut: 'Ctrl+Shift+R',
+          action: () => window.menuAPI.forceReload()
+        },
+        {
+          label: 'Toggle Developer Tools',
+          shortcut: 'Ctrl+Shift+I',
+          action: () => window.menuAPI.toggleDevTools()
+        },
         { separator: true },
         { label: 'Actual Size', shortcut: 'Ctrl+0', action: () => window.menuAPI.resetZoom() },
         { label: 'Zoom In', shortcut: 'Ctrl++', action: () => window.menuAPI.zoomIn() },
         { label: 'Zoom Out', shortcut: 'Ctrl+-', action: () => window.menuAPI.zoomOut() },
         { separator: true },
-        { label: 'Toggle Fullscreen', shortcut: 'F11', action: () => window.menuAPI.toggleFullscreen() }
+        {
+          label: 'Toggle Fullscreen',
+          shortcut: 'F11',
+          action: () => window.menuAPI.toggleFullscreen()
+        }
       ]
     },
     {
