@@ -1,25 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Activity } from 'lucide-react'
-
-interface SystemMetrics {
-  cpu: {
-    usage: number
-    model: string
-  }
-  memory: {
-    used: number
-    total: number
-    percentage: number
-  }
-  gpus: Array<{
-    model: string
-    usage: number
-    memory: {
-      used: number
-      total: number
-    }
-  }>
-}
+import { SystemMetrics } from '../types/system-metrics'
+import {
+  formatPercentage,
+  formatMemory,
+  getUsageBarColor,
+  getUsageTextColor,
+  clampPercentage,
+  calculateAverageGpuUsage
+} from '../utils/system-monitor'
 
 interface SystemMonitorToolbarProps {
   show: boolean
@@ -93,32 +82,7 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
     return null
   }
 
-  const formatPercentage = (value: number) => {
-    return `${Math.round(value)}%`
-  }
-
-  const formatMemory = (gb: number) => {
-    return `${gb.toFixed(1)} GB`
-  }
-
-  const getBarColor = (percentage: number) => {
-    if (percentage >= 80) return 'bg-red-500'
-    if (percentage >= 50) return 'bg-yellow-500'
-    return 'bg-green-500'
-  }
-
-  const getTextColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-red-500'
-    if (percentage >= 50) return 'text-yellow-500'
-    return 'text-green-500'
-  }
-
-  // Calculate average GPU usage if multiple GPUs
-  const avgGpuUsage =
-    metrics.gpus.length > 0
-      ? metrics.gpus.reduce((sum, gpu) => sum + (gpu.usage >= 0 ? gpu.usage : 0), 0) /
-        metrics.gpus.filter((gpu) => gpu.usage >= 0).length
-      : 0
+  const avgGpuUsage = calculateAverageGpuUsage(metrics.gpus)
 
   return (
     <div className="relative flex-shrink-0">
@@ -136,11 +100,11 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
             <span className="text-muted-foreground text-[10px] uppercase tracking-wide">CPU</span>
             <div className="w-12 bg-muted rounded-full h-1.5 overflow-hidden">
               <div
-                className={`h-full transition-all duration-300 ${getBarColor(metrics.cpu.usage)}`}
-                style={{ width: `${Math.min(metrics.cpu.usage, 100)}%` }}
+                className={`h-full transition-all duration-300 ${getUsageBarColor(metrics.cpu.usage)}`}
+                style={{ width: `${clampPercentage(metrics.cpu.usage)}%` }}
               />
             </div>
-            <span className={`text-[10px] font-semibold ${getTextColor(metrics.cpu.usage)}`}>
+            <span className={`text-[10px] font-semibold ${getUsageTextColor(metrics.cpu.usage)}`}>
               {formatPercentage(metrics.cpu.usage)}
             </span>
           </div>
@@ -151,11 +115,11 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
               <span className="text-muted-foreground text-[10px] uppercase tracking-wide">GPU</span>
               <div className="w-12 bg-muted rounded-full h-1.5 overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${getBarColor(avgGpuUsage)}`}
-                  style={{ width: `${Math.min(avgGpuUsage, 100)}%` }}
+                  className={`h-full transition-all duration-300 ${getUsageBarColor(avgGpuUsage)}`}
+                  style={{ width: `${clampPercentage(avgGpuUsage)}%` }}
                 />
               </div>
-              <span className={`text-[10px] font-semibold ${getTextColor(avgGpuUsage)}`}>
+              <span className={`text-[10px] font-semibold ${getUsageTextColor(avgGpuUsage)}`}>
                 {formatPercentage(avgGpuUsage)}
               </span>
             </div>
@@ -163,15 +127,17 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
 
           {/* RAM Mini Bar */}
           <div className="flex items-center gap-1">
-            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">RAM</span>
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">
+              {metrics.memory.type === 'unified' ? 'MEM' : 'RAM'}
+            </span>
             <div className="w-12 bg-muted rounded-full h-1.5 overflow-hidden">
               <div
-                className={`h-full transition-all duration-300 ${getBarColor(metrics.memory.percentage)}`}
-                style={{ width: `${Math.min(metrics.memory.percentage, 100)}%` }}
+                className={`h-full transition-all duration-300 ${getUsageBarColor(metrics.memory.percentage)}`}
+                style={{ width: `${clampPercentage(metrics.memory.percentage)}%` }}
               />
             </div>
             <span
-              className={`text-[10px] font-semibold ${getTextColor(metrics.memory.percentage)}`}
+              className={`text-[10px] font-semibold ${getUsageTextColor(metrics.memory.percentage)}`}
             >
               {formatPercentage(metrics.memory.percentage)}
             </span>
@@ -194,57 +160,125 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
               </div>
               <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${getBarColor(metrics.cpu.usage)}`}
-                  style={{ width: `${Math.min(metrics.cpu.usage, 100)}%` }}
+                  className={`h-full transition-all duration-300 ${getUsageBarColor(metrics.cpu.usage)}`}
+                  style={{ width: `${clampPercentage(metrics.cpu.usage)}%` }}
                 />
               </div>
               <div className="text-xs text-muted-foreground truncate">{metrics.cpu.model}</div>
             </div>
 
             {/* GPU Details */}
-            {metrics.gpus.map((gpu, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                    GPU {metrics.gpus.length > 1 ? index + 1 : ''}
-                  </span>
+            {metrics.gpus.map((gpu, index) => {
+              const hasVram = gpu.memory.total > 0
+              const vramPercentage = hasVram ? (gpu.memory.used / gpu.memory.total) * 100 : 0
+              return (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                      GPU {metrics.gpus.length > 1 ? index + 1 : ''}
+                    </span>
+                    {gpu.usage >= 0 ? (
+                      <span className="text-sm font-semibold">{formatPercentage(gpu.usage)}</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">N/A</span>
+                    )}
+                  </div>
                   {gpu.usage >= 0 ? (
-                    <span className="text-sm font-semibold">{formatPercentage(gpu.usage)}</span>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${getUsageBarColor(gpu.usage)}`}
+                        style={{ width: `${clampPercentage(gpu.usage)}%` }}
+                      />
+                    </div>
                   ) : (
-                    <span className="text-sm text-muted-foreground">N/A</span>
+                    <div className="w-full h-2" />
+                  )}
+                  <div className="text-xs text-muted-foreground truncate">{gpu.model}</div>
+
+                  {/* VRAM for this GPU */}
+                  {hasVram && (
+                    <div className="mt-2 pl-2 border-l-2 border-border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                          VRAM
+                        </span>
+                        <span className="text-sm font-semibold">
+                          {formatPercentage(vramPercentage)}
+                        </span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden mt-1">
+                        <div
+                          className={`h-full transition-all duration-300 ${getUsageBarColor(vramPercentage)}`}
+                          style={{ width: `${clampPercentage(vramPercentage)}%` }}
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {formatMemory(gpu.memory.used)} / {formatMemory(gpu.memory.total)}
+                      </div>
+                    </div>
                   )}
                 </div>
-                {gpu.usage >= 0 ? (
-                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${getBarColor(gpu.usage)}`}
-                      style={{ width: `${Math.min(gpu.usage, 100)}%` }}
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full h-2" />
-                )}
-                <div className="text-xs text-muted-foreground truncate">{gpu.model}</div>
-              </div>
-            ))}
+              )
+            })}
 
             {/* RAM Details */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">RAM</span>
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                  {metrics.memory.type === 'unified' ? 'Unified Memory' : 'System RAM'}
+                </span>
                 <span className="text-sm font-semibold">
                   {formatPercentage(metrics.memory.percentage)}
                 </span>
               </div>
-              <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${getBarColor(metrics.memory.percentage)}`}
-                  style={{ width: `${Math.min(metrics.memory.percentage, 100)}%` }}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {formatMemory(metrics.memory.used)} / {formatMemory(metrics.memory.total)}
-              </div>
+              {metrics.memory.breakdown ? (
+                <>
+                  {/* Stacked bar showing Used (red/yellow/green) + Cached (blue) */}
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden flex">
+                    <div
+                      className={`h-full transition-all duration-300 ${getUsageBarColor(metrics.memory.percentage)}`}
+                      style={{
+                        width: `${clampPercentage((metrics.memory.breakdown.used / metrics.memory.breakdown.total) * 100)}%`
+                      }}
+                    />
+                    <div
+                      className="h-full transition-all duration-300 bg-blue-500/60"
+                      style={{
+                        width: `${clampPercentage((metrics.memory.breakdown.cached / metrics.memory.breakdown.total) * 100)}%`
+                      }}
+                    />
+                  </div>
+                  {/* Legend and values */}
+                  <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <div
+                        className={`w-2 h-2 rounded-full ${getUsageBarColor(metrics.memory.percentage)}`}
+                      />
+                      <span>Used: {formatMemory(metrics.memory.breakdown.used)}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-500/60" />
+                      <span>Cached: {formatMemory(metrics.memory.breakdown.cached)}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                      <span>Free: {formatMemory(metrics.memory.breakdown.available)}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${getUsageBarColor(metrics.memory.percentage)}`}
+                      style={{ width: `${clampPercentage(metrics.memory.percentage)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatMemory(metrics.memory.used)} / {formatMemory(metrics.memory.total)}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
