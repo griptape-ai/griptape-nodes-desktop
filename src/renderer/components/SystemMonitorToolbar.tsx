@@ -109,8 +109,8 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
             </span>
           </div>
 
-          {/* GPU Mini Bar (if available) */}
-          {metrics.gpus.length > 0 && avgGpuUsage >= 0 && (
+          {/* GPU Mini Bar (only show if at least one GPU has valid usage data) */}
+          {metrics.gpus.some((gpu) => gpu.usage >= 0) && (
             <div className="flex items-center gap-1">
               <span className="text-muted-foreground text-[10px] uppercase tracking-wide">GPU</span>
               <div className="w-12 bg-muted rounded-full h-1.5 overflow-hidden">

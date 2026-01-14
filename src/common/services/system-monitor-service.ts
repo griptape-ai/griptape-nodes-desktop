@@ -90,7 +90,9 @@ export class SystemMonitorService extends EventEmitter {
         // Fall back to Electron app.getGPUInfo() for non-NVIDIA GPUs
         const gpuInfo: any = await app.getGPUInfo('basic')
         if (gpuInfo.gpuDevice && gpuInfo.gpuDevice.length > 0) {
-          this.gpuModels = gpuInfo.gpuDevice.map((device: any) => {
+          // Filter to prefer discrete GPUs over integrated (e.g., show NVIDIA instead of Intel)
+          const filteredDevices = this.filterGpuDevices(gpuInfo.gpuDevice)
+          this.gpuModels = filteredDevices.map((device: any) => {
             // Try to construct a readable name from vendor and device IDs
             const vendorName = this.getVendorName(device.vendorId)
             if (vendorName) {
@@ -98,7 +100,9 @@ export class SystemMonitorService extends EventEmitter {
             }
             return `GPU (Vendor: ${device.vendorId}, Device: ${device.deviceId})`
           })
-          logger.info(`SystemMonitorService: Found ${gpuInfo.gpuDevice.length} GPU(s) via Electron`)
+          logger.info(
+            `SystemMonitorService: Found ${gpuInfo.gpuDevice.length} GPU(s) via Electron, using ${filteredDevices.length} (filtered)`
+          )
         } else {
           this.gpuModels = []
           logger.info('SystemMonitorService: No GPUs detected')
@@ -118,6 +122,33 @@ export class SystemMonitorService extends EventEmitter {
       0x106b: 'Apple'
     }
     return vendors[vendorId] || null
+  }
+
+  private isDiscreteGpu(vendorId: number): boolean {
+    // NVIDIA (0x10de) and AMD (0x1002) are discrete GPU vendors
+    // Intel (0x8086) is typically integrated graphics
+    return vendorId === 0x10de || vendorId === 0x1002
+  }
+
+  private filterGpuDevices(devices: any[]): any[] {
+    // If we have both discrete and integrated GPUs, prefer discrete
+    const discreteGpus = devices.filter((d) => this.isDiscreteGpu(d.vendorId))
+    const integratedGpus = devices.filter(
+      (d) => d.vendorId === 0x8086 // Intel integrated
+    )
+
+    // If we have discrete GPUs, use only those
+    if (discreteGpus.length > 0) {
+      return discreteGpus
+    }
+
+    // If we only have integrated GPUs, use those
+    if (integratedGpus.length > 0) {
+      return integratedGpus
+    }
+
+    // Otherwise return all (could be Apple or unknown vendors)
+    return devices
   }
 
   private async getNvidiaGpuNames(): Promise<string[]> {
