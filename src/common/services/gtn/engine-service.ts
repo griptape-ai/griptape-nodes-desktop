@@ -2,8 +2,9 @@ import { ChildProcess, spawn } from 'child_process'
 import { EventEmitter } from 'events'
 import { attachOutputForwarder } from '../../child-process/output-forwarder'
 import { getEnv } from '../../config/env'
-import { getCwd } from '../../config/paths'
+import { getCwd, getUvExecutablePath } from '../../config/paths'
 import { GtnService } from '../gtn/gtn-service'
+import { SettingsService } from '../settings-service'
 import { logger } from '@/main/utils/logger'
 
 export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error'
@@ -35,7 +36,8 @@ export class EngineService extends EventEmitter<EngineEvents> {
 
   constructor(
     private userDataDir: string,
-    private gtnService: GtnService
+    private gtnService: GtnService,
+    private settingsService: SettingsService
   ) {
     super()
   }
@@ -154,39 +156,46 @@ export class EngineService extends EventEmitter<EngineEvents> {
   async startEngine(): Promise<void> {
     await this.waitForReady()
 
-    const gtnPath = await this.gtnService.getGtnExecutablePath()
+    // Check if a local engine path is configured for development
+    const localEnginePath = this.settingsService.getLocalEnginePath()
+
     this.setEngineStatus('running')
 
     try {
       // Clear logs from previous session when starting fresh
       this.logs = []
-      logger.info('[ENGINE] Starting Griptape Nodes engine...')
-      logger.info(`[ENGINE] Command: ${gtnPath} engine`)
 
-      // Spawn the engine process from config directory so it finds the config file
-      this.engineProcess = spawn(
-        gtnPath,
-        [
-          '--no-update'
-          // 'engine', TODO: uncomment after resolving https://github.com/griptape-ai/griptape-nodes/issues/2315
-        ],
-        {
-          cwd: getCwd(this.userDataDir),
-          env: {
-            ...getEnv(this.userDataDir),
-            // Force color output for terminals that support it
-            FORCE_COLOR: '1',
-            RICH_FORCE_TERMINAL: '1',
-            PYTHONUNBUFFERED: '1',
-            // Help with Windows terminal compatibility
-            TERM: 'xterm-256color',
-            // Fix Windows Unicode encoding issues
-            PYTHONIOENCODING: 'utf-8',
-            PYTHONUTF8: '1'
-          },
-          stdio: ['pipe', 'pipe', 'pipe']
-        }
-      )
+      let command: string
+      let args: string[]
+      let cwd: string
+
+      if (localEnginePath) {
+        // Use local development mode: run via uv from the local repository
+        const uvPath = getUvExecutablePath(this.userDataDir)
+        command = uvPath
+        args = ['run', 'gtn', '--no-update']
+        cwd = localEnginePath
+        logger.info('[ENGINE] Starting Griptape Nodes engine in LOCAL DEV mode...')
+        logger.info(`[ENGINE] Local repo path: ${localEnginePath}`)
+        logger.info(`[ENGINE] Command: ${uvPath} run gtn --no-update`)
+        this.addLog('stdout', `Running from local repository: ${localEnginePath}`)
+      } else {
+        // Use installed mode: run the installed gtn executable
+        const gtnPath = await this.gtnService.getGtnExecutablePath()
+        command = gtnPath
+        args = ['--no-update']
+        cwd = getCwd(this.userDataDir)
+        logger.info('[ENGINE] Starting Griptape Nodes engine...')
+        logger.info(`[ENGINE] Command: ${gtnPath} --no-update`)
+      }
+
+      // Spawn the engine process
+      this.engineProcess = spawn(command, args, {
+        cwd,
+        env: this.getEngineEnv(),
+        stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true
+      })
 
       attachOutputForwarder(this.engineProcess, { logPrefix: 'GTN-ENGINE' })
 
@@ -308,6 +317,49 @@ export class EngineService extends EventEmitter<EngineEvents> {
     }
     this.status = status
     this.emit('engine:status-changed', status)
+  }
+
+  /**
+   * Get environment variables for the engine process with color support
+   */
+  private getEngineEnv(): NodeJS.ProcessEnv {
+    // Start with base environment but filter out color-disabling variables
+    const baseEnv = getEnv(this.userDataDir)
+    const filteredEnv: NodeJS.ProcessEnv = {}
+
+    // Copy all env vars except ones that disable colors
+    for (const [key, value] of Object.entries(baseEnv)) {
+      const upperKey = key.toUpperCase()
+      // Skip color-disabling variables
+      if (upperKey === 'NO_COLOR' || upperKey === 'NOCOLOR') {
+        continue
+      }
+      filteredEnv[key] = value
+    }
+
+    // Add color-forcing environment variables
+    return {
+      ...filteredEnv,
+      // Force color output - these should be respected by most tools
+      FORCE_COLOR: 'true',
+      CLICOLOR: '1',
+      CLICOLOR_FORCE: '1',
+      PY_COLORS: '1',
+      COLORTERM: 'truecolor',
+      // Rich library specific - must be string 'true' not '1'
+      RICH_FORCE_TERMINAL: 'true',
+      // Colorama (Windows) - don't strip or convert ANSI codes, output them raw
+      COLORAMA_STRIP: 'False',
+      COLORAMA_CONVERT: 'False',
+      ANSI_COLORS_DISABLED: '0',
+      // Ensure Python output is unbuffered
+      PYTHONUNBUFFERED: '1',
+      // Terminal type for ANSI support
+      TERM: 'xterm-256color',
+      // Fix Windows Unicode encoding issues
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1'
+    }
   }
 
   async stopEngine(): Promise<void> {

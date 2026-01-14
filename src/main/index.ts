@@ -113,7 +113,7 @@ const gtnService = new GtnService(
   onboardingService,
   settingsService
 )
-const engineService = new EngineService(userDataPath, gtnService)
+const engineService = new EngineService(userDataPath, gtnService, settingsService)
 const updateService = new UpdateService(isPackaged())
 
 /**
@@ -1942,6 +1942,44 @@ const setupIPC = () => {
   ipcMain.handle('settings:set-editor-channel', (event, channel: 'stable' | 'nightly') => {
     settingsService.setEditorChannel(channel)
     return { success: true }
+  })
+
+  // Local engine path handlers (for development)
+  ipcMain.handle('settings:get-local-engine-path', () => {
+    return settingsService.getLocalEnginePath()
+  })
+
+  ipcMain.handle('settings:set-local-engine-path', async (event, path: string | null) => {
+    try {
+      settingsService.setLocalEnginePath(path)
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to set local engine path:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('settings:select-local-engine-path', async () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    if (!focusedWindow) {
+      return { success: false, error: 'No focused window' }
+    }
+
+    const result = await dialog.showOpenDialog(focusedWindow, {
+      properties: ['openDirectory'],
+      title: 'Select Local Griptape Nodes Repository'
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, canceled: true }
+    }
+
+    const selectedPath = result.filePaths[0]
+    settingsService.setLocalEnginePath(selectedPath)
+    return { success: true, path: selectedPath }
   })
 
   // Update service handlers

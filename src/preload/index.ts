@@ -241,7 +241,11 @@ contextBridge.exposeInMainWorld('settingsAPI', {
     ipcRenderer.invoke('settings:set-dismissed-engine-update-version', version),
   getEngineUpdateBehavior: () => ipcRenderer.invoke('settings:get-engine-update-behavior'),
   setEngineUpdateBehavior: (behavior: UpdateBehavior) =>
-    ipcRenderer.invoke('settings:set-engine-update-behavior', behavior)
+    ipcRenderer.invoke('settings:set-engine-update-behavior', behavior),
+  getLocalEnginePath: () => ipcRenderer.invoke('settings:get-local-engine-path'),
+  setLocalEnginePath: (path: string | null) =>
+    ipcRenderer.invoke('settings:set-local-engine-path', path),
+  selectLocalEnginePath: () => ipcRenderer.invoke('settings:select-local-engine-path')
 })
 
 contextBridge.exposeInMainWorld('engineUpdateAPI', {
