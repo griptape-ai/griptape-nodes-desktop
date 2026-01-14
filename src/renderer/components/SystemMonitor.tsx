@@ -1,25 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Cpu, MemoryStick, Gpu } from 'lucide-react'
-
-interface SystemMetrics {
-  cpu: {
-    usage: number
-    model: string
-  }
-  memory: {
-    used: number
-    total: number
-    percentage: number
-  }
-  gpus: Array<{
-    model: string
-    usage: number
-    memory: {
-      used: number
-      total: number
-    }
-  }>
-}
+import { SystemMetrics } from '../types/system-metrics'
+import {
+  formatPercentage,
+  formatMemory,
+  getUsageBarColor,
+  clampPercentage
+} from '../utils/system-monitor'
 
 export function SystemMonitor() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
@@ -53,20 +40,6 @@ export function SystemMonitor() {
     return null
   }
 
-  const formatPercentage = (value: number) => {
-    return `${Math.round(value)}%`
-  }
-
-  const formatMemory = (gb: number) => {
-    return `${gb.toFixed(1)} GB`
-  }
-
-  const getBarColor = (percentage: number) => {
-    if (percentage >= 80) return 'bg-red-500'
-    if (percentage >= 50) return 'bg-yellow-500'
-    return 'bg-green-500'
-  }
-
   return (
     <div className="bg-card border-b border-border px-6 py-2 flex items-center gap-12 text-xs">
       {/* CPU */}
@@ -81,8 +54,8 @@ export function SystemMonitor() {
           </div>
           <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
             <div
-              className={`h-full transition-all duration-300 ${getBarColor(metrics.cpu.usage)}`}
-              style={{ width: `${Math.min(metrics.cpu.usage, 100)}%` }}
+              className={`h-full transition-all duration-300 ${getUsageBarColor(metrics.cpu.usage)}`}
+              style={{ width: `${clampPercentage(metrics.cpu.usage)}%` }}
             />
           </div>
           <div className="text-[10px] text-muted-foreground truncate">{metrics.cpu.model}</div>
@@ -107,8 +80,8 @@ export function SystemMonitor() {
             {gpu.usage >= 0 ? (
               <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${getBarColor(gpu.usage)}`}
-                  style={{ width: `${Math.min(gpu.usage, 100)}%` }}
+                  className={`h-full transition-all duration-300 ${getUsageBarColor(gpu.usage)}`}
+                  style={{ width: `${clampPercentage(gpu.usage)}%` }}
                 />
               </div>
             ) : (
@@ -124,15 +97,17 @@ export function SystemMonitor() {
         <MemoryStick className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         <div className="flex-1 space-y-0.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">RAM</span>
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">
+              {metrics.memory.type === 'unified' ? 'Memory' : 'RAM'}
+            </span>
             <span className="text-foreground font-semibold">
               {formatPercentage(metrics.memory.percentage)}
             </span>
           </div>
           <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
             <div
-              className={`h-full transition-all duration-300 ${getBarColor(metrics.memory.percentage)}`}
-              style={{ width: `${Math.min(metrics.memory.percentage, 100)}%` }}
+              className={`h-full transition-all duration-300 ${getUsageBarColor(metrics.memory.percentage)}`}
+              style={{ width: `${clampPercentage(metrics.memory.percentage)}%` }}
             />
           </div>
           <div className="text-[10px] text-muted-foreground">

@@ -356,6 +356,13 @@ declare global {
             used: number
             total: number
             percentage: number
+            type: 'system' | 'unified'
+            breakdown?: {
+              used: number
+              cached: number
+              available: number
+              total: number
+            }
           }
           gpus: Array<{
             model: string
