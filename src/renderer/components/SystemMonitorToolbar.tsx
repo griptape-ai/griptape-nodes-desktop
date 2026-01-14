@@ -170,28 +170,27 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
             {/* GPU Details */}
             {metrics.gpus.map((gpu, index) => {
               const hasVram = gpu.memory.total > 0
+              const hasUsage = gpu.usage >= 0
               const vramPercentage = hasVram ? (gpu.memory.used / gpu.memory.total) * 100 : 0
               return (
-                <div key={index} className="space-y-2">
+                <div key={index} className={hasUsage ? 'space-y-2' : 'space-y-1'}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground uppercase tracking-wide">
                       GPU {metrics.gpus.length > 1 ? index + 1 : ''}
                     </span>
-                    {gpu.usage >= 0 ? (
+                    {hasUsage ? (
                       <span className="text-sm font-semibold">{formatPercentage(gpu.usage)}</span>
                     ) : (
                       <span className="text-sm text-muted-foreground">N/A</span>
                     )}
                   </div>
-                  {gpu.usage >= 0 ? (
+                  {hasUsage && (
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-full transition-all duration-300 ${getUsageBarColor(gpu.usage)}`}
                         style={{ width: `${clampPercentage(gpu.usage)}%` }}
                       />
                     </div>
-                  ) : (
-                    <div className="w-full h-2" />
                   )}
                   <div className="text-xs text-muted-foreground truncate">{gpu.model}</div>
 
