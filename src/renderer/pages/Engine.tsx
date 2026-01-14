@@ -218,6 +218,10 @@ const Engine: React.FC = () => {
             .replace(/\r(?!\n)/g, '')
             // Replace spinner characters with a simple indicator
             .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
+            // Fix garbled UTF-8 spinner characters on Windows (common mojibake patterns)
+            .replace(/Γáï|ΓÇö|Γûê|ΓûÆ|Γûë|ΓûÇ|Γûî|Γûô|Γûñ|Γûó/g, '•')
+            // Remove other common Windows encoding artifacts
+            .replace(/[\uFFFD]/g, '')
 
           // Handle OSC 8 hyperlinks BEFORE ANSI conversion
           // Looking at the actual format: ]8;id=ID;URL\TEXT]8;;\
@@ -274,6 +278,42 @@ const Engine: React.FC = () => {
 
           // Final cleanup: remove any trailing backslashes that might appear after links
           htmlMessage = htmlMessage.replace(/<\/a>\s*\\/g, '</a>')
+
+          // Apply semantic coloring for logs without ANSI codes (e.g., on Windows)
+          // Only apply if the message doesn't already contain color spans from ANSI conversion
+          if (!htmlMessage.includes('style="color:')) {
+            htmlMessage = htmlMessage
+              // Error patterns - red
+              .replace(
+                /\b(ERROR|Error|ERROR:|Exception|Traceback|FAILED|Failed|CRITICAL)\b/g,
+                '<span style="color: #ef4444">$1</span>'
+              )
+              // Warning patterns - yellow
+              .replace(
+                /\b(WARNING|Warning|WARN|Warn|DEPRECATED|Deprecated)\b/g,
+                '<span style="color: #eab308">$1</span>'
+              )
+              // Success patterns - green
+              .replace(
+                /\b(SUCCESS|Success|OK|DONE|Done|PASSED|Passed|✓|✔|Complete|Completed)\b/g,
+                '<span style="color: #22c55e">$1</span>'
+              )
+              // Info patterns - blue
+              .replace(
+                /\b(INFO|Info|NOTE|Note)\b/g,
+                '<span style="color: #3b82f6">$1</span>'
+              )
+              // Debug patterns - gray
+              .replace(
+                /\b(DEBUG|Debug)\b/g,
+                '<span style="color: #6b7280">$1</span>'
+              )
+              // Loading/progress indicators - cyan
+              .replace(
+                /(Loading|Installing|Downloading|Starting|Initializing|•)/g,
+                '<span style="color: #06b6d4">$1</span>'
+              )
+          }
 
           return { __html: htmlMessage }
         } catch {
