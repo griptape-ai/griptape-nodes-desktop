@@ -311,9 +311,7 @@ declare global {
       getEngineUpdateBehavior: () => Promise<UpdateBehavior>
       setEngineUpdateBehavior: (behavior: UpdateBehavior) => Promise<{ success: boolean }>
       getLocalEnginePath: () => Promise<string | null>
-      setLocalEnginePath: (
-        path: string | null
-      ) => Promise<{ success: boolean; error?: string }>
+      setLocalEnginePath: (path: string | null) => Promise<{ success: boolean; error?: string }>
       selectLocalEnginePath: () => Promise<{
         success: boolean
         path?: string
