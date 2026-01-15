@@ -1006,57 +1006,57 @@ const Settings: React.FC = () => {
                 <div className="mt-3 space-y-4">
                   {/* Local Engine Development */}
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
-                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                        Local Engine Development
-                      </p>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                        Run the engine from a local griptape-nodes repository instead of the
-                        installed version. Useful for testing local changes.
-                      </p>
-                      {loadingLocalEnginePath ? (
-                        <p className="text-sm text-blue-600 dark:text-blue-400">Loading...</p>
-                      ) : localEnginePath ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={localEnginePath}
-                              readOnly
-                              className={cn(
-                                'flex-1 px-3 py-2 text-sm rounded-md',
-                                'bg-background border border-blue-300 dark:border-blue-700',
-                                'font-mono text-xs'
-                              )}
-                            />
-                            <button
-                              onClick={handleClearLocalEnginePath}
-                              className={cn(
-                                'p-2 text-sm rounded-md',
-                                'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-                                'hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors'
-                              )}
-                              title="Clear local engine path"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-green-600 dark:text-green-400">
-                            Engine will run from this local repository. Restart the engine to apply.
-                          </p>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                      Local Engine Development
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                      Run the engine from a local griptape-nodes repository instead of the installed
+                      version. Useful for testing local changes.
+                    </p>
+                    {loadingLocalEnginePath ? (
+                      <p className="text-sm text-blue-600 dark:text-blue-400">Loading...</p>
+                    ) : localEnginePath ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={localEnginePath}
+                            readOnly
+                            className={cn(
+                              'flex-1 px-3 py-2 text-sm rounded-md',
+                              'bg-background border border-blue-300 dark:border-blue-700',
+                              'font-mono text-xs'
+                            )}
+                          />
+                          <button
+                            onClick={handleClearLocalEnginePath}
+                            className={cn(
+                              'p-2 text-sm rounded-md',
+                              'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+                              'hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors'
+                            )}
+                            title="Clear local engine path"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
-                      ) : (
-                        <button
-                          onClick={handleSelectLocalEnginePath}
-                          className={cn(
-                            'flex items-center gap-1.5 px-4 py-2 text-sm rounded-md',
-                            'bg-blue-500 text-white',
-                            'hover:bg-blue-600 transition-colors'
-                          )}
-                        >
-                          <FolderOpen className="w-4 h-4" />
-                          Select Local Repository
-                        </button>
-                      )}
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          Engine will run from this local repository. Restart the engine to apply.
+                        </p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleSelectLocalEnginePath}
+                        className={cn(
+                          'flex items-center gap-1.5 px-4 py-2 text-sm rounded-md',
+                          'bg-blue-500 text-white',
+                          'hover:bg-blue-600 transition-colors'
+                        )}
+                      >
+                        <FolderOpen className="w-4 h-4" />
+                        Select Local Repository
+                      </button>
+                    )}
                   </div>
 
                   {/* Troubleshooting */}
