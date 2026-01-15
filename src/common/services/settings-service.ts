@@ -96,4 +96,21 @@ export class SettingsService {
     this.store.set('engineUpdateBehavior', behavior)
     logger.info('SettingsService: engineUpdateBehavior set to', behavior)
   }
+
+  /**
+   * Get the local griptape-nodes repository path for development.
+   * When set, the engine will run from this path instead of the installed version.
+   */
+  getLocalEnginePath(): string | null {
+    return this.store.get('localEnginePath', null)
+  }
+
+  /**
+   * Set the local griptape-nodes repository path for development.
+   * Set to null to use the installed version.
+   */
+  setLocalEnginePath(path: string | null): void {
+    this.store.set('localEnginePath', path)
+    logger.info('SettingsService: localEnginePath set to', path)
+  }
 }

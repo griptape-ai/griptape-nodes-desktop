@@ -310,6 +310,14 @@ declare global {
       setDismissedEngineUpdateVersion: (version: string | null) => Promise<{ success: boolean }>
       getEngineUpdateBehavior: () => Promise<UpdateBehavior>
       setEngineUpdateBehavior: (behavior: UpdateBehavior) => Promise<{ success: boolean }>
+      getLocalEnginePath: () => Promise<string | null>
+      setLocalEnginePath: (path: string | null) => Promise<{ success: boolean; error?: string }>
+      selectLocalEnginePath: () => Promise<{
+        success: boolean
+        path?: string
+        canceled?: boolean
+        error?: string
+      }>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{

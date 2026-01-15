@@ -1,4 +1,4 @@
-import { Moon, Sun, Monitor, RefreshCw, ChevronDown } from 'lucide-react'
+import { Moon, Sun, Monitor, RefreshCw, ChevronDown, FolderOpen, X } from 'lucide-react'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useEngine } from '../contexts/EngineContext'
@@ -63,6 +63,8 @@ const Settings: React.FC = () => {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly' | 'local'>('stable')
   const [showLocalOption, setShowLocalOption] = useState<boolean>(false)
+  const [localEnginePath, setLocalEnginePath] = useState<string | null>(null)
+  const [loadingLocalEnginePath, setLoadingLocalEnginePath] = useState(true)
 
   // Library settings state
   const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
@@ -129,6 +131,7 @@ const Settings: React.FC = () => {
     loadUpdateBehaviorSetting()
     loadEngineUpdateBehaviorSetting()
     checkDevMode()
+    loadLocalEnginePath()
     window.griptapeAPI.refreshConfig()
 
     const handleWorkspaceChanged = (_event: any, directory: string) => {
@@ -226,6 +229,40 @@ const Settings: React.FC = () => {
       setShowLocalOption(!packaged)
     } catch (err) {
       console.error('Failed to check dev mode:', err)
+    }
+  }
+
+  const loadLocalEnginePath = async () => {
+    setLoadingLocalEnginePath(true)
+    try {
+      const path = await window.settingsAPI.getLocalEnginePath()
+      setLocalEnginePath(path)
+    } catch (err) {
+      console.error('Failed to load local engine path:', err)
+    } finally {
+      setLoadingLocalEnginePath(false)
+    }
+  }
+
+  const handleSelectLocalEnginePath = async () => {
+    try {
+      const result = await window.settingsAPI.selectLocalEnginePath()
+      if (result.success && result.path) {
+        setLocalEnginePath(result.path)
+      }
+    } catch (err) {
+      console.error('Failed to select local engine path:', err)
+    }
+  }
+
+  const handleClearLocalEnginePath = async () => {
+    try {
+      const result = await window.settingsAPI.setLocalEnginePath(null)
+      if (result.success) {
+        setLocalEnginePath(null)
+      }
+    } catch (err) {
+      console.error('Failed to clear local engine path:', err)
     }
   }
 
@@ -966,28 +1003,86 @@ const Settings: React.FC = () => {
               </button>
 
               {showAdvancedOptions && (
-                <div className="mt-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
-                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
-                    Troubleshooting
-                  </p>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-                    If the engine is failing to start or behaving unexpectedly, you can perform a
-                    full reinstallation of the Python environment and engine components. Your
-                    settings will be preserved.
-                  </p>
-                  <button
-                    onClick={() => setShowReinstallDialog(true)}
-                    disabled={upgradingEngine || isUpgradePending}
-                    className={cn(
-                      'flex items-center gap-1.5 px-4 py-2 text-sm rounded-md',
-                      'bg-orange-500 text-white',
-                      'hover:bg-orange-600 transition-colors',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                <div className="mt-3 space-y-4">
+                  {/* Local Engine Development */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                      Local Engine Development
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                      Run the engine from a local griptape-nodes repository instead of the installed
+                      version. Useful for testing local changes.
+                    </p>
+                    {loadingLocalEnginePath ? (
+                      <p className="text-sm text-blue-600 dark:text-blue-400">Loading...</p>
+                    ) : localEnginePath ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={localEnginePath}
+                            readOnly
+                            className={cn(
+                              'flex-1 px-3 py-2 text-sm rounded-md',
+                              'bg-background border border-blue-300 dark:border-blue-700',
+                              'font-mono text-xs'
+                            )}
+                          />
+                          <button
+                            onClick={handleClearLocalEnginePath}
+                            className={cn(
+                              'p-2 text-sm rounded-md',
+                              'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+                              'hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors'
+                            )}
+                            title="Clear local engine path"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          Engine will run from this local repository. Restart the engine to apply.
+                        </p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleSelectLocalEnginePath}
+                        className={cn(
+                          'flex items-center gap-1.5 px-4 py-2 text-sm rounded-md',
+                          'bg-blue-500 text-white',
+                          'hover:bg-blue-600 transition-colors'
+                        )}
+                      >
+                        <FolderOpen className="w-4 h-4" />
+                        Select Local Repository
+                      </button>
                     )}
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Reinstall Engine Components
-                  </button>
+                  </div>
+
+                  {/* Troubleshooting */}
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                      Troubleshooting
+                    </p>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                      If the engine is failing to start or behaving unexpectedly, you can perform a
+                      full reinstallation of the Python environment and engine components. Your
+                      settings will be preserved.
+                    </p>
+                    <button
+                      onClick={() => setShowReinstallDialog(true)}
+                      disabled={upgradingEngine || isUpgradePending}
+                      className={cn(
+                        'flex items-center gap-1.5 px-4 py-2 text-sm rounded-md',
+                        'bg-orange-500 text-white',
+                        'hover:bg-orange-600 transition-colors',
+                        'disabled:opacity-50 disabled:cursor-not-allowed'
+                      )}
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Reinstall Engine Components
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
