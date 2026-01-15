@@ -1005,8 +1005,7 @@ const Settings: React.FC = () => {
               {showAdvancedOptions && (
                 <div className="mt-3 space-y-4">
                   {/* Local Engine Development */}
-                  {showLocalOption && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
                       <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
                         Local Engine Development
                       </p>
@@ -1058,8 +1057,7 @@ const Settings: React.FC = () => {
                           Select Local Repository
                         </button>
                       )}
-                    </div>
-                  )}
+                  </div>
 
                   {/* Troubleshooting */}
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
