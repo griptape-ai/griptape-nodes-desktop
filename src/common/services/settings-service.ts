@@ -134,7 +134,7 @@ export class SettingsService {
    * Get whether engine log file writing is enabled.
    */
   getEngineLogFileEnabled(): boolean {
-    return this.store.get('engineLogFileEnabled', false)
+    return this.store.get('engineLogFileEnabled', true)
   }
 
   /**
