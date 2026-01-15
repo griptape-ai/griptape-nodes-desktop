@@ -35,6 +35,7 @@ import { UsageMetricsService } from '../common/services/usage-metrics-service'
 import { DeviceIdService } from '../common/services/device-id-service'
 import { SystemMonitorService } from '../common/services/system-monitor-service'
 import { SettingsService } from '../common/services/settings-service'
+import { EngineLogFileService } from '../common/services/engine-log-file-service'
 import type { UpdateBehavior } from '@/types/global'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
@@ -114,6 +115,7 @@ const gtnService = new GtnService(
   settingsService
 )
 const engineService = new EngineService(userDataPath, gtnService, settingsService)
+const engineLogFileService = new EngineLogFileService(app.getPath('logs'), settingsService)
 const updateService = new UpdateService(isPackaged())
 
 /**
@@ -289,6 +291,7 @@ app.on('ready', async () => {
   pythonService.start()
   gtnService.start()
   engineService.start()
+  engineLogFileService.start()
 
   engineService.on('engine:status-changed', (status) => {
     BrowserWindow.getAllWindows().forEach((window) => {
@@ -300,6 +303,8 @@ app.on('ready', async () => {
     BrowserWindow.getAllWindows().forEach((window) => {
       window.webContents.send('engine:log', log)
     })
+    // Write log to file if enabled
+    engineLogFileService.writeLog(log)
   })
 
   gtnService.on('workspace-changed', (directory) => {
@@ -795,6 +800,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', async () => {
+  await engineLogFileService.destroy()
   await engineService.destroy()
 })
 
@@ -2315,6 +2321,91 @@ const setupIPC = () => {
   ipcMain.handle('settings:set-engine-update-behavior', (_, behavior: UpdateBehavior) => {
     settingsService.setEngineUpdateBehavior(behavior)
     return { success: true }
+  })
+
+  // Engine log file handlers
+  ipcMain.handle('settings:get-engine-log-file-enabled', () => {
+    return engineLogFileService.isLoggingEnabled()
+  })
+
+  ipcMain.handle('settings:set-engine-log-file-enabled', async (_, enabled: boolean) => {
+    try {
+      if (enabled) {
+        await engineLogFileService.enable()
+      } else {
+        await engineLogFileService.disable()
+      }
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to set engine log file enabled:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle(
+    'engine:export-logs',
+    async (_, options?: { type: 'session' | 'days'; days?: number }) => {
+      const mainWindow = BrowserWindow.getAllWindows()[0]
+      if (!mainWindow) {
+        return { success: false, error: 'No window available' }
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const exportType = options?.type || 'session'
+      const days = options?.days || 1
+
+      const defaultFilename =
+        exportType === 'session'
+          ? `engine-logs-session-${timestamp}.log`
+          : `engine-logs-${days}days-${timestamp}.log`
+
+      const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: defaultFilename,
+        filters: [
+          { name: 'Log Files', extensions: ['log', 'txt'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+
+      if (canceled || !filePath) {
+        return { success: false, canceled: true }
+      }
+
+      try {
+        if (exportType === 'session') {
+          // Export current session (in-memory logs)
+          const logs = engineService.getLogs()
+          const content = engineLogFileService.formatLogsForExport(logs)
+          await fs.promises.writeFile(filePath, content, 'utf-8')
+        } else {
+          // Export logs from files filtered by days
+          await engineLogFileService.exportLogsForDays(filePath, days)
+        }
+        return { success: true, path: filePath }
+      } catch (error) {
+        logger.error('Failed to export logs:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    }
+  )
+
+  ipcMain.handle('engine:get-log-date-range', async () => {
+    try {
+      return await engineLogFileService.getLogDateRange()
+    } catch (error) {
+      logger.error('Failed to get log date range:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle('engine:get-log-file-path', () => {
+    return engineLogFileService.getLogDir()
   })
 
   // System monitor handlers

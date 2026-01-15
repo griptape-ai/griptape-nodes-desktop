@@ -198,6 +198,18 @@ declare global {
       restart: () => Promise<{ success: boolean; error?: string }>
       reinstall: () => Promise<{ success: boolean; error?: string }>
       runCommand: (command: string) => Promise<{ success: boolean; error?: string }>
+      exportLogs: (options?: { type: 'session' | 'days'; days?: number }) => Promise<{
+        success: boolean
+        path?: string
+        canceled?: boolean
+        error?: string
+      }>
+      getLogDateRange: () => Promise<{
+        oldestDate: string
+        newestDate: string
+        availableDays: number
+      } | null>
+      getLogFilePath: () => Promise<string>
       onStatusChanged: (callback: (event: any, status: EngineStatus) => void) => void
       removeStatusChanged: (callback: (event: any, status: EngineStatus) => void) => void
       onLog: (callback: (event: any, log: EngineLog) => void) => void
@@ -320,6 +332,8 @@ declare global {
       }>
       getConfirmOnClose: () => Promise<boolean>
       setConfirmOnClose: (confirm: boolean) => Promise<{ success: boolean }>
+      getEngineLogFileEnabled: () => Promise<boolean>
+      setEngineLogFileEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{
