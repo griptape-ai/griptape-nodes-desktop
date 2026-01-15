@@ -48,7 +48,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   const { status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs } = useEngine()
   const [isExporting, setIsExporting] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
-  const [logFileEnabled, setLogFileEnabled] = useState(false)
+  const [logFileEnabled, setLogFileEnabled] = useState(true) // Default matches settings-service default
   const [commandInput, setCommandInput] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
   // Export modal state
