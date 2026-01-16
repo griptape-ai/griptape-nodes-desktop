@@ -113,4 +113,20 @@ export class SettingsService {
     this.store.set('localEnginePath', path)
     logger.info('SettingsService: localEnginePath set to', path)
   }
+
+  /**
+   * Get whether to show a confirmation dialog when closing the app.
+   * Default is true (show the dialog).
+   */
+  getConfirmOnClose(): boolean {
+    return this.store.get('confirmOnClose', true)
+  }
+
+  /**
+   * Set whether to show a confirmation dialog when closing the app.
+   */
+  setConfirmOnClose(confirm: boolean): void {
+    this.store.set('confirmOnClose', confirm)
+    logger.info('SettingsService: confirmOnClose set to', confirm)
+  }
 }

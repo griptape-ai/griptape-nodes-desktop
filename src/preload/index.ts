@@ -245,7 +245,10 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   getLocalEnginePath: () => ipcRenderer.invoke('settings:get-local-engine-path'),
   setLocalEnginePath: (path: string | null) =>
     ipcRenderer.invoke('settings:set-local-engine-path', path),
-  selectLocalEnginePath: () => ipcRenderer.invoke('settings:select-local-engine-path')
+  selectLocalEnginePath: () => ipcRenderer.invoke('settings:select-local-engine-path'),
+  getConfirmOnClose: () => ipcRenderer.invoke('settings:get-confirm-on-close'),
+  setConfirmOnClose: (confirm: boolean) =>
+    ipcRenderer.invoke('settings:set-confirm-on-close', confirm)
 })
 
 contextBridge.exposeInMainWorld('engineUpdateAPI', {
