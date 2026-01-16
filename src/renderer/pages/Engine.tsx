@@ -40,6 +40,122 @@ const ansiConverter = new Convert({
   }
 })
 
+// Format timestamp for log display
+const formatTimestamp = (timestamp: Date) => {
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// Log row component - defined outside Engine to prevent recreation on every render
+interface LogRowProps {
+  log: { timestamp: Date; type: string; message: string }
+}
+
+const LogRow = memo(({ log }: LogRowProps) => {
+  const processedMessage = useMemo(() => {
+    try {
+      // Clean up ANSI cursor control codes and spinner characters
+      let cleanMessage = log.message
+        // Remove cursor show/hide codes
+        .replace(/\x1b\[\?25[lh]/g, '')
+        // Remove cursor position codes
+        .replace(/\x1b\[\d*[A-G]/g, '')
+        // Remove Windows-specific cursor positioning
+        .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+        // Handle Windows CRLF line endings
+        .replace(/\r\n/g, '\n')
+        // Remove carriage returns that cause overwriting
+        .replace(/\r(?!\n)/g, '')
+        // Replace spinner characters with a simple indicator
+        .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
+
+      // Handle OSC 8 hyperlinks BEFORE ANSI conversion
+      // Looking at the actual format: ]8;id=ID;URL\TEXT]8;;\
+      const linkPlaceholders: { placeholder: string; html: string }[] = []
+      let linkIndex = 0
+
+      // Replace OSC 8 sequences with placeholders that won't be affected by ANSI conversion
+      // Format: ]8;id=ID;URL\TEXT]8;;\
+      cleanMessage = cleanMessage.replace(
+        /\]8;[^;]*;([^\\]+)\\([^\]]+?)\]8;;\\?/g,
+        (_, url, text) => {
+          const placeholder = `__LINK_PLACEHOLDER_${linkIndex}__`
+          linkIndex++
+
+          // Clean up the text by removing ANSI color codes and control characters
+          const cleanText = text
+            // Remove ANSI color codes like [1;34m and [0m
+            .replace(/\x1b?\[[0-9;]*m/g, '')
+            // Remove control characters (including char code 26 - SUB character)
+            .replace(/[\x00-\x1F\x7F]/g, '')
+            // Remove any whitespace characters including non-breaking spaces
+            .replace(/[\s\u00A0]+$/, '')
+            .replace(/^[\s\u00A0]+/, '')
+            .trim()
+
+          // Use the URL as the display text if no clean text remains
+          const displayText = cleanText || url
+
+          linkPlaceholders.push({
+            placeholder,
+            html: `<a href="javascript:void(0)" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer" title="${url}">${displayText}</a>`
+          })
+          return placeholder
+        }
+      )
+
+      // Clean up any orphaned backslashes that might appear after link placeholders
+      cleanMessage = cleanMessage.replace(/__LINK_PLACEHOLDER_\d+__\s*\\/g, (match) => {
+        return match.replace(/\\$/, '')
+      })
+
+      // Replace multiple spaces with non-breaking spaces to preserve formatting
+      const messageWithPreservedSpaces = cleanMessage.replace(/ {2,}/g, (match) =>
+        '\u00A0'.repeat(match.length)
+      )
+
+      // Convert ANSI to HTML
+      let htmlMessage = ansiConverter.toHtml(messageWithPreservedSpaces)
+
+      // Replace placeholders with actual links
+      linkPlaceholders.forEach(({ placeholder, html }) => {
+        htmlMessage = htmlMessage.replace(placeholder, html)
+      })
+
+      // Final cleanup: remove any trailing backslashes that might appear after links
+      htmlMessage = htmlMessage.replace(/<\/a>\s*\\/g, '</a>')
+
+      return { __html: htmlMessage }
+    } catch {
+      // Fallback: preserve spaces even without ANSI processing
+      const messageWithPreservedSpaces = log.message.replace(/ {2,}/g, (match) =>
+        '\u00A0'.repeat(match.length)
+      )
+      return { __html: messageWithPreservedSpaces }
+    }
+  }, [log.message])
+
+  return (
+    <div className="flex items-start px-4 hover:bg-gray-100 dark:hover:bg-gray-800">
+      <span className="text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0 font-mono text-xs pt-0.5">
+        {formatTimestamp(log.timestamp)}
+      </span>
+      <span
+        className={`flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-words ${
+          log.type === 'stderr' ? 'text-red-600 dark:text-red-400' : ''
+        }`}
+        dangerouslySetInnerHTML={processedMessage}
+      />
+    </div>
+  )
+})
+LogRow.displayName = 'LogRow'
+
 interface EngineProps {
   onNavigateToSettings?: () => void
 }
@@ -154,16 +270,6 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     }
   }, [])
 
-  const formatTimestamp = useCallback((timestamp: Date) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  }, [])
-
   const copyLogsToClipboard = useCallback(async () => {
     try {
       const plainTextLogs = logs
@@ -189,7 +295,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     } catch (error) {
       console.error('Failed to copy logs to clipboard:', error)
     }
-  }, [logs, formatTimestamp])
+  }, [logs])
 
   const handleOpenExportModal = useCallback(async () => {
     // Fetch log date range when opening modal
@@ -259,121 +365,6 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
       }, 0)
     }
   }
-
-  const LogRow = memo(
-    ({
-      index,
-      style,
-      logs: logList
-    }: {
-      index: number
-      style: React.CSSProperties
-      logs: typeof logs
-    }) => {
-      const log = logList[index]
-
-      const processedMessage = useMemo(() => {
-        try {
-          // Clean up ANSI cursor control codes and spinner characters
-          let cleanMessage = log.message
-            // Remove cursor show/hide codes
-            .replace(/\x1b\[\?25[lh]/g, '')
-            // Remove cursor position codes
-            .replace(/\x1b\[\d*[A-G]/g, '')
-            // Remove Windows-specific cursor positioning
-            .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
-            // Handle Windows CRLF line endings
-            .replace(/\r\n/g, '\n')
-            // Remove carriage returns that cause overwriting
-            .replace(/\r(?!\n)/g, '')
-            // Replace spinner characters with a simple indicator
-            .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
-
-          // Handle OSC 8 hyperlinks BEFORE ANSI conversion
-          // Looking at the actual format: ]8;id=ID;URL\TEXT]8;;\
-          const linkPlaceholders: { placeholder: string; html: string }[] = []
-          let linkIndex = 0
-
-          // Replace OSC 8 sequences with placeholders that won't be affected by ANSI conversion
-          // Format: ]8;id=ID;URL\TEXT]8;;\
-          cleanMessage = cleanMessage.replace(
-            /\]8;[^;]*;([^\\]+)\\([^\]]+?)\]8;;\\?/g,
-            (_, url, text) => {
-              const placeholder = `__LINK_PLACEHOLDER_${linkIndex}__`
-              linkIndex++
-
-              // Clean up the text by removing ANSI color codes and control characters
-              const cleanText = text
-                // Remove ANSI color codes like [1;34m and [0m
-                .replace(/\x1b?\[[0-9;]*m/g, '')
-                // Remove control characters (including char code 26 - SUB character)
-                .replace(/[\x00-\x1F\x7F]/g, '')
-                // Remove any whitespace characters including non-breaking spaces
-                .replace(/[\s\u00A0]+$/, '')
-                .replace(/^[\s\u00A0]+/, '')
-                .trim()
-
-              // Use the URL as the display text if no clean text remains
-              const displayText = cleanText || url
-
-              linkPlaceholders.push({
-                placeholder,
-                html: `<a href="javascript:void(0)" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer" title="${url}">${displayText}</a>`
-              })
-              return placeholder
-            }
-          )
-
-          // Clean up any orphaned backslashes that might appear after link placeholders
-          cleanMessage = cleanMessage.replace(/__LINK_PLACEHOLDER_\d+__\s*\\/g, (match) => {
-            return match.replace(/\\$/, '')
-          })
-
-          // Replace multiple spaces with non-breaking spaces to preserve formatting
-          const messageWithPreservedSpaces = cleanMessage.replace(/ {2,}/g, (match) =>
-            '\u00A0'.repeat(match.length)
-          )
-
-          // Convert ANSI to HTML
-          let htmlMessage = ansiConverter.toHtml(messageWithPreservedSpaces)
-
-          // Replace placeholders with actual links
-          linkPlaceholders.forEach(({ placeholder, html }) => {
-            htmlMessage = htmlMessage.replace(placeholder, html)
-          })
-
-          // Final cleanup: remove any trailing backslashes that might appear after links
-          htmlMessage = htmlMessage.replace(/<\/a>\s*\\/g, '</a>')
-
-          return { __html: htmlMessage }
-        } catch {
-          // Fallback: preserve spaces even without ANSI processing
-          const messageWithPreservedSpaces = log.message.replace(/ {2,}/g, (match) =>
-            '\u00A0'.repeat(match.length)
-          )
-          return { __html: messageWithPreservedSpaces }
-        }
-      }, [log.message])
-
-      return (
-        <div
-          style={style}
-          className="flex items-start px-4 hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          <span className="text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0 font-mono text-xs pt-0.5">
-            {formatTimestamp(log.timestamp)}
-          </span>
-          <span
-            className={`flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-words ${
-              log.type === 'stderr' ? 'text-red-600 dark:text-red-400' : ''
-            }`}
-            dangerouslySetInnerHTML={processedMessage}
-          />
-        </div>
-      )
-    }
-  )
-  LogRow.displayName = 'LogRow'
 
   return (
     <div className="h-full flex flex-col overflow-hidden mx-auto">
@@ -508,7 +499,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
               }}
             >
               {logs.map((_, index) => (
-                <LogRow key={index} index={index} style={{}} logs={logs} />
+                <LogRow key={index} log={logs[index]} />
               ))}
             </div>
           )}
