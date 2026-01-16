@@ -340,23 +340,27 @@ export class SystemMonitorService extends EventEmitter {
 
         // Linux memory model from /proc/meminfo:
         // - MemTotal: total physical RAM
+        // - MemAvailable: kernel estimate of available memory (most accurate, Linux 3.14+)
         // - MemFree: completely unused memory
         // - Buffers: buffer cache for block devices
         // - Cached: page cache (file system cache)
         // - SReclaimable: reclaimable kernel slab memory
         //
-        // To match the breakdown model (used + cached + available = total):
-        // - Used = memory actively used by applications
-        // - Cached = buffer + page cache (reclaimable)
-        // - Available = free memory (immediately usable)
+        // Use MemAvailable if present (preferred), otherwise calculate from components
+        const memAvailable = values['MemAvailable'] || 0
         const memFree = values['MemFree'] || 0
-        const cached = (values['Cached'] || 0) + (values['Buffers'] || 0)
-        const used = totalMem - memFree - cached
+        const cached =
+          (values['Cached'] || 0) + (values['Buffers'] || 0) + (values['SReclaimable'] || 0)
+
+        // If MemAvailable is present, use it for more accurate calculation
+        // Otherwise fall back to the component-based calculation
+        const available = memAvailable > 0 ? memAvailable : memFree + cached
+        const used = Math.max(0, totalMem - available) // Ensure non-negative
 
         return {
           used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
           cached: Math.round((cached / (1024 * 1024 * 1024)) * 10) / 10,
-          available: Math.round((memFree / (1024 * 1024 * 1024)) * 10) / 10,
+          available: Math.round((available / (1024 * 1024 * 1024)) * 10) / 10,
           total: Math.round(totalGB * 10) / 10
         }
       } else if (process.platform === 'darwin') {
@@ -379,7 +383,6 @@ export class SystemMonitorService extends EventEmitter {
         const speculative = parseValue(/Pages speculative:\s+(\d+)/)
         const wired = parseValue(/Pages wired down:\s+(\d+)/)
         const compressed = parseValue(/Pages occupied by compressor:\s+(\d+)/)
-        const purgeable = parseValue(/Pages purgeable:\s+(\d+)/)
 
         // macOS memory model:
         // - Wired: locked in RAM, can't be paged out
@@ -388,14 +391,15 @@ export class SystemMonitorService extends EventEmitter {
         // - Compressed: compressed to save space
         // - Free: not used
         // - Speculative: speculatively loaded, easily reclaimable
-        // - Purgeable: can be purged immediately if needed
+        // - Purgeable: can be purged immediately if needed (subset of inactive)
 
         // "Used" = wired + active + compressed (memory apps are actively using)
-        // "Cached" = inactive + purgeable (reclaimable cache)
-        // "Free" = free + speculative (immediately available)
-        const used = wired + active + compressed
-        const cached = inactive + purgeable
-        const available = free + speculative
+        // "Cached" = inactive (reclaimable file cache)
+        // "Available" = free + speculative + inactive (all memory that can be given to apps)
+        // Note: cached is a subset of available, which is correct - cached memory IS available
+        const used = Math.max(0, wired + active + compressed)
+        const cached = Math.max(0, inactive) // Don't add purgeable (often overlaps with inactive)
+        const available = Math.max(0, free + speculative + inactive) // Include reclaimable cache
 
         return {
           used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
@@ -404,53 +408,60 @@ export class SystemMonitorService extends EventEmitter {
           total: Math.round(totalGB * 10) / 10
         }
       } else if (process.platform === 'win32') {
-        // Use wmic for Windows memory info
-        const { stdout } = await execFileAsync('wmic', [
-          'OS',
-          'get',
-          'FreePhysicalMemory,TotalVisibleMemorySize',
-          '/format:csv'
-        ])
+        // Use PowerShell to get all memory values from a single, consistent source
+        // This avoids ambiguity about what WMI's FreePhysicalMemory actually represents
+        try {
+          const { stdout } = await execFileAsync('powershell', [
+            '-NoProfile',
+            '-Command',
+            `
+            $counters = Get-Counter -Counter @(
+              '\\Memory\\Available Bytes',
+              '\\Memory\\Standby Cache Normal Priority Bytes',
+              '\\Memory\\Standby Cache Reserve Bytes',
+              '\\Memory\\Standby Cache Core Bytes'
+            ) -ErrorAction SilentlyContinue
+            $available = ($counters.CounterSamples | Where-Object { $_.Path -like '*Available Bytes' }).CookedValue
+            $standbyNormal = ($counters.CounterSamples | Where-Object { $_.Path -like '*Normal Priority*' }).CookedValue
+            $standbyReserve = ($counters.CounterSamples | Where-Object { $_.Path -like '*Reserve*' }).CookedValue
+            $standbyCore = ($counters.CounterSamples | Where-Object { $_.Path -like '*Core*' }).CookedValue
+            $total = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory
+            "$available,$($standbyNormal + $standbyReserve + $standbyCore),$total"
+            `.trim()
+          ])
 
-        const lines = stdout
-          .trim()
-          .split('\n')
-          .filter((l) => l.trim())
-        if (lines.length >= 2) {
-          const values = lines[1].split(',')
-          // Values are in KB
-          const freeKB = parseInt(values[1], 10) || 0
-          const totalKB = parseInt(values[2], 10) || 0
+          const parts = stdout.trim().split(',')
+          if (parts.length >= 3) {
+            // Windows memory model (from performance counters):
+            // - Available Bytes = Standby + Free (memory that can be immediately used)
+            // - Standby Cache = File cache that can be reclaimed
+            // - In Use = Total - Available
+            const availableMem = parseFloat(parts[0]) || 0
+            const cached = parseFloat(parts[1]) || 0
+            const totalMemPS = parseFloat(parts[2]) || totalMem
 
-          const freeMem = freeKB * 1024
-          const totalMemWmic = totalKB * 1024
-
-          // Windows doesn't easily expose cache vs used breakdown via wmic
-          // Use standby list from performance counters if available
-          try {
-            const { stdout: perfStdout } = await execFileAsync('powershell', [
-              '-Command',
-              '(Get-Counter "\\Memory\\Standby Cache Normal Priority Bytes").CounterSamples.CookedValue + (Get-Counter "\\Memory\\Standby Cache Reserve Bytes").CounterSamples.CookedValue + (Get-Counter "\\Memory\\Standby Cache Core Bytes").CounterSamples.CookedValue'
-            ])
-            const cached = parseFloat(perfStdout.trim()) || 0
-            const used = totalMemWmic - freeMem - cached
+            // "In Use" is memory that is NOT available
+            const used = Math.max(0, totalMemPS - availableMem)
 
             return {
               used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
               cached: Math.round((cached / (1024 * 1024 * 1024)) * 10) / 10,
-              available: Math.round((freeMem / (1024 * 1024 * 1024)) * 10) / 10,
-              total: Math.round(totalGB * 10) / 10
-            }
-          } catch {
-            // Fall back to simple calculation without cache breakdown
-            const used = totalMemWmic - freeMem
-            return {
-              used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
-              cached: 0,
-              available: Math.round((freeMem / (1024 * 1024 * 1024)) * 10) / 10,
-              total: Math.round(totalGB * 10) / 10
+              available: Math.round((availableMem / (1024 * 1024 * 1024)) * 10) / 10,
+              total: Math.round((totalMemPS / (1024 * 1024 * 1024)) * 10) / 10
             }
           }
+        } catch (err) {
+          logger.debug('SystemMonitorService: PowerShell memory query failed:', err)
+        }
+
+        // Fall back to Node.js os module if PowerShell fails
+        const freeMem = os.freemem()
+        const used = Math.max(0, totalMem - freeMem)
+        return {
+          used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
+          cached: 0,
+          available: Math.round((freeMem / (1024 * 1024 * 1024)) * 10) / 10,
+          total: Math.round(totalGB * 10) / 10
         }
       }
     } catch (err) {
@@ -471,10 +482,10 @@ export class SystemMonitorService extends EventEmitter {
       // Fall back to basic memory info if detailed is unavailable
       const totalMem = os.totalmem()
       const freeMem = os.freemem()
-      const basicUsedMem = totalMem - freeMem
+      const basicUsedMem = Math.max(0, totalMem - freeMem) // Ensure non-negative
 
       // Use detailed breakdown values if available, otherwise fall back to basic
-      const memUsedGB = memoryBreakdown?.used ?? basicUsedMem / (1024 * 1024 * 1024)
+      const memUsedGB = Math.max(0, memoryBreakdown?.used ?? basicUsedMem / (1024 * 1024 * 1024))
       const memTotalGB = memoryBreakdown?.total ?? totalMem / (1024 * 1024 * 1024)
       const memPercentage = (memUsedGB / memTotalGB) * 100
 
