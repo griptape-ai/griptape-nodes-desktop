@@ -76,6 +76,15 @@ contextBridge.exposeInMainWorld('engineAPI', {
   restart: () => ipcRenderer.invoke('engine:restart'),
   reinstall: () => ipcRenderer.invoke('engine:reinstall'),
   runCommand: (command: string) => ipcRenderer.invoke('engine:run-command', command),
+  exportLogs: (options?: { type: 'session' | 'days'; days?: number }) =>
+    ipcRenderer.invoke('engine:export-logs', options),
+  getLogDateRange: () =>
+    ipcRenderer.invoke('engine:get-log-date-range') as Promise<{
+      oldestDate: string
+      newestDate: string
+      availableDays: number
+    } | null>,
+  getLogFilePath: () => ipcRenderer.invoke('engine:get-log-file-path'),
   onStatusChanged: (callback: (event: any, status: string) => void) => {
     ipcRenderer.on('engine:status-changed', callback)
   },
@@ -248,7 +257,10 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   selectLocalEnginePath: () => ipcRenderer.invoke('settings:select-local-engine-path'),
   getConfirmOnClose: () => ipcRenderer.invoke('settings:get-confirm-on-close'),
   setConfirmOnClose: (confirm: boolean) =>
-    ipcRenderer.invoke('settings:set-confirm-on-close', confirm)
+    ipcRenderer.invoke('settings:set-confirm-on-close', confirm),
+  getEngineLogFileEnabled: () => ipcRenderer.invoke('settings:get-engine-log-file-enabled'),
+  setEngineLogFileEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('settings:set-engine-log-file-enabled', enabled)
 })
 
 contextBridge.exposeInMainWorld('engineUpdateAPI', {

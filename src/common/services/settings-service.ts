@@ -129,4 +129,19 @@ export class SettingsService {
     this.store.set('confirmOnClose', confirm)
     logger.info('SettingsService: confirmOnClose set to', confirm)
   }
+
+  /**
+   * Get whether engine log file writing is enabled.
+   */
+  getEngineLogFileEnabled(): boolean {
+    return this.store.get('engineLogFileEnabled', true)
+  }
+
+  /**
+   * Set whether engine log file writing is enabled.
+   */
+  setEngineLogFileEnabled(enabled: boolean): void {
+    this.store.set('engineLogFileEnabled', enabled)
+    logger.info('SettingsService: engineLogFileEnabled set to', enabled)
+  }
 }

@@ -1,6 +1,16 @@
 import Convert from 'ansi-to-html'
 import React, { useEffect, useRef, useMemo, useCallback, memo, useState } from 'react'
-import { Play, Square, RotateCcw, Copy, Check } from 'lucide-react'
+import {
+  Play,
+  Square,
+  RotateCcw,
+  Download,
+  Copy,
+  Check,
+  Trash2,
+  Settings,
+  ChevronRight
+} from 'lucide-react'
 import { useEngine } from '../contexts/EngineContext'
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
 
@@ -30,11 +40,144 @@ const ansiConverter = new Convert({
   }
 })
 
-const Engine: React.FC = () => {
+// Format timestamp for log display
+const formatTimestamp = (timestamp: Date) => {
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// Log row component - defined outside Engine to prevent recreation on every render
+interface LogRowProps {
+  log: { timestamp: Date; type: string; message: string }
+}
+
+const LogRow = memo(({ log }: LogRowProps) => {
+  const processedMessage = useMemo(() => {
+    try {
+      // Clean up ANSI cursor control codes and spinner characters
+      let cleanMessage = log.message
+        // Remove cursor show/hide codes
+        .replace(/\x1b\[\?25[lh]/g, '')
+        // Remove cursor position codes
+        .replace(/\x1b\[\d*[A-G]/g, '')
+        // Remove Windows-specific cursor positioning
+        .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
+        // Handle Windows CRLF line endings
+        .replace(/\r\n/g, '\n')
+        // Remove carriage returns that cause overwriting
+        .replace(/\r(?!\n)/g, '')
+        // Replace spinner characters with a simple indicator
+        .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
+
+      // Handle OSC 8 hyperlinks BEFORE ANSI conversion
+      // Looking at the actual format: ]8;id=ID;URL\TEXT]8;;\
+      const linkPlaceholders: { placeholder: string; html: string }[] = []
+      let linkIndex = 0
+
+      // Replace OSC 8 sequences with placeholders that won't be affected by ANSI conversion
+      // Format: ]8;id=ID;URL\TEXT]8;;\
+      cleanMessage = cleanMessage.replace(
+        /\]8;[^;]*;([^\\]+)\\([^\]]+?)\]8;;\\?/g,
+        (_, url, text) => {
+          const placeholder = `__LINK_PLACEHOLDER_${linkIndex}__`
+          linkIndex++
+
+          // Clean up the text by removing ANSI color codes and control characters
+          const cleanText = text
+            // Remove ANSI color codes like [1;34m and [0m
+            .replace(/\x1b?\[[0-9;]*m/g, '')
+            // Remove control characters (including char code 26 - SUB character)
+            .replace(/[\x00-\x1F\x7F]/g, '')
+            // Remove any whitespace characters including non-breaking spaces
+            .replace(/[\s\u00A0]+$/, '')
+            .replace(/^[\s\u00A0]+/, '')
+            .trim()
+
+          // Use the URL as the display text if no clean text remains
+          const displayText = cleanText || url
+
+          linkPlaceholders.push({
+            placeholder,
+            html: `<a href="javascript:void(0)" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer" title="${url}">${displayText}</a>`
+          })
+          return placeholder
+        }
+      )
+
+      // Clean up any orphaned backslashes that might appear after link placeholders
+      cleanMessage = cleanMessage.replace(/__LINK_PLACEHOLDER_\d+__\s*\\/g, (match) => {
+        return match.replace(/\\$/, '')
+      })
+
+      // Replace multiple spaces with non-breaking spaces to preserve formatting
+      const messageWithPreservedSpaces = cleanMessage.replace(/ {2,}/g, (match) =>
+        '\u00A0'.repeat(match.length)
+      )
+
+      // Convert ANSI to HTML
+      let htmlMessage = ansiConverter.toHtml(messageWithPreservedSpaces)
+
+      // Replace placeholders with actual links
+      linkPlaceholders.forEach(({ placeholder, html }) => {
+        htmlMessage = htmlMessage.replace(placeholder, html)
+      })
+
+      // Final cleanup: remove any trailing backslashes that might appear after links
+      htmlMessage = htmlMessage.replace(/<\/a>\s*\\/g, '</a>')
+
+      return { __html: htmlMessage }
+    } catch {
+      // Fallback: preserve spaces even without ANSI processing
+      const messageWithPreservedSpaces = log.message.replace(/ {2,}/g, (match) =>
+        '\u00A0'.repeat(match.length)
+      )
+      return { __html: messageWithPreservedSpaces }
+    }
+  }, [log.message])
+
+  return (
+    <div className="flex items-start px-4 hover:bg-gray-100 dark:hover:bg-gray-800">
+      <span className="text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0 font-mono text-xs pt-0.5">
+        {formatTimestamp(log.timestamp)}
+      </span>
+      <span
+        className={`flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-words ${
+          log.type === 'stderr' ? 'text-red-600 dark:text-red-400' : ''
+        }`}
+        dangerouslySetInnerHTML={processedMessage}
+      />
+    </div>
+  )
+})
+LogRow.displayName = 'LogRow'
+
+interface EngineProps {
+  onNavigateToSettings?: () => void
+}
+
+const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   const { status, logs, isLoading, startEngine, stopEngine, restartEngine, clearLogs } = useEngine()
+  const [isExporting, setIsExporting] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
+  const [logFileEnabled, setLogFileEnabled] = useState(true) // Default matches settings-service default
   const [commandInput, setCommandInput] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportType, setExportType] = useState<'session' | 'days'>('session')
+  const [exportDays, setExportDays] = useState(1)
+  const [logDateRange, setLogDateRange] = useState<{
+    oldestDate: string
+    newestDate: string
+    availableDays: number
+  } | null>(null)
+  // Log controls collapsed state
+  const [logControlsCollapsed, setLogControlsCollapsed] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const commandInputRef = useRef<HTMLInputElement>(null)
@@ -104,6 +247,19 @@ const Engine: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Load log file enabled setting
+  useEffect(() => {
+    const loadLogFileSetting = async () => {
+      try {
+        const enabled = await window.settingsAPI.getEngineLogFileEnabled()
+        setLogFileEnabled(enabled)
+      } catch (err) {
+        console.error('Failed to load log file setting:', err)
+      }
+    }
+    loadLogFileSetting()
+  }, [])
+
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget
     if (target) {
@@ -114,22 +270,10 @@ const Engine: React.FC = () => {
     }
   }, [])
 
-  const formatTimestamp = useCallback((timestamp: Date) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  }, [])
-
   const copyLogsToClipboard = useCallback(async () => {
     try {
-      // Strip ANSI codes and format logs as plain text
       const plainTextLogs = logs
         .map((log) => {
-          // Remove all ANSI escape codes
           const cleanMessage = log.message
             .replace(/\x1b\[[0-9;]*m/g, '')
             .replace(/\x1b\[\?25[lh]/g, '')
@@ -141,7 +285,6 @@ const Engine: React.FC = () => {
             .replace(/\]8;[^;]*;[^\\]+\\([^\]]+?)\]8;;\\?/g, '$1')
             .replace(/[\x00-\x1F\x7F]/g, '')
             .trim()
-
           return `${formatTimestamp(log.timestamp)} | ${cleanMessage}`
         })
         .join('\n')
@@ -152,7 +295,40 @@ const Engine: React.FC = () => {
     } catch (error) {
       console.error('Failed to copy logs to clipboard:', error)
     }
-  }, [logs, formatTimestamp])
+  }, [logs])
+
+  const handleOpenExportModal = useCallback(async () => {
+    // Fetch log date range when opening modal
+    try {
+      const dateRange = await window.engineAPI.getLogDateRange()
+      setLogDateRange(dateRange)
+      if (dateRange) {
+        setExportDays(Math.min(dateRange.availableDays, 7)) // Default to 7 days or max available
+      }
+    } catch (error) {
+      console.error('Failed to get log date range:', error)
+    }
+    setShowExportModal(true)
+  }, [])
+
+  const handleExportLogs = useCallback(async () => {
+    setIsExporting(true)
+    setShowExportModal(false)
+    try {
+      const options =
+        exportType === 'session'
+          ? { type: 'session' as const }
+          : { type: 'days' as const, days: exportDays }
+      const result = await window.engineAPI.exportLogs(options)
+      if (!result.success && result.error) {
+        console.error('Failed to export logs:', result.error)
+      }
+    } catch (error) {
+      console.error('Failed to export logs:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }, [exportType, exportDays])
 
   const handleExecuteCommand = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -190,125 +366,10 @@ const Engine: React.FC = () => {
     }
   }
 
-  const LogRow = memo(
-    ({
-      index,
-      style,
-      logs: logList
-    }: {
-      index: number
-      style: React.CSSProperties
-      logs: typeof logs
-    }) => {
-      const log = logList[index]
-
-      const processedMessage = useMemo(() => {
-        try {
-          // Clean up ANSI cursor control codes and spinner characters
-          let cleanMessage = log.message
-            // Remove cursor show/hide codes
-            .replace(/\x1b\[\?25[lh]/g, '')
-            // Remove cursor position codes
-            .replace(/\x1b\[\d*[A-G]/g, '')
-            // Remove Windows-specific cursor positioning
-            .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
-            // Handle Windows CRLF line endings
-            .replace(/\r\n/g, '\n')
-            // Remove carriage returns that cause overwriting
-            .replace(/\r(?!\n)/g, '')
-            // Replace spinner characters with a simple indicator
-            .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
-
-          // Handle OSC 8 hyperlinks BEFORE ANSI conversion
-          // Looking at the actual format: ]8;id=ID;URL\TEXT]8;;\
-          const linkPlaceholders: { placeholder: string; html: string }[] = []
-          let linkIndex = 0
-
-          // Replace OSC 8 sequences with placeholders that won't be affected by ANSI conversion
-          // Format: ]8;id=ID;URL\TEXT]8;;\
-          cleanMessage = cleanMessage.replace(
-            /\]8;[^;]*;([^\\]+)\\([^\]]+?)\]8;;\\?/g,
-            (_, url, text) => {
-              const placeholder = `__LINK_PLACEHOLDER_${linkIndex}__`
-              linkIndex++
-
-              // Clean up the text by removing ANSI color codes and control characters
-              const cleanText = text
-                // Remove ANSI color codes like [1;34m and [0m
-                .replace(/\x1b?\[[0-9;]*m/g, '')
-                // Remove control characters (including char code 26 - SUB character)
-                .replace(/[\x00-\x1F\x7F]/g, '')
-                // Remove any whitespace characters including non-breaking spaces
-                .replace(/[\s\u00A0]+$/, '')
-                .replace(/^[\s\u00A0]+/, '')
-                .trim()
-
-              // Use the URL as the display text if no clean text remains
-              const displayText = cleanText || url
-
-              linkPlaceholders.push({
-                placeholder,
-                html: `<a href="javascript:void(0)" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer" title="${url}">${displayText}</a>`
-              })
-              return placeholder
-            }
-          )
-
-          // Clean up any orphaned backslashes that might appear after link placeholders
-          cleanMessage = cleanMessage.replace(/__LINK_PLACEHOLDER_\d+__\s*\\/g, (match) => {
-            return match.replace(/\\$/, '')
-          })
-
-          // Replace multiple spaces with non-breaking spaces to preserve formatting
-          const messageWithPreservedSpaces = cleanMessage.replace(/ {2,}/g, (match) =>
-            '\u00A0'.repeat(match.length)
-          )
-
-          // Convert ANSI to HTML
-          let htmlMessage = ansiConverter.toHtml(messageWithPreservedSpaces)
-
-          // Replace placeholders with actual links
-          linkPlaceholders.forEach(({ placeholder, html }) => {
-            htmlMessage = htmlMessage.replace(placeholder, html)
-          })
-
-          // Final cleanup: remove any trailing backslashes that might appear after links
-          htmlMessage = htmlMessage.replace(/<\/a>\s*\\/g, '</a>')
-
-          return { __html: htmlMessage }
-        } catch {
-          // Fallback: preserve spaces even without ANSI processing
-          const messageWithPreservedSpaces = log.message.replace(/ {2,}/g, (match) =>
-            '\u00A0'.repeat(match.length)
-          )
-          return { __html: messageWithPreservedSpaces }
-        }
-      }, [log.message])
-
-      return (
-        <div
-          style={style}
-          className="flex items-start px-4 hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          <span className="text-gray-500 dark:text-gray-400 mr-3 flex-shrink-0 font-mono text-xs pt-0.5">
-            {formatTimestamp(log.timestamp)}
-          </span>
-          <span
-            className={`flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-words ${
-              log.type === 'stderr' ? 'text-red-600 dark:text-red-400' : ''
-            }`}
-            dangerouslySetInnerHTML={processedMessage}
-          />
-        </div>
-      )
-    }
-  )
-  LogRow.displayName = 'LogRow'
-
   return (
     <div className="h-full flex flex-col overflow-hidden mx-auto">
       {/* Compact Status Bar - Sticky */}
-      <div className="flex-shrink-0 bg-card border-b border-border px-6 py-3 flex items-center justify-between gap-4 mt-6">
+      <div className="flex-shrink-0 bg-card border-b border-border px-6 py-3 flex items-center justify-between gap-4">
         {/* Left side: Status */}
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-muted-foreground">Engine</span>
@@ -322,7 +383,7 @@ const Engine: React.FC = () => {
           </div>
         </div>
 
-        {/* Right side: Control Buttons */}
+        {/* Right side: Engine Control Buttons */}
         <div className="flex items-center gap-2">
           <button
             onClick={startEngine}
@@ -354,32 +415,6 @@ const Engine: React.FC = () => {
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Restart
-          </button>
-          <div className="h-5 w-px bg-border mx-1" />
-          <button
-            onClick={copyLogsToClipboard}
-            disabled={logs.length === 0}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-              isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'
-            }`}
-          >
-            {isCopied ? (
-              <>
-                <Check className="w-3.5 h-3.5" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                Copy Logs
-              </>
-            )}
-          </button>
-          <button
-            onClick={clearLogs}
-            className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-          >
-            Clear Logs
           </button>
         </div>
       </div>
@@ -444,7 +479,7 @@ const Engine: React.FC = () => {
       )}
 
       {/* Logs Container - Scrollable */}
-      <div className="flex-1 min-h-0 px-6 py-4 pb-6">
+      <div className="flex-1 min-h-0 px-6 pt-2 pb-4">
         <div
           ref={logsContainerRef}
           className="bg-gray-900 dark:bg-black rounded-lg h-full overflow-hidden relative"
@@ -464,10 +499,92 @@ const Engine: React.FC = () => {
               }}
             >
               {logs.map((_, index) => (
-                <LogRow key={index} index={index} style={{}} logs={logs} />
+                <LogRow key={index} log={logs[index]} />
               ))}
             </div>
           )}
+          {/* Log Controls - Overlay (Collapsible) */}
+          <div className="absolute bottom-2 right-2 flex items-center bg-gray-800 rounded-md p-1 transition-all duration-200">
+            {/* Collapse Toggle */}
+            <button
+              onClick={() => setLogControlsCollapsed(!logControlsCollapsed)}
+              className="flex items-center justify-center w-6 h-6 text-gray-400 hover:text-white transition-colors"
+              title={logControlsCollapsed ? 'Expand controls' : 'Collapse controls'}
+            >
+              <ChevronRight
+                className={`w-4 h-4 transition-transform duration-200 ${logControlsCollapsed ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {/* Collapsible Buttons */}
+            <div
+              className={`flex items-center gap-2 overflow-hidden transition-all duration-200 ${
+                logControlsCollapsed ? 'max-w-0 opacity-0' : 'max-w-[500px] opacity-100 ml-1'
+              }`}
+            >
+              <button
+                onClick={copyLogsToClipboard}
+                disabled={logs.length === 0}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                  isCopied ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-700 hover:bg-gray-600'
+                }`}
+              >
+                {isCopied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy
+                  </>
+                )}
+              </button>
+              <button
+                onClick={clearLogs}
+                disabled={logs.length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear
+              </button>
+              <div className="h-5 w-px bg-gray-600 mx-1" />
+              {logFileEnabled ? (
+                <button
+                  onClick={handleOpenExportModal}
+                  disabled={isExporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  {isExporting ? 'Exporting...' : 'Export'}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled
+                    title="Enable 'Write engine logs to file' in Settings to export logs"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-700 text-white rounded-md opacity-50 cursor-not-allowed"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export
+                  </button>
+                  <button
+                    onClick={() => {
+                      onNavigateToSettings?.()
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('scroll-to-logging'))
+                      }, 100)
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    <Settings className="w-3 h-3" />
+                    Manage
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -497,6 +614,100 @@ const Engine: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold mb-4">Export Logs</h3>
+
+            <div className="space-y-4">
+              {/* Export Type Selection */}
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="exportType"
+                    value="session"
+                    checked={exportType === 'session'}
+                    onChange={() => setExportType('session')}
+                    className="mt-1 w-4 h-4 text-primary focus:ring-primary"
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium">Current Session</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Export logs from the current session
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="exportType"
+                    value="days"
+                    checked={exportType === 'days'}
+                    onChange={() => setExportType('days')}
+                    disabled={!logDateRange}
+                    className="mt-1 w-4 h-4 text-primary focus:ring-primary disabled:opacity-50"
+                  />
+                  <div className="flex-1">
+                    <span
+                      className={`text-sm font-medium ${!logDateRange ? 'text-muted-foreground' : ''}`}
+                    >
+                      From Log Files
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {logDateRange
+                        ? `Export logs from the past ${exportDays} day${exportDays > 1 ? 's' : ''}`
+                        : 'No saved log files available'}
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Days Slider - only shown when "days" is selected and logs are available */}
+              {exportType === 'days' && logDateRange && logDateRange.availableDays > 1 && (
+                <div className="pl-7 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Days to export:</span>
+                    <span className="font-medium">{exportDays}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={logDateRange.availableDays}
+                    value={exportDays}
+                    onChange={(e) => setExportDays(parseInt(e.target.value))}
+                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>1 day</span>
+                    <span>{logDateRange.availableDays} days</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 text-sm bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExportLogs}
+                disabled={exportType === 'days' && !logDateRange}
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

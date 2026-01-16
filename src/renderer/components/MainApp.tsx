@@ -95,7 +95,7 @@ const MainApp: React.FC = () => {
       case 'dashboard':
         return <Dashboard onPageChange={setCurrentPage} />
       case 'engine':
-        return <Engine />
+        return <Engine onNavigateToSettings={() => setCurrentPage('settings')} />
       case 'settings':
         return <Settings />
       default:

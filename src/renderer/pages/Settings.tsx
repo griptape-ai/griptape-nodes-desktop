@@ -58,6 +58,7 @@ const Settings: React.FC = () => {
   const [upgradingEngine, setUpgradingEngine] = useState(false)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [confirmOnClose, setConfirmOnClose] = useState(true)
+  const [engineLogFileEnabled, setEngineLogFileEnabled] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
   const [switchingChannel, setSwitchingChannel] = useState(false)
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
@@ -128,6 +129,7 @@ const Settings: React.FC = () => {
     loadUpdateInfo()
     loadSystemMonitorSetting()
     loadConfirmOnCloseSetting()
+    loadEngineLogFileSetting()
     loadEngineChannel()
     loadEditorChannel()
     loadUpdateBehaviorSetting()
@@ -162,17 +164,20 @@ const Settings: React.FC = () => {
 
     const handleScrollToUpdates = () => scrollToAndHighlight('desktop-app-updates')
     const handleScrollToEngineUpdates = () => scrollToAndHighlight('engine-updates')
+    const handleScrollToLogging = () => scrollToAndHighlight('logging-diagnostics')
 
     window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged)
     window.pythonAPI.onEnvironmentInfoUpdated(handleEnvironmentInfoUpdated)
     window.addEventListener('scroll-to-updates', handleScrollToUpdates)
     window.addEventListener('scroll-to-engine-updates', handleScrollToEngineUpdates)
+    window.addEventListener('scroll-to-logging', handleScrollToLogging)
 
     return () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
       window.pythonAPI.removeEnvironmentInfoUpdated(handleEnvironmentInfoUpdated)
       window.removeEventListener('scroll-to-updates', handleScrollToUpdates)
       window.removeEventListener('scroll-to-engine-updates', handleScrollToEngineUpdates)
+      window.removeEventListener('scroll-to-logging', handleScrollToLogging)
     }
   }, [loadEnvironmentInfo])
 
@@ -307,6 +312,26 @@ const Settings: React.FC = () => {
       console.error('Failed to save confirm on close setting:', err)
       // Revert on error
       setConfirmOnClose(!checked)
+    }
+  }
+
+  const loadEngineLogFileSetting = async () => {
+    try {
+      const enabled = await window.settingsAPI.getEngineLogFileEnabled()
+      setEngineLogFileEnabled(enabled)
+    } catch (err) {
+      console.error('Failed to load engine log file setting:', err)
+    }
+  }
+
+  const handleToggleEngineLogFile = async (checked: boolean) => {
+    setEngineLogFileEnabled(checked)
+    try {
+      await window.settingsAPI.setEngineLogFileEnabled(checked)
+    } catch (err) {
+      console.error('Failed to save engine log file setting:', err)
+      // Revert on error
+      setEngineLogFileEnabled(!checked)
     }
   }
 
@@ -760,6 +785,34 @@ const Settings: React.FC = () => {
                 </div>
               </label>
             </div>
+          </div>
+        </div>
+
+        {/* Logging and Diagnostics Section */}
+        <div
+          id="logging-diagnostics"
+          className="bg-card rounded-lg shadow-sm border border-border p-6"
+        >
+          <h2 className="text-lg font-semibold mb-4">Logging and Diagnostics</h2>
+          <div className="space-y-4">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={engineLogFileEnabled}
+                onChange={(e) => handleToggleEngineLogFile(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium group-hover:text-foreground transition-colors">
+                  Write engine logs to file
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Save engine output to a log file for troubleshooting. Logs are automatically
+                  rotated when they reach 10MB. When enabled, you can export logs from the Engine
+                  page.
+                </p>
+              </div>
+            </label>
           </div>
         </div>
 

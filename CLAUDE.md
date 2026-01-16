@@ -15,6 +15,7 @@ npm start                    # Start app in dev mode (opens DevTools automatical
 # Type checking and linting
 npm run typecheck           # Run TypeScript type checking
 npm run lint                # Run ESLint
+npm run format              # Run Formatting
 
 # Building (platform-specific)
 npm run pack:osx            # Build for macOS
