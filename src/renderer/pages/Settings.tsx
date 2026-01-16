@@ -5,7 +5,7 @@ import { useEngine } from '../contexts/EngineContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
-import type { UpdateBehavior } from '@/types/global'
+import type { UpdateBehavior, IpcEvent, EnvironmentInfo } from '@/types/global'
 
 const UpdateBehaviorDescription: React.FC = () => (
   <p className="text-xs text-muted-foreground mt-1">
@@ -152,13 +152,13 @@ const Settings: React.FC = () => {
     loadLocalEnginePath()
     window.griptapeAPI.refreshConfig()
 
-    const handleWorkspaceChanged = (_event: any, directory: string) => {
+    const handleWorkspaceChanged = (_event: IpcEvent, directory: string) => {
       setWorkspaceDir(directory)
       setLoadingWorkspace(false)
     }
 
     // Handle environment info updates from main process (e.g., after engine update via banner)
-    const handleEnvironmentInfoUpdated = (_event: any, info: any) => {
+    const handleEnvironmentInfoUpdated = (_event: IpcEvent, info: EnvironmentInfo) => {
       if (info) {
         setEnvironmentInfo(info)
       }

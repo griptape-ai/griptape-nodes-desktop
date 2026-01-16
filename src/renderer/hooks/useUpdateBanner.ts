@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import type { IpcEvent, UpdateInfo } from '@/types/global'
 
 interface UpdateBannerState {
   updateInfo: any
@@ -45,34 +46,34 @@ export function useUpdateBanner(): UpdateBannerState {
 
   // Listen for update events from main process
   useEffect(() => {
-    const handleUpdateAvailable = (_event: any, info: any) => {
+    const handleUpdateAvailable = (_event: IpcEvent, info: UpdateInfo) => {
       setUpdateInfo(info)
       setIsUpdateReadyToInstall(false)
       setDownloadError(null)
     }
 
-    const handleUpdateReadyToInstall = (_event: any, info: any) => {
+    const handleUpdateReadyToInstall = (_event: IpcEvent, info: UpdateInfo) => {
       setUpdateInfo(info)
       setIsUpdateReadyToInstall(true)
       setIsDownloading(false)
       setDownloadError(null)
     }
 
-    const handleDownloadFailed = (_event: any, info: any, _errorMessage: string) => {
+    const handleDownloadFailed = (_event: IpcEvent, info: UpdateInfo, _errorMessage: string) => {
       setUpdateInfo(info)
       setIsUpdateReadyToInstall(false)
       setIsDownloading(false)
       setDownloadError('App update download failed.')
     }
 
-    const handleDownloadStarted = (_event: any, info: any) => {
+    const handleDownloadStarted = (_event: IpcEvent, info: UpdateInfo) => {
       setUpdateInfo(info)
       setIsDownloading(true)
       setDownloadProgress(0)
       setDownloadError(null)
     }
 
-    const handleDownloadProgress = (_event: any, progress: number) => {
+    const handleDownloadProgress = (_event: IpcEvent, progress: number) => {
       setDownloadProgress(progress)
     }
 

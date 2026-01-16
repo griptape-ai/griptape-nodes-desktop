@@ -2,12 +2,26 @@ import Store from 'electron-store'
 import { logger } from '@/main/utils/logger'
 import type { UpdateBehavior } from '@/types/global'
 
+interface SettingsSchema {
+  showSystemMonitor: boolean
+  engineChannel: 'stable' | 'nightly'
+  channelSwitchInProgress: boolean
+  editorChannel: 'stable' | 'nightly'
+  localEnginePath: string | null
+  updateBehavior: UpdateBehavior
+  engineUpdateBehavior: UpdateBehavior
+  dismissedUpdateVersion: string | null
+  dismissedEngineUpdateVersion: string | null
+  confirmOnClose: boolean
+  engineLogFileEnabled: boolean
+}
+
 export class SettingsService {
   private store: any
 
   constructor() {
     // Simple JSON file storage for app settings
-    this.store = new Store({
+    this.store = new Store<SettingsSchema>({
       name: 'settings'
     })
   }

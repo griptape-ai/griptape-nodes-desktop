@@ -66,14 +66,14 @@ const MainApp: React.FC = () => {
     loadSetting()
 
     // Listen for setting changes from Settings page
-    const handleToggle = (event: CustomEvent) => {
-      setShowSystemMonitor(event.detail)
+    const handleToggle = (event: Event) => {
+      setShowSystemMonitor((event as CustomEvent).detail)
     }
 
-    window.addEventListener('system-monitor-toggle', handleToggle as EventListener)
+    window.addEventListener('system-monitor-toggle', handleToggle)
 
     return () => {
-      window.removeEventListener('system-monitor-toggle', handleToggle as EventListener)
+      window.removeEventListener('system-monitor-toggle', handleToggle)
     }
   }, [])
 

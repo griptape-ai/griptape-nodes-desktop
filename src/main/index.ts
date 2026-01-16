@@ -20,6 +20,7 @@ import {
   webContents
 } from 'electron'
 import { getPythonVersion } from '../common/config/versions'
+import { getErrorMessage } from '../common/utils/error'
 import { ENV_INFO_NOT_COLLECTED } from '../common/config/constants'
 import { HttpAuthService } from '../common/services/auth/http'
 import { EngineService } from '../common/services/gtn/engine-service'
@@ -599,7 +600,7 @@ async function performEngineUpdate(): Promise<{ success: boolean; error?: string
 
     return { success: true }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = getErrorMessage(error)
     logger.error('EngineUpdateService: Update failed:', error)
     broadcastToRenderer('engine-update:failed', errorMessage)
 
@@ -1181,10 +1182,7 @@ async function reinstallFullStack(): Promise<void> {
     engineService.addLog('stdout', 'Engine started successfully')
   } catch (error) {
     logger.error('Full stack reinstall failed:', error)
-    engineService.addLog(
-      'stderr',
-      `Reinstall failed: ${error instanceof Error ? error.message : String(error)}`
-    )
+    engineService.addLog('stderr', `Reinstall failed: ${getErrorMessage(error)}`)
     engineService.setError()
     throw error
   }
@@ -1764,7 +1762,7 @@ const setupIPC = () => {
 
       return { success: true }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorMessage = getErrorMessage(error)
       engineService.addLog('stderr', `Failed to execute command: ${errorMessage}`)
       return { success: false, error: errorMessage }
     }

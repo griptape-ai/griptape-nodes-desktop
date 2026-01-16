@@ -2,7 +2,7 @@
 
 // IPC event type for renderer process callbacks
 // Using a simplified type since we don't need the full Electron.IpcRendererEvent
-type IpcEvent = {
+export type IpcEvent = {
   sender: unknown
   senderId: number
 }

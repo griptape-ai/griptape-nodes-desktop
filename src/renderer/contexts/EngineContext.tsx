@@ -7,7 +7,8 @@ import React, {
   useMemo,
   useCallback
 } from 'react'
-import type { EngineStatus, EngineLog } from '@/types/global'
+import type { EngineStatus, EngineLog, IpcEvent } from '@/types/global'
+import { getErrorMessage } from '@/common/utils/error'
 
 export interface OperationMessage {
   type: 'success' | 'error' | 'info'
@@ -77,13 +78,13 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
     }
 
     // Set up event listeners
-    const handleStatusChange = (_event: any, newStatus: EngineStatus) => {
+    const handleStatusChange = (_event: IpcEvent, newStatus: EngineStatus) => {
       if (mounted) {
         setStatus(newStatus)
       }
     }
 
-    const handleNewLog = (_event: any, log: EngineLog) => {
+    const handleNewLog = (_event: IpcEvent, log: EngineLog) => {
       if (mounted && !isInitialLoad) {
         setLogs((prev) => {
           const exists = prev.some(
@@ -178,7 +179,7 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
       console.error('Error reinstalling engine:', error)
       setOperationMessage({
         type: 'error',
-        text: `Error reinstalling engine: ${error instanceof Error ? error.message : String(error)}`
+        text: `Error reinstalling engine: ${getErrorMessage(error)}`
       })
     } finally {
       setIsLoading(false)
