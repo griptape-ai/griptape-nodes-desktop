@@ -57,6 +57,7 @@ const Settings: React.FC = () => {
   const [engineUpdateBehavior, setEngineUpdateBehavior] = useState<UpdateBehavior>('prompt')
   const [upgradingEngine, setUpgradingEngine] = useState(false)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
+  const [confirmOnClose, setConfirmOnClose] = useState(true)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
   const [switchingChannel, setSwitchingChannel] = useState(false)
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
@@ -126,6 +127,7 @@ const Settings: React.FC = () => {
     loadLibrarySettings()
     loadUpdateInfo()
     loadSystemMonitorSetting()
+    loadConfirmOnCloseSetting()
     loadEngineChannel()
     loadEditorChannel()
     loadUpdateBehaviorSetting()
@@ -285,6 +287,26 @@ const Settings: React.FC = () => {
       console.error('Failed to save system monitor setting:', err)
       // Revert on error
       setShowSystemMonitor(!checked)
+    }
+  }
+
+  const loadConfirmOnCloseSetting = async () => {
+    try {
+      const confirm = await window.settingsAPI.getConfirmOnClose()
+      setConfirmOnClose(confirm)
+    } catch (err) {
+      console.error('Failed to load confirm on close setting:', err)
+    }
+  }
+
+  const handleToggleConfirmOnClose = async (checked: boolean) => {
+    setConfirmOnClose(checked)
+    try {
+      await window.settingsAPI.setConfirmOnClose(checked)
+    } catch (err) {
+      console.error('Failed to save confirm on close setting:', err)
+      // Revert on error
+      setConfirmOnClose(!checked)
     }
   }
 
@@ -666,6 +688,30 @@ const Settings: React.FC = () => {
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-6 max-w-6xl mx-auto space-y-6">
+        {/* General Section */}
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <h2 className="text-lg font-semibold mb-4">General</h2>
+          <div className="space-y-4">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={confirmOnClose}
+                onChange={(e) => handleToggleConfirmOnClose(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium group-hover:text-foreground transition-colors">
+                  Confirm before closing
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Show a confirmation dialog when closing the application. The engine will be
+                  stopped when you quit.
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
         {/* Appearance Section */}
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <h2 className="text-lg font-semibold mb-4">Appearance</h2>

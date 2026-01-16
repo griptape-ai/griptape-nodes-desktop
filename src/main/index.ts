@@ -218,6 +218,48 @@ const createWindow = () => {
     engineService.startEngine()
   }
 
+  // Track if we're force closing (user confirmed, setting disabled, or app quitting)
+  let forceClose = false
+
+  // Prompt user before closing the window (only for user-initiated close button clicks)
+  mainWindow.on('close', async (event) => {
+    // Skip confirmation if:
+    // - Already confirmed by user
+    // - Setting is disabled
+    // - App is being quit programmatically (Ctrl+C, app.quit(), etc.)
+    // - Running in development mode (Ctrl+C is common)
+    if (forceClose || !settingsService.getConfirmOnClose() || !isPackaged()) {
+      return
+    }
+
+    // Prevent the window from closing immediately
+    event.preventDefault()
+
+    // Show confirmation dialog with "Don't ask again" checkbox
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'question',
+      buttons: ['Quit', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Confirm Exit',
+      message: 'Are you sure you want to quit?',
+      detail: 'The engine will be stopped and any unsaved work will be lost.',
+      checkboxLabel: "Don't ask me again",
+      checkboxChecked: false
+    })
+
+    // If checkbox was checked, save the preference
+    if (result.checkboxChecked) {
+      settingsService.setConfirmOnClose(false)
+    }
+
+    // If user clicked "Quit" (index 0), close the window
+    if (result.response === 0) {
+      forceClose = true
+      mainWindow.close()
+    }
+  })
+
   // Stop engine when window is closed
   mainWindow.on('closed', () => {
     // Ensure the async stopEngine completes properly
@@ -1980,6 +2022,15 @@ const setupIPC = () => {
     const selectedPath = result.filePaths[0]
     settingsService.setLocalEnginePath(selectedPath)
     return { success: true, path: selectedPath }
+  })
+
+  ipcMain.handle('settings:get-confirm-on-close', () => {
+    return settingsService.getConfirmOnClose()
+  })
+
+  ipcMain.handle('settings:set-confirm-on-close', (_event, confirm: boolean) => {
+    settingsService.setConfirmOnClose(confirm)
+    return { success: true }
   })
 
   // Update service handlers

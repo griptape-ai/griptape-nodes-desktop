@@ -228,7 +228,7 @@ const Engine: React.FC = () => {
           // Format: ]8;id=ID;URL\TEXT]8;;\
           cleanMessage = cleanMessage.replace(
             /\]8;[^;]*;([^\\]+)\\([^\]]+?)\]8;;\\?/g,
-            (match, url, text) => {
+            (_, url, text) => {
               const placeholder = `__LINK_PLACEHOLDER_${linkIndex}__`
               linkIndex++
 
@@ -463,7 +463,7 @@ const Engine: React.FC = () => {
                 color: '#e5e7eb'
               }}
             >
-              {logs.map((log, index) => (
+              {logs.map((_, index) => (
                 <LogRow key={index} index={index} style={{}} logs={logs} />
               ))}
             </div>

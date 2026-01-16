@@ -318,6 +318,8 @@ declare global {
         canceled?: boolean
         error?: string
       }>
+      getConfirmOnClose: () => Promise<boolean>
+      setConfirmOnClose: (confirm: boolean) => Promise<{ success: boolean }>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{
