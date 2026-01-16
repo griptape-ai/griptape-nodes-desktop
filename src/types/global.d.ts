@@ -1,5 +1,91 @@
 // Global type declarations for renderer process
 
+// IPC event type for renderer process callbacks
+// Using a simplified type since we don't need the full Electron.IpcRendererEvent
+type IpcEvent = {
+  sender: unknown
+  senderId: number
+}
+
+// Environment info type
+export interface EnvironmentInfo {
+  build: {
+    version: string
+    commitHash: string
+    commitDate: string
+    branch: string
+    buildDate: string
+    buildId: string
+  }
+  python: {
+    version: string
+    executable: string
+    installedPackages?: string[]
+  }
+  griptapeNodes: {
+    path: string
+    version: string
+    installed: boolean
+  }
+  uv: {
+    version: string
+    toolDir: string
+    pythonInstallDir: string
+  }
+  system: {
+    platform: string
+    arch: string
+    nodeVersion: string
+    electronVersion: string
+  }
+  collectedAt: string
+  errors: string[]
+}
+
+// Update info type for Velopack updates
+export interface UpdateInfo {
+  version: string
+  targetFullRelease?: {
+    version: string
+    size?: number
+  }
+}
+
+// Engine update info type
+export interface EngineUpdateInfo {
+  currentVersion: string
+  latestVersion: string | null
+  updateAvailable: boolean
+}
+
+// System metrics type
+export interface SystemMetrics {
+  cpu: {
+    usage: number
+    model: string
+  }
+  memory: {
+    used: number
+    total: number
+    percentage: number
+    type: 'system' | 'unified'
+    breakdown?: {
+      used: number
+      cached: number
+      available: number
+      total: number
+    }
+  }
+  gpus: Array<{
+    model: string
+    usage: number
+    memory: {
+      used: number
+      total: number
+    }
+  }>
+}
+
 export interface EngineLog {
   timestamp: Date
   type: 'stdout' | 'stderr'
@@ -130,8 +216,10 @@ declare global {
         }
         error?: string
       }>
-      onEnvironmentInfoUpdated: (callback: (event: any, info: any) => void) => void
-      removeEnvironmentInfoUpdated: (callback: (event: any, info: any) => void) => void
+      onEnvironmentInfoUpdated: (callback: (event: IpcEvent, info: EnvironmentInfo) => void) => void
+      removeEnvironmentInfoUpdated: (
+        callback: (event: IpcEvent, info: EnvironmentInfo) => void
+      ) => void
     }
     oauthAPI: {
       login: () => Promise<{
@@ -210,10 +298,10 @@ declare global {
         availableDays: number
       } | null>
       getLogFilePath: () => Promise<string>
-      onStatusChanged: (callback: (event: any, status: EngineStatus) => void) => void
-      removeStatusChanged: (callback: (event: any, status: EngineStatus) => void) => void
-      onLog: (callback: (event: any, log: EngineLog) => void) => void
-      removeLog: (callback: (event: any, log: EngineLog) => void) => void
+      onStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void
+      removeStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void
+      onLog: (callback: (event: IpcEvent, log: EngineLog) => void) => void
+      removeLog: (callback: (event: IpcEvent, log: EngineLog) => void) => void
     }
     editorAPI: {
       requestReloadWebview: () => void
@@ -234,8 +322,8 @@ declare global {
       }) => Promise<void>
       upgrade: () => Promise<{ success: boolean; error?: string }>
       getVersion: () => Promise<{ success: boolean; version?: string; error?: string }>
-      onWorkspaceChanged: (callback: (event: any, directory: string) => void) => void
-      removeWorkspaceChanged: (callback: (event: any, directory: string) => void) => void
+      onWorkspaceChanged: (callback: (event: IpcEvent, directory: string) => void) => void
+      removeWorkspaceChanged: (callback: (event: IpcEvent, directory: string) => void) => void
     }
     electronAPI: {
       getEnvVar: (key: string) => Promise<string | null>
@@ -255,23 +343,25 @@ declare global {
     updateAPI: {
       checkForUpdates: () => Promise<{ success: boolean }>
       isSupported: () => Promise<boolean>
-      getPendingUpdate: () => Promise<{ info: any; isReadyToInstall: boolean } | null>
-      onDownloadStarted: (callback: (event: any, updateInfo: any) => void) => void
-      onDownloadProgress: (callback: (event: any, progress: number) => void) => void
+      getPendingUpdate: () => Promise<{ info: UpdateInfo; isReadyToInstall: boolean } | null>
+      onDownloadStarted: (callback: (event: IpcEvent, updateInfo: UpdateInfo) => void) => void
+      onDownloadProgress: (callback: (event: IpcEvent, progress: number) => void) => void
       onDownloadComplete: (callback: () => void) => void
-      removeDownloadStarted: (callback: (event: any, updateInfo: any) => void) => void
-      removeDownloadProgress: (callback: (event: any, progress: number) => void) => void
+      removeDownloadStarted: (callback: (event: IpcEvent, updateInfo: UpdateInfo) => void) => void
+      removeDownloadProgress: (callback: (event: IpcEvent, progress: number) => void) => void
       removeDownloadComplete: (callback: () => void) => void
       onDownloadFailed: (
-        callback: (event: any, updateInfo: any, errorMessage: string) => void
+        callback: (event: IpcEvent, updateInfo: UpdateInfo, errorMessage: string) => void
       ) => void
       removeDownloadFailed: (
-        callback: (event: any, updateInfo: any, errorMessage: string) => void
+        callback: (event: IpcEvent, updateInfo: UpdateInfo, errorMessage: string) => void
       ) => void
-      onUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => void
-      removeUpdateAvailable: (callback: (event: any, updateInfo: any) => void) => void
-      onUpdateReadyToInstall: (callback: (event: any, updateInfo: any) => void) => void
-      removeUpdateReadyToInstall: (callback: (event: any, updateInfo: any) => void) => void
+      onUpdateAvailable: (callback: (event: IpcEvent, updateInfo: UpdateInfo) => void) => void
+      removeUpdateAvailable: (callback: (event: IpcEvent, updateInfo: UpdateInfo) => void) => void
+      onUpdateReadyToInstall: (callback: (event: IpcEvent, updateInfo: UpdateInfo) => void) => void
+      removeUpdateReadyToInstall: (
+        callback: (event: IpcEvent, updateInfo: UpdateInfo) => void
+      ) => void
     }
     onboardingAPI: {
       isOnboardingComplete: () => Promise<boolean>
@@ -349,60 +439,25 @@ declare global {
         latestVersion: string | null
         updateAvailable: boolean
       } | null>
-      onUpdateAvailable: (
-        callback: (
-          event: any,
-          info: { currentVersion: string; latestVersion: string | null; updateAvailable: boolean }
-        ) => void
-      ) => void
-      removeUpdateAvailable: (
-        callback: (
-          event: any,
-          info: { currentVersion: string; latestVersion: string | null; updateAvailable: boolean }
-        ) => void
-      ) => void
-      onUpdateStarted: (callback: (event: any) => void) => void
-      removeUpdateStarted: (callback: (event: any) => void) => void
-      onUpdateComplete: (callback: (event: any) => void) => void
-      removeUpdateComplete: (callback: (event: any) => void) => void
-      onUpdateFailed: (callback: (event: any, error: string) => void) => void
-      removeUpdateFailed: (callback: (event: any, error: string) => void) => void
+      onUpdateAvailable: (callback: (event: IpcEvent, info: EngineUpdateInfo) => void) => void
+      removeUpdateAvailable: (callback: (event: IpcEvent, info: EngineUpdateInfo) => void) => void
+      onUpdateStarted: (callback: (event: IpcEvent) => void) => void
+      removeUpdateStarted: (callback: (event: IpcEvent) => void) => void
+      onUpdateComplete: (callback: (event: IpcEvent) => void) => void
+      removeUpdateComplete: (callback: (event: IpcEvent) => void) => void
+      onUpdateFailed: (callback: (event: IpcEvent, error: string) => void) => void
+      removeUpdateFailed: (callback: (event: IpcEvent, error: string) => void) => void
     }
     systemMonitorAPI: {
       getMetrics: () => Promise<{
         success: boolean
-        metrics?: {
-          cpu: {
-            usage: number
-            model: string
-          }
-          memory: {
-            used: number
-            total: number
-            percentage: number
-            type: 'system' | 'unified'
-            breakdown?: {
-              used: number
-              cached: number
-              available: number
-              total: number
-            }
-          }
-          gpus: Array<{
-            model: string
-            usage: number
-            memory: {
-              used: number
-              total: number
-            }
-          }>
-        }
+        metrics?: SystemMetrics
         error?: string
       }>
       startMonitoring: () => Promise<{ success: boolean }>
       stopMonitoring: () => Promise<{ success: boolean }>
-      onMetricsUpdate: (callback: (metrics: any) => void) => void
-      removeMetricsUpdate: (callback: (metrics: any) => void) => void
+      onMetricsUpdate: (callback: (metrics: SystemMetrics) => void) => void
+      removeMetricsUpdate: (callback: (metrics: SystemMetrics) => void) => void
     }
     menuAPI: {
       about: () => Promise<void>

@@ -65,19 +65,16 @@ function getEnvNumber(key: string, defaultValue: number): number {
  *
  * Constructor config takes precedence over environment variables.
  */
-export class FakeUpdateManager
-  implements
-    Pick<
-      UpdateManager,
-      | 'getCurrentVersion'
-      | 'getAppId'
-      | 'isPortable'
-      | 'getUpdatePendingRestart'
-      | 'checkForUpdatesAsync'
-      | 'downloadUpdateAsync'
-      | 'waitExitThenApplyUpdate'
-    >
-{
+export class FakeUpdateManager implements Pick<
+  UpdateManager,
+  | 'getCurrentVersion'
+  | 'getAppId'
+  | 'isPortable'
+  | 'getUpdatePendingRestart'
+  | 'checkForUpdatesAsync'
+  | 'downloadUpdateAsync'
+  | 'waitExitThenApplyUpdate'
+> {
   private config: Required<FakeUpdateConfig>
   private downloadedUpdate: UpdateInfo | null = null
 

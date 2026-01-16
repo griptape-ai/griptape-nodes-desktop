@@ -11,6 +11,7 @@ import {
   app,
   BrowserWindow,
   Menu,
+  MenuItemConstructorOptions,
   dialog,
   ipcMain,
   shell,
@@ -102,9 +103,6 @@ const pythonService = new PythonService(userDataPath, uvService)
 
 // Initialize auth service without persistence - it will be enabled via enablePersistence() when needed
 const authService = new HttpAuthService()
-// const authService = (process.env.AUTH_SCHEME === 'custom')
-//   ? new CustomAuthService()
-//   : new HttpAuthService();
 const gtnService = new GtnService(
   userDataPath,
   gtnDefaultWorkspaceDir,
@@ -947,7 +945,7 @@ const createMenu = (getCurrentPage: () => string) => {
   }
 
   // Build template based on platform
-  const template: any[] = []
+  const template: MenuItemConstructorOptions[] = []
 
   // macOS: Include app menu with About, Check for Updates, Hide, and Quit
   if (process.platform === 'darwin') {
@@ -1043,7 +1041,7 @@ const createMenu = (getCurrentPage: () => string) => {
     })
   }
 
-  const menu = Menu.buildFromTemplate(template as any)
+  const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
 }
 

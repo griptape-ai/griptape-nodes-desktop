@@ -301,8 +301,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
 
       // Handle process error
       this.engineProcess.on('error', (error) => {
-        this.addLog('stderr', `Engine process error: ${error.message}`)
-        this.addLog('stderr', `Error code: ${(error as any).code}, errno: ${(error as any).errno}`)
+        this.addLog('stderr', `Engine process error: ${error}`)
         this.setEngineStatus('error')
       })
     } catch (error: any) {
