@@ -67,10 +67,6 @@ interface GtnServiceEvents {
   'workspace-changed': [string]
 }
 
-interface GtnWorkspaceSchema {
-  workspaceDirectory: string
-}
-
 /**
  * Interface for the EngineService methods used by GtnService.
  * This avoids circular dependency since EngineService imports GtnService.
