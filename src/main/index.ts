@@ -11,6 +11,7 @@ import {
   app,
   BrowserWindow,
   Menu,
+  MenuItemConstructorOptions,
   dialog,
   ipcMain,
   shell,
@@ -19,6 +20,7 @@ import {
   webContents
 } from 'electron'
 import { getPythonVersion } from '../common/config/versions'
+import { getErrorMessage } from '../common/utils/error'
 import { ENV_INFO_NOT_COLLECTED } from '../common/config/constants'
 import { HttpAuthService } from '../common/services/auth/http'
 import { EngineService } from '../common/services/gtn/engine-service'
@@ -102,9 +104,6 @@ const pythonService = new PythonService(userDataPath, uvService)
 
 // Initialize auth service without persistence - it will be enabled via enablePersistence() when needed
 const authService = new HttpAuthService()
-// const authService = (process.env.AUTH_SCHEME === 'custom')
-//   ? new CustomAuthService()
-//   : new HttpAuthService();
 const gtnService = new GtnService(
   userDataPath,
   gtnDefaultWorkspaceDir,
@@ -601,7 +600,7 @@ async function performEngineUpdate(): Promise<{ success: boolean; error?: string
 
     return { success: true }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = getErrorMessage(error)
     logger.error('EngineUpdateService: Update failed:', error)
     broadcastToRenderer('engine-update:failed', errorMessage)
 
@@ -947,7 +946,7 @@ const createMenu = (getCurrentPage: () => string) => {
   }
 
   // Build template based on platform
-  const template: any[] = []
+  const template: MenuItemConstructorOptions[] = []
 
   // macOS: Include app menu with About, Check for Updates, Hide, and Quit
   if (process.platform === 'darwin') {
@@ -1043,7 +1042,7 @@ const createMenu = (getCurrentPage: () => string) => {
     })
   }
 
-  const menu = Menu.buildFromTemplate(template as any)
+  const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
 }
 
@@ -1183,10 +1182,7 @@ async function reinstallFullStack(): Promise<void> {
     engineService.addLog('stdout', 'Engine started successfully')
   } catch (error) {
     logger.error('Full stack reinstall failed:', error)
-    engineService.addLog(
-      'stderr',
-      `Reinstall failed: ${error instanceof Error ? error.message : String(error)}`
-    )
+    engineService.addLog('stderr', `Reinstall failed: ${getErrorMessage(error)}`)
     engineService.setError()
     throw error
   }
@@ -1766,7 +1762,7 @@ const setupIPC = () => {
 
       return { success: true }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorMessage = getErrorMessage(error)
       engineService.addLog('stderr', `Failed to execute command: ${errorMessage}`)
       return { success: false, error: errorMessage }
     }

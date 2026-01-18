@@ -13,18 +13,6 @@ export class CustomAuthService {
     this.store = new PersistentStore<AuthData>('auth-storage', false)
   }
 
-  // // TODO: Do this in some kind of lifecycle hook
-  // // Handle URL scheme callback (for when app is already running)
-  // app.on('open-url', (event, url) => {
-  //   event.preventDefault();
-  //   logger.info('Received URL:', url);
-  //   oauthService.handleUrlCallback(url);
-  // });
-
-  // getRedirectUri(): string {
-  //   return 'gtn://auth/callback';
-  // }
-
   async start() {}
   async stop() {}
   async login() {

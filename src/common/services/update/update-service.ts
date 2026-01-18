@@ -5,6 +5,10 @@ import { FakeUpdateManager } from './fake-update-manager'
 
 declare const __VELOPACK_CHANNEL__: string | undefined
 
+interface UpdateConfigSchema {
+  channel: string
+}
+
 export class UpdateService {
   private updateManager: UpdateManager | FakeUpdateManager
   private store: any
@@ -14,7 +18,7 @@ export class UpdateService {
 
   constructor(isPackaged: boolean) {
     this.isPackaged = isPackaged
-    this.store = new Store({
+    this.store = new Store<UpdateConfigSchema>({
       name: isPackaged ? 'update-config' : 'update-config-dev'
     })
 

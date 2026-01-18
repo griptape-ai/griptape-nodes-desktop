@@ -6,13 +6,23 @@ interface OnboardingServiceEvents {
   'workspace-setup-complete': []
 }
 
+interface OnboardingSchema {
+  onboardingComplete: boolean
+  credentialStorageEnabled: boolean
+  keychainAccessGranted: boolean
+  keychainVerificationSeen: boolean
+  workspaceSetupComplete: boolean
+  advancedLibraryEnabled: boolean
+  cloudLibraryEnabled: boolean
+}
+
 export class OnboardingService extends EventEmitter<OnboardingServiceEvents> {
   private store: any
 
   constructor() {
     super()
     // Simple JSON file storage - won't trigger keychain access
-    this.store = new Store({
+    this.store = new Store<OnboardingSchema>({
       name: 'onboarding'
     })
   }

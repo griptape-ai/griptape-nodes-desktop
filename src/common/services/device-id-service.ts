@@ -1,7 +1,7 @@
 import Store from 'electron-store'
 import { logger } from '@/main/utils/logger'
 
-interface DeviceIdData {
+interface DeviceIdSchema {
   deviceId: string
   generatedAt: string
 }
@@ -11,7 +11,7 @@ export class DeviceIdService {
   private cachedDeviceId: string | null = null
 
   constructor() {
-    this.store = new Store({
+    this.store = new Store<DeviceIdSchema>({
       name: 'device-info'
     })
   }
@@ -57,7 +57,7 @@ export class DeviceIdService {
   }
 
   // Get information about the device ID for debugging/transparency
-  getDeviceIdInfo(): DeviceIdData | null {
+  getDeviceIdInfo(): DeviceIdSchema | null {
     const deviceId = this.store.get('deviceId')
     const generatedAt = this.store.get('generatedAt')
 

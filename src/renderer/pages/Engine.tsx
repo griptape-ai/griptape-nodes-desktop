@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useEngine } from '../contexts/EngineContext'
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
+import { cleanAnsiForDisplay, stripAnsiCodes } from '../utils/ansi'
 
 const ansiConverter = new Convert({
   fg: '#e5e7eb',
@@ -60,19 +61,7 @@ const LogRow = memo(({ log }: LogRowProps) => {
   const processedMessage = useMemo(() => {
     try {
       // Clean up ANSI cursor control codes and spinner characters
-      let cleanMessage = log.message
-        // Remove cursor show/hide codes
-        .replace(/\x1b\[\?25[lh]/g, '')
-        // Remove cursor position codes
-        .replace(/\x1b\[\d*[A-G]/g, '')
-        // Remove Windows-specific cursor positioning
-        .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
-        // Handle Windows CRLF line endings
-        .replace(/\r\n/g, '\n')
-        // Remove carriage returns that cause overwriting
-        .replace(/\r(?!\n)/g, '')
-        // Replace spinner characters with a simple indicator
-        .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
+      let cleanMessage = cleanAnsiForDisplay(log.message)
 
       // Handle OSC 8 hyperlinks BEFORE ANSI conversion
       // Looking at the actual format: ]8;id=ID;URL\TEXT]8;;\
@@ -274,18 +263,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     try {
       const plainTextLogs = logs
         .map((log) => {
-          const cleanMessage = log.message
-            .replace(/\x1b\[[0-9;]*m/g, '')
-            .replace(/\x1b\[\?25[lh]/g, '')
-            .replace(/\x1b\[\d*[A-G]/g, '')
-            .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
-            .replace(/\r\n/g, '\n')
-            .replace(/\r(?!\n)/g, '')
-            .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
-            .replace(/\]8;[^;]*;[^\\]+\\([^\]]+?)\]8;;\\?/g, '$1')
-            .replace(/[\x00-\x1F\x7F]/g, '')
-            .trim()
-          return `${formatTimestamp(log.timestamp)} | ${cleanMessage}`
+          return `${formatTimestamp(log.timestamp)} | ${stripAnsiCodes(log.message)}`
         })
         .join('\n')
 
@@ -455,19 +433,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                 .reverse()
                 .find((log) => log.type === 'stderr' && log.message.trim())
               if (lastError) {
-                // Clean ANSI codes for display
-                const cleanMessage = lastError.message
-                  .replace(/\x1b\[[0-9;]*m/g, '')
-                  .replace(/\x1b\[\?25[lh]/g, '')
-                  .replace(/\x1b\[\d*[A-G]/g, '')
-                  .replace(/\x1b\[\d+;\d+[HfRr]/g, '')
-                  .replace(/\r\n/g, '\n')
-                  .replace(/\r(?!\n)/g, '')
-                  .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '•')
-                  .replace(/\]8;[^;]*;[^\\]+\\([^\]]+?)\]8;;\\?/g, '$1')
-                  .replace(/[\x00-\x1F\x7F]/g, '')
-                  .trim()
-                return cleanMessage
+                return stripAnsiCodes(lastError.message)
               }
               return 'An error occurred during engine initialization.'
             })()}
@@ -498,8 +464,8 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                 color: '#e5e7eb'
               }}
             >
-              {logs.map((_, index) => (
-                <LogRow key={index} log={logs[index]} />
+              {logs.map((log, index) => (
+                <LogRow key={`${new Date(log.timestamp).getTime()}-${index}`} log={log} />
               ))}
             </div>
           )}

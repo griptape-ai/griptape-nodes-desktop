@@ -23,6 +23,7 @@ import { HttpAuthService } from '../auth/http'
 import { OnboardingService } from '../onboarding-service'
 import { SettingsService } from '../settings-service'
 import { FakeEngineUpdateManager } from '../update/fake-update-manager'
+import { getErrorMessage } from '../../utils/error'
 import Store from 'electron-store'
 
 async function findFiles(dir: string, target: string): Promise<string[]> {
@@ -66,11 +67,20 @@ interface GtnServiceEvents {
   'workspace-changed': [string]
 }
 
+/**
+ * Interface for the EngineService methods used by GtnService.
+ * This avoids circular dependency since EngineService imports GtnService.
+ */
+interface EngineServiceRef {
+  addLog(type: 'stdout' | 'stderr', message: string): void
+  setError(): void
+}
+
 export class GtnService extends EventEmitter<GtnServiceEvents> {
   private isReady: boolean = false
   private gtnExecutablePath?: string
   private store: any
-  private engineService?: any // Reference to EngineService for forwarding logs
+  private engineService?: EngineServiceRef
 
   constructor(
     private userDataDir: string,
@@ -100,7 +110,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   /**
    * Set the engine service reference for forwarding initialization logs
    */
-  setEngineService(engineService: any): void {
+  setEngineService(engineService: EngineServiceRef): void {
     this.engineService = engineService
   }
 
@@ -117,10 +127,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     } catch (error) {
       logger.error('GTN installation failed:', error)
       if (this.engineService) {
-        this.engineService.addLog(
-          'stderr',
-          `GTN installation failed: ${error instanceof Error ? error.message : String(error)}`
-        )
+        this.engineService.addLog('stderr', `GTN installation failed: ${getErrorMessage(error)}`)
         this.engineService.setError()
       }
       throw error
@@ -178,7 +185,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         if (this.engineService) {
           this.engineService.addLog(
             'stderr',
-            `GTN initialization failed: ${error instanceof Error ? error.message : String(error)}`
+            `GTN initialization failed: ${getErrorMessage(error)}`
           )
           this.engineService.setError()
         }
@@ -792,10 +799,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     } catch (error) {
       logger.error('GTN initialization failed during reinstall:', error)
       if (this.engineService) {
-        this.engineService.addLog(
-          'stderr',
-          `GTN initialization failed: ${error instanceof Error ? error.message : String(error)}`
-        )
+        this.engineService.addLog('stderr', `GTN initialization failed: ${getErrorMessage(error)}`)
         this.engineService.setError()
       }
       throw error

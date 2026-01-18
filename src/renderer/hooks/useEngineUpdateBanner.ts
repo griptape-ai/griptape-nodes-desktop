@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import type { IpcEvent } from '@/types/global'
 
 interface EngineUpdateInfo {
   currentVersion: string
@@ -41,7 +42,7 @@ export function useEngineUpdateBanner(): EngineUpdateBannerState {
 
   // Listen for engine update events from main process
   useEffect(() => {
-    const handleUpdateAvailable = (_event: any, info: EngineUpdateInfo) => {
+    const handleUpdateAvailable = (_event: IpcEvent, info: EngineUpdateInfo) => {
       setUpdateInfo(info)
       setUpdateError(null)
     }
@@ -57,7 +58,7 @@ export function useEngineUpdateBanner(): EngineUpdateBannerState {
       setUpdateError(null)
     }
 
-    const handleUpdateFailed = (_event: any, error: string) => {
+    const handleUpdateFailed = (_event: IpcEvent, error: string) => {
       setIsUpdating(false)
       setUpdateError(error || 'Engine update failed')
     }

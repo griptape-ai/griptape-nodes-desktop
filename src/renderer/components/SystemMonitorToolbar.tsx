@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Activity } from 'lucide-react'
 import { SystemMetrics } from '../types/system-metrics'
 import {
@@ -173,7 +173,7 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
               const hasUsage = gpu.usage >= 0
               const vramPercentage = hasVram ? (gpu.memory.used / gpu.memory.total) * 100 : 0
               return (
-                <div key={index} className={hasUsage ? 'space-y-2' : 'space-y-1'}>
+                <div key={`${gpu.model}-${index}`} className={hasUsage ? 'space-y-2' : 'space-y-1'}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground uppercase tracking-wide">
                       GPU {metrics.gpus.length > 1 ? index + 1 : ''}

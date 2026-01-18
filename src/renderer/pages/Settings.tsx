@@ -5,7 +5,7 @@ import { useEngine } from '../contexts/EngineContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
-import type { UpdateBehavior } from '@/types/global'
+import type { UpdateBehavior, IpcEvent, EnvironmentInfo } from '@/types/global'
 
 const UpdateBehaviorDescription: React.FC = () => (
   <p className="text-xs text-muted-foreground mt-1">
@@ -82,6 +82,20 @@ const Settings: React.FC = () => {
   // Apply state
   const [isApplyingChanges, setIsApplyingChanges] = useState(false)
 
+  // Toast notification state
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'info'
+    text: string
+  } | null>(null)
+
+  // Auto-clear notification after 3 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
+
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
     setError(null)
@@ -138,13 +152,13 @@ const Settings: React.FC = () => {
     loadLocalEnginePath()
     window.griptapeAPI.refreshConfig()
 
-    const handleWorkspaceChanged = (_event: any, directory: string) => {
+    const handleWorkspaceChanged = (_event: IpcEvent, directory: string) => {
       setWorkspaceDir(directory)
       setLoadingWorkspace(false)
     }
 
     // Handle environment info updates from main process (e.g., after engine update via banner)
-    const handleEnvironmentInfoUpdated = (_event: any, info: any) => {
+    const handleEnvironmentInfoUpdated = (_event: IpcEvent, info: EnvironmentInfo) => {
       if (info) {
         setEnvironmentInfo(info)
       }
@@ -398,7 +412,7 @@ const Settings: React.FC = () => {
   const copyApiKey = () => {
     if (apiKey) {
       navigator.clipboard.writeText(apiKey)
-      alert('API Key copied to clipboard!')
+      setNotification({ type: 'success', text: 'API Key copied to clipboard!' })
     }
   }
 
@@ -559,7 +573,7 @@ const Settings: React.FC = () => {
       setCurrentChannel(newChannel)
     } catch (err) {
       console.error('Failed to change channel:', err)
-      alert('Failed to change update channel')
+      setNotification({ type: 'error', text: 'Failed to change update channel' })
     }
   }
 
@@ -620,7 +634,7 @@ const Settings: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to switch editor channel:', err)
-      alert('Failed to switch editor channel')
+      setNotification({ type: 'error', text: 'Failed to switch editor channel' })
     }
   }
 
@@ -712,6 +726,31 @@ const Settings: React.FC = () => {
 
   return (
     <div className="h-full overflow-y-auto">
+      {/* Toast Notification */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div
+            className={cn(
+              'px-4 py-3 rounded-lg shadow-lg border flex items-center gap-2',
+              notification.type === 'success' &&
+                'bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-500',
+              notification.type === 'error' &&
+                'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-500',
+              notification.type === 'info' &&
+                'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500'
+            )}
+          >
+            <span className="text-sm font-medium">{notification.text}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-2 hover:opacity-70 transition-opacity"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         {/* General Section */}
         <div className="bg-card rounded-lg shadow-sm border border-border p-6">
@@ -1493,8 +1532,8 @@ const Settings: React.FC = () => {
                       Warnings ({environmentInfo.errors.length})
                     </summary>
                     <ul className="mt-1 space-y-1">
-                      {environmentInfo.errors.map((error: string, index: number) => (
-                        <li key={index} className="text-yellow-600">
+                      {environmentInfo.errors.map((error: string) => (
+                        <li key={error} className="text-yellow-600">
                           • {error}
                         </li>
                       ))}
