@@ -171,7 +171,9 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
               <h2 className="text-lg font-semibold text-foreground">
                 What&apos;s New in v{releaseNotes.version}
               </h2>
-              <p className="text-sm text-muted-foreground">The app has been updated</p>
+              <p className="text-sm text-muted-foreground">
+                Check out the latest updates and improvements
+              </p>
             </div>
           </div>
           <button
