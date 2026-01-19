@@ -777,6 +777,13 @@ async function checkForReleaseNotes() {
     return
   }
 
+  // Check if user has disabled release notes notifications
+  if (!settingsService.getShowReleaseNotes()) {
+    logger.info('ReleaseNotesCheck: User disabled release notes, updating lastSeenVersion')
+    settingsService.setLastSeenVersion(currentVersion)
+    return
+  }
+
   // Store pending release notes and notify renderer
   logger.info('ReleaseNotesCheck: Version changed, showing release notes modal')
   pendingReleaseNotes = {
@@ -2108,6 +2115,15 @@ const setupIPC = () => {
 
   ipcMain.handle('settings:set-confirm-on-close', (_event, confirm: boolean) => {
     settingsService.setConfirmOnClose(confirm)
+    return { success: true }
+  })
+
+  ipcMain.handle('settings:get-show-release-notes', () => {
+    return settingsService.getShowReleaseNotes()
+  })
+
+  ipcMain.handle('settings:set-show-release-notes', (_event, show: boolean) => {
+    settingsService.setShowReleaseNotes(show)
     return { success: true }
   })
 

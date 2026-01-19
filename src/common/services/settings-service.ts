@@ -15,6 +15,7 @@ interface SettingsSchema {
   confirmOnClose: boolean
   engineLogFileEnabled: boolean
   lastSeenVersion: string | null
+  showReleaseNotes: boolean
 }
 
 export class SettingsService {
@@ -174,5 +175,21 @@ export class SettingsService {
   setLastSeenVersion(version: string | null): void {
     this.store.set('lastSeenVersion', version)
     logger.info('SettingsService: lastSeenVersion set to', version)
+  }
+
+  /**
+   * Get whether to show release notes after updates.
+   * Default is true (show the modal).
+   */
+  getShowReleaseNotes(): boolean {
+    return this.store.get('showReleaseNotes', true)
+  }
+
+  /**
+   * Set whether to show release notes after updates.
+   */
+  setShowReleaseNotes(show: boolean): void {
+    this.store.set('showReleaseNotes', show)
+    logger.info('SettingsService: showReleaseNotes set to', show)
   }
 }

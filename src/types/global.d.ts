@@ -428,6 +428,8 @@ declare global {
       }>
       getConfirmOnClose: () => Promise<boolean>
       setConfirmOnClose: (confirm: boolean) => Promise<{ success: boolean }>
+      getShowReleaseNotes: () => Promise<boolean>
+      setShowReleaseNotes: (show: boolean) => Promise<{ success: boolean }>
       getEngineLogFileEnabled: () => Promise<boolean>
       setEngineLogFileEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
     }

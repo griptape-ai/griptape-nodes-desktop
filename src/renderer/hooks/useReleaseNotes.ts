@@ -4,7 +4,7 @@ import type { IpcEvent, ReleaseNotesInfo } from '@/types/global'
 interface ReleaseNotesState {
   releaseNotes: ReleaseNotesInfo | null
   isVisible: boolean
-  handleDismiss: () => Promise<void>
+  handleDismiss: (dontShowAgain: boolean) => Promise<void>
 }
 
 /**
@@ -45,9 +45,12 @@ export function useReleaseNotes(isAuthenticated: boolean): ReleaseNotesState {
     }
   }, [])
 
-  const handleDismiss = useCallback(async () => {
+  const handleDismiss = useCallback(async (dontShowAgain: boolean) => {
     try {
       await window.releaseNotesAPI.dismiss()
+      if (dontShowAgain) {
+        await window.settingsAPI.setShowReleaseNotes(false)
+      }
     } catch (err) {
       console.error('Failed to dismiss release notes:', err)
     }

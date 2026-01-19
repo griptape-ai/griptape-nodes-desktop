@@ -1,11 +1,18 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Sparkles, ExternalLink, X } from 'lucide-react'
 import type { ReleaseNotesInfo } from '@/types/global'
 
 interface ReleaseNotesModalProps {
   releaseNotes: ReleaseNotesInfo
-  onDismiss: () => void
+  onDismiss: (dontShowAgain: boolean) => void
   onOpenExternal: (url: string) => void
+}
+
+/**
+ * Strips GitHub attribution from list items (e.g., "by @user in #123")
+ */
+function stripAttribution(text: string): string {
+  return text.replace(/\s+by\s+@[\w-]+\s+in\s+#\d+\s*$/i, '').trim()
 }
 
 /**
@@ -60,12 +67,48 @@ function renderMarkdown(content: string): React.ReactNode {
 
     while ((match = boldRegex.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        parts.push(text.slice(lastIndex, match.index))
+        parts.push(processUrls(text.slice(lastIndex, match.index)))
       }
       parts.push(
         <strong key={match.index} className="font-semibold">
           {match[1] || match[2]}
         </strong>
+      )
+      lastIndex = match.index + match[0].length
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(processUrls(text.slice(lastIndex)))
+    }
+
+    return parts.length > 0 ? parts : processUrls(text)
+  }
+
+  const processUrls = (text: string): React.ReactNode => {
+    // Handle bare URLs: https://...
+    // Display "Full Changelog" as link text for changelog URLs, otherwise show the URL
+    const urlRegex = /(https?:\/\/[^\s]+)/g
+    const parts: React.ReactNode[] = []
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+
+    while ((match = urlRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index))
+      }
+      const url = match[1]
+      parts.push(
+        <a
+          key={match.index}
+          href={url}
+          onClick={(e) => {
+            e.preventDefault()
+            window.electronAPI.openExternal(url)
+          }}
+          className="text-blue-400 hover:text-blue-300 underline"
+        >
+          {url}
+        </a>
       )
       lastIndex = match.index + match[0].length
     }
@@ -130,9 +173,10 @@ function renderMarkdown(content: string): React.ReactNode {
 
     // List items
     if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+      const itemText = stripAttribution(trimmedLine.slice(2))
       listItems.push(
         <li key={index} className="text-muted-foreground">
-          {processInlineFormatting(trimmedLine.slice(2))}
+          {processInlineFormatting(itemText)}
         </li>
       )
       return
@@ -156,11 +200,12 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
   onDismiss,
   onOpenExternal
 }) => {
+  const [dontShowAgain, setDontShowAgain] = useState(false)
   const releaseUrl = `https://github.com/griptape-ai/griptape-nodes-desktop/releases/tag/v${releaseNotes.version}`
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-card border border-border rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
+      <div className="bg-card border border-border rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -177,7 +222,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onDismiss}
+            onClick={() => onDismiss(dontShowAgain)}
             className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
             aria-label="Close"
           >
@@ -197,12 +242,23 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
             <ExternalLink className="w-4 h-4" />
             View on GitHub
           </button>
-          <button
-            onClick={onDismiss}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
-          >
-            Got it!
-          </button>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dontShowAgain}
+                onChange={(e) => setDontShowAgain(e.target.checked)}
+                className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background"
+              />
+              Don&apos;t show again
+            </label>
+            <button
+              onClick={() => onDismiss(dontShowAgain)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
+            >
+              Got it!
+            </button>
+          </div>
         </div>
       </div>
     </div>
