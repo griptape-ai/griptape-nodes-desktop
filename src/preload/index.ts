@@ -337,6 +337,22 @@ contextBridge.exposeInMainWorld('systemMonitorAPI', {
   }
 })
 
+// Release notes API for showing release notes after updates
+contextBridge.exposeInMainWorld('releaseNotesAPI', {
+  getPending: () => ipcRenderer.invoke('release-notes:get-pending'),
+  dismiss: () => ipcRenderer.invoke('release-notes:dismiss'),
+  onAvailable: (
+    callback: (event: IpcRendererEvent, info: { version: string; content: string }) => void
+  ) => {
+    ipcRenderer.on('release-notes:available', callback)
+  },
+  removeAvailable: (
+    callback: (event: IpcRendererEvent, info: { version: string; content: string }) => void
+  ) => {
+    ipcRenderer.removeListener('release-notes:available', callback)
+  }
+})
+
 // Menu API for custom Windows title bar
 contextBridge.exposeInMainWorld('menuAPI', {
   about: () => ipcRenderer.invoke('menu:about'),

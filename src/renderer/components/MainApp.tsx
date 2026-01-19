@@ -8,8 +8,10 @@ import { WindowsTitleBar } from './WindowsTitleBar'
 import { EditorWebview } from './EditorWebview'
 import UpdateBanner from './UpdateBanner'
 import EngineUpdateBanner from './EngineUpdateBanner'
+import { ReleaseNotesModal } from './ReleaseNotesModal'
 import { useUpdateBanner } from '../hooks/useUpdateBanner'
 import { useEngineUpdateBanner } from '../hooks/useEngineUpdateBanner'
+import { useReleaseNotes } from '../hooks/useReleaseNotes'
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -46,6 +48,13 @@ const MainApp: React.FC = () => {
     handleUpdate: handleEngineUpdate,
     clearError: clearEngineUpdateError
   } = useEngineUpdateBanner()
+
+  // Release notes modal state (MainApp only renders when authenticated)
+  const {
+    releaseNotes,
+    isVisible: showReleaseNotes,
+    handleDismiss: handleDismissReleaseNotes
+  } = useReleaseNotes(true)
 
   // Notify main process when page changes
   useEffect(() => {
@@ -153,6 +162,15 @@ const MainApp: React.FC = () => {
                 window.dispatchEvent(new CustomEvent('scroll-to-engine-updates'))
               }, 100)
             }}
+          />
+        )}
+
+        {/* Release Notes Modal */}
+        {showReleaseNotes && releaseNotes && (
+          <ReleaseNotesModal
+            releaseNotes={releaseNotes}
+            onDismiss={handleDismissReleaseNotes}
+            onOpenExternal={(url) => window.electronAPI.openExternal(url)}
           />
         )}
 

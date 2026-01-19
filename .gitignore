@@ -3,6 +3,8 @@ mise.toml
 dist
 out
 Releases
+# added during the release workflow
+RELEASE_NOTES.md
 .DS_Store
 !scripts/dmg_template/.DS_Store
 .eslintcache

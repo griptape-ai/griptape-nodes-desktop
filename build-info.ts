@@ -1,5 +1,6 @@
 import { execSync } from 'child_process'
 import * as fs from 'fs'
+import * as path from 'path'
 
 interface BuildInfo {
   version: string
@@ -8,6 +9,11 @@ interface BuildInfo {
   branch: string
   buildDate: string
   buildId: string
+}
+
+interface ReleaseNotes {
+  version: string
+  content: string
 }
 // Simple function to get build info without requiring the TS module
 export function getBuildInfo(): BuildInfo {
@@ -46,6 +52,29 @@ export function getBuildInfo(): BuildInfo {
       branch: 'unknown',
       buildDate: new Date().toISOString(),
       buildId: Date.now().toString()
+    }
+  }
+}
+
+/**
+ * Reads release notes from RELEASE_NOTES.md at build time.
+ * The content is bundled with the app and displayed after updates.
+ */
+export function getReleaseNotes(): ReleaseNotes {
+  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+  const version = packageJson.version
+
+  try {
+    const releaseNotesPath = path.join(process.cwd(), 'RELEASE_NOTES.md')
+    const content = fs.readFileSync(releaseNotesPath, 'utf8')
+    return {
+      version,
+      content
+    }
+  } catch {
+    return {
+      version,
+      content: ''
     }
   }
 }

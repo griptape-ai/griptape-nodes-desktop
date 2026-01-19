@@ -14,6 +14,7 @@ interface SettingsSchema {
   dismissedEngineUpdateVersion: string | null
   confirmOnClose: boolean
   engineLogFileEnabled: boolean
+  lastSeenVersion: string | null
 }
 
 export class SettingsService {
@@ -157,5 +158,21 @@ export class SettingsService {
   setEngineLogFileEnabled(enabled: boolean): void {
     this.store.set('engineLogFileEnabled', enabled)
     logger.info('SettingsService: engineLogFileEnabled set to', enabled)
+  }
+
+  /**
+   * Get the last app version the user has seen release notes for.
+   * Used to determine whether to show the release notes modal after an update.
+   */
+  getLastSeenVersion(): string | null {
+    return this.store.get('lastSeenVersion', null)
+  }
+
+  /**
+   * Set the last app version the user has seen release notes for.
+   */
+  setLastSeenVersion(version: string | null): void {
+    this.store.set('lastSeenVersion', version)
+    logger.info('SettingsService: lastSeenVersion set to', version)
   }
 }

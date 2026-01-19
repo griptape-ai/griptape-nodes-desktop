@@ -54,6 +54,12 @@ declare const __BUILD_INFO__: {
   buildId: string
 }
 
+// Release notes injected at compile time
+declare const __RELEASE_NOTES__: {
+  version: string
+  content: string
+}
+
 declare const __VELOPACK_CHANNEL__: string | undefined
 
 app.setAppUserModelId('ai.griptape.nodes.desktop')
@@ -529,6 +535,9 @@ app.on('ready', async () => {
   // Check for engine updates on startup (async in background)
   checkForEngineUpdates(true)
 
+  // Check if we should show release notes after an update (async in background)
+  checkForReleaseNotes()
+
   // Set up periodic update checks (every 6 hours)
   const SIX_HOURS_MS = 6 * 60 * 60 * 1000
   setInterval(() => {
@@ -547,6 +556,12 @@ let pendingEngineUpdateInfo: {
   currentVersion: string
   latestVersion: string | null
   updateAvailable: boolean
+} | null = null
+
+// Store pending release notes info so renderer can retrieve it after update
+let pendingReleaseNotes: {
+  version: string
+  content: string
 } | null = null
 
 // Track if engine update is in progress (prevents app restart during engine update)
@@ -721,6 +736,55 @@ async function checkForAppUpdates(isStartup: boolean = true) {
   } catch (error) {
     logger.error('UpdateService: Failed to check for updates:', error)
   }
+}
+
+/**
+ * Checks if the app was updated and should show release notes.
+ * Compares current version with last seen version from settings.
+ */
+async function checkForReleaseNotes() {
+  // Short delay to ensure window is ready
+  await new Promise((resolve) => setTimeout(resolve, 2000))
+
+  const currentVersion = updateService.getCurrentVersion()
+  const lastSeenVersion = settingsService.getLastSeenVersion()
+
+  logger.info(
+    'ReleaseNotesCheck: currentVersion:',
+    currentVersion,
+    'lastSeenVersion:',
+    lastSeenVersion
+  )
+
+  // If same version, nothing to show
+  if (currentVersion === lastSeenVersion) {
+    logger.info('ReleaseNotesCheck: Same version, skipping')
+    return
+  }
+
+  // First launch (lastSeenVersion is null) - set version but don't show modal
+  if (lastSeenVersion === null) {
+    logger.info('ReleaseNotesCheck: First launch, setting lastSeenVersion without showing modal')
+    settingsService.setLastSeenVersion(currentVersion)
+    return
+  }
+
+  // Version changed - check if we have release notes to show
+  const releaseNotes = __RELEASE_NOTES__
+  if (!releaseNotes.content || releaseNotes.content.trim() === '') {
+    logger.info('ReleaseNotesCheck: No release notes content, updating lastSeenVersion')
+    settingsService.setLastSeenVersion(currentVersion)
+    return
+  }
+
+  // Store pending release notes and notify renderer
+  logger.info('ReleaseNotesCheck: Version changed, showing release notes modal')
+  pendingReleaseNotes = {
+    version: currentVersion,
+    content: releaseNotes.content
+  }
+
+  broadcastToRenderer('release-notes:available', pendingReleaseNotes)
 }
 
 async function checkForEngineUpdates(isStartup: boolean = true) {
@@ -1917,6 +1981,18 @@ const setupIPC = () => {
       pendingEngineUpdateInfo = null
     }
     return result
+  })
+
+  // Release notes handlers
+  ipcMain.handle('release-notes:get-pending', () => {
+    return pendingReleaseNotes
+  })
+
+  ipcMain.handle('release-notes:dismiss', () => {
+    const currentVersion = updateService.getCurrentVersion()
+    settingsService.setLastSeenVersion(currentVersion)
+    pendingReleaseNotes = null
+    return { success: true }
   })
 
   // Engine channel handlers
