@@ -58,6 +58,7 @@ const Settings: React.FC = () => {
   const [upgradingEngine, setUpgradingEngine] = useState(false)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [confirmOnClose, setConfirmOnClose] = useState(true)
+  const [showReleaseNotes, setShowReleaseNotes] = useState(true)
   const [engineLogFileEnabled, setEngineLogFileEnabled] = useState(false)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
   const [switchingChannel, setSwitchingChannel] = useState(false)
@@ -143,6 +144,7 @@ const Settings: React.FC = () => {
     loadUpdateInfo()
     loadSystemMonitorSetting()
     loadConfirmOnCloseSetting()
+    loadShowReleaseNotesSetting()
     loadEngineLogFileSetting()
     loadEngineChannel()
     loadEditorChannel()
@@ -326,6 +328,26 @@ const Settings: React.FC = () => {
       console.error('Failed to save confirm on close setting:', err)
       // Revert on error
       setConfirmOnClose(!checked)
+    }
+  }
+
+  const loadShowReleaseNotesSetting = async () => {
+    try {
+      const show = await window.settingsAPI.getShowReleaseNotes()
+      setShowReleaseNotes(show)
+    } catch (err) {
+      console.error('Failed to load show release notes setting:', err)
+    }
+  }
+
+  const handleToggleShowReleaseNotes = async (checked: boolean) => {
+    setShowReleaseNotes(checked)
+    try {
+      await window.settingsAPI.setShowReleaseNotes(checked)
+    } catch (err) {
+      console.error('Failed to save show release notes setting:', err)
+      // Revert on error
+      setShowReleaseNotes(!checked)
     }
   }
 
@@ -770,6 +792,22 @@ const Settings: React.FC = () => {
                 <p className="text-xs text-muted-foreground mt-1">
                   Show a confirmation dialog when closing the application. The engine will be
                   stopped when you quit.
+                </p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={showReleaseNotes}
+                onChange={(e) => handleToggleShowReleaseNotes(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium group-hover:text-foreground transition-colors">
+                  Show release notes after updates
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Display a summary of changes when the app is updated to a new version.
                 </p>
               </div>
             </label>

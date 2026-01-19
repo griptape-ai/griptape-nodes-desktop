@@ -79,7 +79,8 @@ jobs:
           ref: ${{ github.ref }}
           lfs: true
 
-      - name: Check if tag already exists
+      - name: Setup platform variables and check for existing release
+        id: platform
         run: |
           USER_CHANNEL="${{ needs.validate.outputs.channel }}"
           VERSION=$(jq -r .version package.json)
@@ -107,6 +108,16 @@ jobs:
           fi
 
           FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+
+          # Export platform variables for subsequent steps
+          echo "OS=$OS" >> $GITHUB_ENV
+          echo "ARCH=$ARCH" >> $GITHUB_ENV
+          echo "USER_CHANNEL=$USER_CHANNEL" >> $GITHUB_ENV
+          echo "FULL_CHANNEL=$FULL_CHANNEL" >> $GITHUB_ENV
+
+          echo "Platform: $OS-$ARCH"
+          echo "Channel: $USER_CHANNEL"
+          echo "Full channel: $FULL_CHANNEL"
 
           # Tag naming logic
           if [[ "$USER_CHANNEL" == "stable" ]]; then
@@ -156,47 +167,53 @@ jobs:
         if: env.DONE != 'true'
         run: npm ci
 
-      - name: Setup platform variables
+      - name: Generate release notes
         if: env.DONE != 'true'
-        id: platform
         run: |
-          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          VERSION=$(jq -r .version package.json)
 
-          # Determine OS and architecture for channel naming
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            OS="linux"
-            ARCH=$(uname -m)
-            if [[ "$ARCH" == "aarch64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="x64"
-            fi
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            OS="osx"
-            ARCH=$(uname -m)
-            if [[ "$ARCH" == "arm64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="x64"
-            fi
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            OS="win"
-            ARCH="x64"
+          # Determine the previous tag for generating notes
+          # For stable releases, find the previous stable tag
+          # For other channels, this will generate notes from all commits
+          PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+
+          echo "Current version: v${VERSION}"
+          echo "Previous tag: ${PREV_TAG:-none}"
+
+          # Use GitHub API to generate release notes content
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="v${VERSION}" \
+              -f target_commitish="${{ github.sha }}" \
+              -f previous_tag_name="$PREV_TAG" \
+              --jq '.body' 2>/dev/null || echo "")
+          else
+            NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="v${VERSION}" \
+              -f target_commitish="${{ github.sha }}" \
+              --jq '.body' 2>/dev/null || echo "")
           fi
 
-          # Construct full channel name: {os}-{arch}-{channel}
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
+          # Write to file, with fallback if API fails
+          if [ -n "$NOTES" ]; then
+            echo "$NOTES" > RELEASE_NOTES.md
+            echo "Generated release notes from GitHub API"
+          else
+            cat << EOF > RELEASE_NOTES.md
+          ## What's New in v${VERSION}
 
-          # Set environment variables for subsequent steps
-          echo "OS=$OS" >> $GITHUB_ENV
-          echo "ARCH=$ARCH" >> $GITHUB_ENV
-          echo "USER_CHANNEL=$USER_CHANNEL" >> $GITHUB_ENV
-          echo "FULL_CHANNEL=$FULL_CHANNEL" >> $GITHUB_ENV
+          This release includes bug fixes and improvements.
 
-          echo "Platform: $OS-$ARCH"
-          echo "Channel: $USER_CHANNEL"
-          echo "Full channel: $FULL_CHANNEL"
+          See the [full changelog](https://github.com/${{ github.repository }}/releases) for details.
+          EOF
+            echo "Using fallback release notes (API returned empty)"
+          fi
+
+          echo "=== Release notes content ==="
+          cat RELEASE_NOTES.md
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Apple certificates and notary profile
         id: install_certs
@@ -353,11 +370,6 @@ jobs:
         if: runner.os == 'macOS' && always() && steps.install_certs.outcome == 'success'
         run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
 
-      - name: Clean up Windows certificate
-        if: runner.os == 'Windows' && always() && steps.install_windows_cert.outcome == 'success'
-        shell: bash
-        run: rm -f $RUNNER_TEMP/windows-cert.pfx
-
       - name: Upload GitHub Release Assets
         if: env.DONE != 'true'
         uses: actions/upload-artifact@v4
@@ -421,8 +433,11 @@ jobs:
           echo "LINUX_ARM64_APPIMAGE: $LINUX_ARM64_APPIMAGE"
           echo "WINDOWS_SETUP: $WINDOWS_SETUP"
 
-          # Create release notes
-          cat > release_notes.md << 'EOF'
+          # Create release notes content with separator for app parsing
+          # The separator allows the app to extract just the changelog section
+          INSTALL_NOTES=$(cat <<'EOF'
+          <!-- release-notes-separator -->
+
           ## Installation
 
           Download the installer for your platform:
@@ -433,14 +448,17 @@ jobs:
 
           ## Updates
 
-          This application includes automatic updates served from our S3 distribution.
+          This application includes automatic updates.
           EOF
+          )
 
           # Create the release with all available installers
+          # --generate-notes creates changelog from PRs, --notes appends installation instructions
           gh release create "$TAG_NAME" \
             --target "${{ github.sha }}" \
             --title "$RELEASE_NAME" \
-            --notes-file release_notes.md \
+            --generate-notes \
+            --notes "$INSTALL_NOTES" \
             ${MACOS_DMG:+"$MACOS_DMG"} \
             ${LINUX_X64_APPIMAGE:+"$LINUX_X64_APPIMAGE"} \
             ${LINUX_ARM64_APPIMAGE:+"$LINUX_ARM64_APPIMAGE"} \

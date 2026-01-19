@@ -102,6 +102,12 @@ export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'initializing' | 
  */
 export type UpdateBehavior = 'auto-update' | 'prompt' | 'silence'
 
+// Release notes info type
+export interface ReleaseNotesInfo {
+  version: string
+  content: string
+}
+
 declare global {
   interface Window {
     pythonAPI: {
@@ -422,6 +428,8 @@ declare global {
       }>
       getConfirmOnClose: () => Promise<boolean>
       setConfirmOnClose: (confirm: boolean) => Promise<{ success: boolean }>
+      getShowReleaseNotes: () => Promise<boolean>
+      setShowReleaseNotes: (show: boolean) => Promise<{ success: boolean }>
       getEngineLogFileEnabled: () => Promise<boolean>
       setEngineLogFileEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
     }
@@ -474,6 +482,12 @@ declare global {
       maximize: () => Promise<void>
       isMaximized: () => Promise<boolean>
       close: () => Promise<void>
+    }
+    releaseNotesAPI: {
+      getPending: () => Promise<ReleaseNotesInfo | null>
+      dismiss: () => Promise<{ success: boolean }>
+      onAvailable: (callback: (event: IpcEvent, info: ReleaseNotesInfo) => void) => void
+      removeAvailable: (callback: (event: IpcEvent, info: ReleaseNotesInfo) => void) => void
     }
   }
 }
