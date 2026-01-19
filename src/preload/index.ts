@@ -282,6 +282,9 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   getConfirmOnClose: () => ipcRenderer.invoke('settings:get-confirm-on-close'),
   setConfirmOnClose: (confirm: boolean) =>
     ipcRenderer.invoke('settings:set-confirm-on-close', confirm),
+  getShowReleaseNotes: () => ipcRenderer.invoke('settings:get-show-release-notes'),
+  setShowReleaseNotes: (show: boolean) =>
+    ipcRenderer.invoke('settings:set-show-release-notes', show),
   getEngineLogFileEnabled: () => ipcRenderer.invoke('settings:get-engine-log-file-enabled'),
   setEngineLogFileEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-engine-log-file-enabled', enabled)
@@ -334,6 +337,22 @@ contextBridge.exposeInMainWorld('systemMonitorAPI', {
       'system-monitor:metrics-update',
       callback as unknown as (event: IpcRendererEvent, ...args: unknown[]) => void
     )
+  }
+})
+
+// Release notes API for showing release notes after updates
+contextBridge.exposeInMainWorld('releaseNotesAPI', {
+  getPending: () => ipcRenderer.invoke('release-notes:get-pending'),
+  dismiss: () => ipcRenderer.invoke('release-notes:dismiss'),
+  onAvailable: (
+    callback: (event: IpcRendererEvent, info: { version: string; content: string }) => void
+  ) => {
+    ipcRenderer.on('release-notes:available', callback)
+  },
+  removeAvailable: (
+    callback: (event: IpcRendererEvent, info: { version: string; content: string }) => void
+  ) => {
+    ipcRenderer.removeListener('release-notes:available', callback)
   }
 })
 
