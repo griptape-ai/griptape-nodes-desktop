@@ -96,17 +96,19 @@ const LoginPage: React.FC = () => {
       <div className="w-screen h-screen flex flex-col bg-gray-900 border-t border-blue-500/30 non-draggable">
         {/* Update Available Banner */}
         {(shouldShowUpdateBanner || downloadError) && (
-          <UpdateBanner
-            version={updateVersion}
-            currentVersion={currentVersion}
-            isReadyToInstall={isUpdateReadyToInstall}
-            updateInfo={updateInfo}
-            onDismiss={handleDismissUpdate}
-            externalError={downloadError}
-            onClearExternalError={clearDownloadError}
-            isDownloading={isDownloading}
-            downloadProgress={downloadProgress}
-          />
+          <div className={platform === 'darwin' ? 'pl-20' : ''}>
+            <UpdateBanner
+              version={updateVersion}
+              currentVersion={currentVersion}
+              isReadyToInstall={isUpdateReadyToInstall}
+              updateInfo={updateInfo}
+              onDismiss={handleDismissUpdate}
+              externalError={downloadError}
+              onClearExternalError={clearDownloadError}
+              isDownloading={isDownloading}
+              downloadProgress={downloadProgress}
+            />
+          </div>
         )}
 
         {/* Content area */}
