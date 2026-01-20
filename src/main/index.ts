@@ -312,6 +312,24 @@ app.on('ready', async () => {
     engineLogFileService.writeLog(log)
   })
 
+  engineService.on('engine:startup-progress', (progress) => {
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('engine:startup-progress', progress)
+    })
+  })
+
+  engineService.on('engine:state-changed', (state) => {
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('engine:state-changed', state)
+    })
+  })
+
+  engineService.on('engine:process-metrics', (metrics) => {
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('engine:process-metrics', metrics)
+    })
+  })
+
   gtnService.on('workspace-changed', (directory) => {
     BrowserWindow.getAllWindows().forEach((window) => {
       window.webContents.send('workspace-changed', directory)
@@ -1748,6 +1766,52 @@ const setupIPC = () => {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  })
+
+  // New engine monitoring handlers
+  ipcMain.handle('engine:get-startup-progress', () => {
+    return engineService.getStartupProgress()
+  })
+
+  ipcMain.handle('engine:get-internal-state', () => {
+    return engineService.getInternalState()
+  })
+
+  ipcMain.handle('engine:get-process-metrics', async () => {
+    return await engineService.getProcessMetrics()
+  })
+
+  ipcMain.handle('engine:get-process-pid', () => {
+    return engineService.getProcessPid()
+  })
+
+  ipcMain.handle('engine:write-input', (_event, input: string) => {
+    engineService.writeToEngine(input)
+    return { success: true }
+  })
+
+  ipcMain.handle('engine:resize-terminal', (_event, cols: number, rows: number) => {
+    engineService.resizeTerminal(cols, rows)
+    return { success: true }
+  })
+
+  // Debug settings handlers
+  ipcMain.handle('settings:get-engine-verbose-logging', () => {
+    return settingsService.getEngineVerboseLogging()
+  })
+
+  ipcMain.handle('settings:set-engine-verbose-logging', (_event, enabled: boolean) => {
+    settingsService.setEngineVerboseLogging(enabled)
+    return { success: true }
+  })
+
+  ipcMain.handle('settings:get-engine-debug-mode', () => {
+    return settingsService.getEngineDebugMode()
+  })
+
+  ipcMain.handle('settings:set-engine-debug-mode', (_event, enabled: boolean) => {
+    settingsService.setEngineDebugMode(enabled)
+    return { success: true }
   })
 
   // Track the currently running command process for stdin

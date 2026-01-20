@@ -16,6 +16,8 @@ interface SettingsSchema {
   engineLogFileEnabled: boolean
   lastSeenVersion: string | null
   showReleaseNotes: boolean
+  engineVerboseLogging: boolean
+  engineDebugMode: boolean
 }
 
 export class SettingsService {
@@ -191,5 +193,39 @@ export class SettingsService {
   setShowReleaseNotes(show: boolean): void {
     this.store.set('showReleaseNotes', show)
     logger.info('SettingsService: showReleaseNotes set to', show)
+  }
+
+  /**
+   * Get whether verbose logging is enabled for the engine.
+   * When enabled, the engine runs with --verbose flag and GTN_LOG_LEVEL=DEBUG.
+   */
+  getEngineVerboseLogging(): boolean {
+    return this.store.get('engineVerboseLogging', false)
+  }
+
+  /**
+   * Set whether verbose logging is enabled for the engine.
+   * Requires engine restart to take effect.
+   */
+  setEngineVerboseLogging(enabled: boolean): void {
+    this.store.set('engineVerboseLogging', enabled)
+    logger.info('SettingsService: engineVerboseLogging set to', enabled)
+  }
+
+  /**
+   * Get whether debug mode is enabled for the engine.
+   * When enabled, the engine starts with DEBUGPY_LISTEN_PORT=5678 for remote debugging.
+   */
+  getEngineDebugMode(): boolean {
+    return this.store.get('engineDebugMode', false)
+  }
+
+  /**
+   * Set whether debug mode is enabled for the engine.
+   * Requires engine restart to take effect.
+   */
+  setEngineDebugMode(enabled: boolean): void {
+    this.store.set('engineDebugMode', enabled)
+    logger.info('SettingsService: engineDebugMode set to', enabled)
   }
 }

@@ -10,7 +10,10 @@ import type {
   EngineLog,
   EngineUpdateInfo,
   SystemMetrics,
-  UpdateInfo as AppUpdateInfo
+  UpdateInfo as AppUpdateInfo,
+  EngineStartupProgress,
+  EngineInternalState,
+  ProcessMetrics
 } from '@/types/global'
 
 interface VelopackBridgeApi {
@@ -108,6 +111,44 @@ contextBridge.exposeInMainWorld('engineAPI', {
   },
   removeLog: (callback: (event: IpcRendererEvent, log: EngineLog) => void) => {
     ipcRenderer.removeListener('engine:log', callback)
+  },
+  // New APIs for enhanced engine monitoring
+  getStartupProgress: () =>
+    ipcRenderer.invoke('engine:get-startup-progress') as Promise<EngineStartupProgress>,
+  getInternalState: () =>
+    ipcRenderer.invoke('engine:get-internal-state') as Promise<EngineInternalState>,
+  getProcessMetrics: () =>
+    ipcRenderer.invoke('engine:get-process-metrics') as Promise<ProcessMetrics | null>,
+  getProcessPid: () => ipcRenderer.invoke('engine:get-process-pid') as Promise<number | null>,
+  writeInput: (input: string) => ipcRenderer.invoke('engine:write-input', input),
+  resizeTerminal: (cols: number, rows: number) =>
+    ipcRenderer.invoke('engine:resize-terminal', cols, rows),
+  // Event listeners for new features
+  onStartupProgress: (
+    callback: (event: IpcRendererEvent, progress: EngineStartupProgress) => void
+  ) => {
+    ipcRenderer.on('engine:startup-progress', callback)
+  },
+  removeStartupProgress: (
+    callback: (event: IpcRendererEvent, progress: EngineStartupProgress) => void
+  ) => {
+    ipcRenderer.removeListener('engine:startup-progress', callback)
+  },
+  onStateChanged: (callback: (event: IpcRendererEvent, state: EngineInternalState) => void) => {
+    ipcRenderer.on('engine:state-changed', callback)
+  },
+  removeStateChanged: (callback: (event: IpcRendererEvent, state: EngineInternalState) => void) => {
+    ipcRenderer.removeListener('engine:state-changed', callback)
+  },
+  onProcessMetrics: (
+    callback: (event: IpcRendererEvent, metrics: ProcessMetrics | null) => void
+  ) => {
+    ipcRenderer.on('engine:process-metrics', callback)
+  },
+  removeProcessMetrics: (
+    callback: (event: IpcRendererEvent, metrics: ProcessMetrics | null) => void
+  ) => {
+    ipcRenderer.removeListener('engine:process-metrics', callback)
   }
 })
 
@@ -287,7 +328,13 @@ contextBridge.exposeInMainWorld('settingsAPI', {
     ipcRenderer.invoke('settings:set-show-release-notes', show),
   getEngineLogFileEnabled: () => ipcRenderer.invoke('settings:get-engine-log-file-enabled'),
   setEngineLogFileEnabled: (enabled: boolean) =>
-    ipcRenderer.invoke('settings:set-engine-log-file-enabled', enabled)
+    ipcRenderer.invoke('settings:set-engine-log-file-enabled', enabled),
+  getEngineVerboseLogging: () => ipcRenderer.invoke('settings:get-engine-verbose-logging'),
+  setEngineVerboseLogging: (enabled: boolean) =>
+    ipcRenderer.invoke('settings:set-engine-verbose-logging', enabled),
+  getEngineDebugMode: () => ipcRenderer.invoke('settings:get-engine-debug-mode'),
+  setEngineDebugMode: (enabled: boolean) =>
+    ipcRenderer.invoke('settings:set-engine-debug-mode', enabled)
 })
 
 contextBridge.exposeInMainWorld('engineUpdateAPI', {

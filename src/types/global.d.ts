@@ -94,6 +94,38 @@ export interface EngineLog {
 
 export type EngineStatus = 'not-ready' | 'ready' | 'running' | 'initializing' | 'error'
 
+export type EngineStartupPhase =
+  | 'not-started'
+  | 'spawning'
+  | 'initializing-python'
+  | 'loading-libraries'
+  | 'starting-server'
+  | 'ready'
+  | 'error'
+
+export interface EngineStartupProgress {
+  phase: EngineStartupPhase
+  message: string
+  progress?: number
+  timestamp: Date
+}
+
+export interface EngineInternalState {
+  phase: 'idle' | 'loading' | 'processing' | 'error'
+  currentTask?: string
+  progress?: number
+  timestamp: Date
+}
+
+export interface ProcessMetrics {
+  cpu: number
+  memory: number
+  memoryMB: number
+  pid: number
+  elapsed: number
+  timestamp: number
+}
+
 /**
  * Update behavior setting for both app and engine updates.
  * - 'auto-update': Automatically download and install updates on startup
@@ -308,6 +340,27 @@ declare global {
       removeStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void
       onLog: (callback: (event: IpcEvent, log: EngineLog) => void) => void
       removeLog: (callback: (event: IpcEvent, log: EngineLog) => void) => void
+      // New APIs for enhanced engine monitoring
+      getStartupProgress: () => Promise<EngineStartupProgress>
+      getInternalState: () => Promise<EngineInternalState>
+      getProcessMetrics: () => Promise<ProcessMetrics | null>
+      getProcessPid: () => Promise<number | null>
+      writeInput: (input: string) => Promise<{ success: boolean }>
+      resizeTerminal: (cols: number, rows: number) => Promise<{ success: boolean }>
+      onStartupProgress: (
+        callback: (event: IpcEvent, progress: EngineStartupProgress) => void
+      ) => void
+      removeStartupProgress: (
+        callback: (event: IpcEvent, progress: EngineStartupProgress) => void
+      ) => void
+      onStateChanged: (callback: (event: IpcEvent, state: EngineInternalState) => void) => void
+      removeStateChanged: (callback: (event: IpcEvent, state: EngineInternalState) => void) => void
+      onProcessMetrics: (
+        callback: (event: IpcEvent, metrics: ProcessMetrics | null) => void
+      ) => void
+      removeProcessMetrics: (
+        callback: (event: IpcEvent, metrics: ProcessMetrics | null) => void
+      ) => void
     }
     editorAPI: {
       requestReloadWebview: () => void
@@ -432,6 +485,10 @@ declare global {
       setShowReleaseNotes: (show: boolean) => Promise<{ success: boolean }>
       getEngineLogFileEnabled: () => Promise<boolean>
       setEngineLogFileEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
+      getEngineVerboseLogging: () => Promise<boolean>
+      setEngineVerboseLogging: (enabled: boolean) => Promise<{ success: boolean }>
+      getEngineDebugMode: () => Promise<boolean>
+      setEngineDebugMode: (enabled: boolean) => Promise<{ success: boolean }>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{

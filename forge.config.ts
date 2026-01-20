@@ -46,7 +46,11 @@ const config: ForgeConfig = {
       // },
     })
   },
-  rebuildConfig: {},
+  rebuildConfig: {
+    // Skip rebuilding node-pty - it uses N-API and ships with prebuilt binaries
+    // that work across Node.js and Electron versions
+    onlyModules: []
+  },
   makers: [new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
   plugins: [
     new AutoUnpackNativesPlugin({}),

@@ -1,6 +1,5 @@
-import { ChildProcess, spawn } from 'child_process'
+import * as pty from 'node-pty'
 import { EventEmitter } from 'events'
-import { attachOutputForwarder } from '../../child-process/output-forwarder'
 import { getEnv } from '../../config/env'
 import { getCwd, getUvExecutablePath } from '../../config/paths'
 import { GtnService } from '../gtn/gtn-service'
@@ -9,10 +8,42 @@ import { logger } from '@/main/utils/logger'
 
 export type EngineStatus = 'not-ready' | 'ready' | 'initializing' | 'running' | 'error'
 
+export type EngineStartupPhase =
+  | 'not-started'
+  | 'spawning'
+  | 'initializing-python'
+  | 'loading-libraries'
+  | 'starting-server'
+  | 'ready'
+  | 'error'
+
 export interface EngineLog {
   timestamp: Date
   type: 'stdout' | 'stderr'
   message: string
+}
+
+export interface EngineStartupProgress {
+  phase: EngineStartupPhase
+  message: string
+  progress?: number // 0-100
+  timestamp: Date
+}
+
+export interface EngineInternalState {
+  phase: 'idle' | 'loading' | 'processing' | 'error'
+  currentTask?: string
+  progress?: number
+  timestamp: Date
+}
+
+export interface ProcessMetrics {
+  cpu: number // 0-100%
+  memory: number // bytes
+  memoryMB: number // MB
+  pid: number
+  elapsed: number // uptime in ms
+  timestamp: number
 }
 
 interface EngineEvents {
@@ -20,19 +51,38 @@ interface EngineEvents {
   'engine:status-changed': [EngineStatus]
   'engine:log': [EngineLog]
   'engine:logs-cleared': []
+  'engine:startup-progress': [EngineStartupProgress]
+  'engine:state-changed': [EngineInternalState]
+  'engine:process-metrics': [ProcessMetrics | null]
 }
 
 export class EngineService extends EventEmitter<EngineEvents> {
-  private engineProcess: ChildProcess | null = null
+  private engineProcess: pty.IPty | null = null
   private status: EngineStatus = 'not-ready'
   private logs: EngineLog[] = []
   private maxLogSize = 1000 // Keep last 1000 log entries
   private restartAttempts = 0
   private maxRestartAttempts = 3
   private restartDelay = 5000 // 5 seconds
-  private stdoutBuffer = '' // Buffer for incomplete stdout lines
-  private stderrBuffer = '' // Buffer for incomplete stderr lines
+  private outputBuffer = '' // Buffer for incomplete lines from PTY
   private isReady: boolean = false
+
+  // Startup progress tracking
+  private startupProgress: EngineStartupProgress = {
+    phase: 'not-started',
+    message: '',
+    timestamp: new Date()
+  }
+
+  // Internal state tracking
+  private internalState: EngineInternalState = {
+    phase: 'idle',
+    timestamp: new Date()
+  }
+
+  // Process metrics tracking
+  private metricsIntervalId: NodeJS.Timeout | null = null
+  private engineStartTime: number = 0
 
   constructor(
     private userDataDir: string,
@@ -99,6 +149,45 @@ export class EngineService extends EventEmitter<EngineEvents> {
   }
 
   /**
+   * Get startup progress
+   */
+  getStartupProgress(): EngineStartupProgress {
+    return { ...this.startupProgress }
+  }
+
+  /**
+   * Get internal state
+   */
+  getInternalState(): EngineInternalState {
+    return { ...this.internalState }
+  }
+
+  /**
+   * Get engine process PID (if running)
+   */
+  getProcessPid(): number | null {
+    return this.engineProcess?.pid ?? null
+  }
+
+  /**
+   * Write input to the engine PTY (for interactive commands)
+   */
+  writeToEngine(input: string): void {
+    if (this.engineProcess) {
+      this.engineProcess.write(input)
+    }
+  }
+
+  /**
+   * Resize the PTY terminal
+   */
+  resizeTerminal(cols: number, rows: number): void {
+    if (this.engineProcess) {
+      this.engineProcess.resize(cols, rows)
+    }
+  }
+
+  /**
    * Add a log entry
    */
   addLog(type: 'stdout' | 'stderr', message: string): void {
@@ -151,10 +240,183 @@ export class EngineService extends EventEmitter<EngineEvents> {
   }
 
   /**
-   * Start the engine
+   * Update startup progress and emit event
+   */
+  private updateStartupProgress(progress: Partial<EngineStartupProgress>): void {
+    this.startupProgress = {
+      ...this.startupProgress,
+      ...progress,
+      timestamp: new Date()
+    }
+    this.emit('engine:startup-progress', this.startupProgress)
+  }
+
+  /**
+   * Update internal state and emit event
+   */
+  private updateInternalState(state: Partial<EngineInternalState>): void {
+    this.internalState = {
+      ...this.internalState,
+      ...state,
+      timestamp: new Date()
+    }
+    this.emit('engine:state-changed', this.internalState)
+  }
+
+  /**
+   * Parse output for startup phase indicators
+   */
+  private parseStartupPhase(message: string): void {
+    const lowerMessage = message.toLowerCase()
+
+    // Detect initialization phases from output
+    if (
+      lowerMessage.includes('initializing') ||
+      lowerMessage.includes('setting up python') ||
+      lowerMessage.includes('python environment')
+    ) {
+      this.updateStartupProgress({
+        phase: 'initializing-python',
+        message: 'Initializing Python environment...',
+        progress: 30
+      })
+    } else if (
+      lowerMessage.includes('loading') &&
+      (lowerMessage.includes('librar') || lowerMessage.includes('node'))
+    ) {
+      this.updateStartupProgress({
+        phase: 'loading-libraries',
+        message: 'Loading node libraries...',
+        progress: 60
+      })
+    } else if (
+      lowerMessage.includes('starting server') ||
+      lowerMessage.includes('uvicorn') ||
+      lowerMessage.includes('listening')
+    ) {
+      this.updateStartupProgress({
+        phase: 'starting-server',
+        message: 'Starting web server...',
+        progress: 80
+      })
+    } else if (
+      lowerMessage.includes('ready to accept') ||
+      lowerMessage.includes('server running') ||
+      lowerMessage.includes('application startup complete')
+    ) {
+      this.updateStartupProgress({
+        phase: 'ready',
+        message: 'Engine ready',
+        progress: 100
+      })
+    }
+  }
+
+  /**
+   * Parse output for internal state indicators
+   */
+  private parseInternalState(message: string): void {
+    // Example patterns to match GTN output
+    const loadingMatch = message.match(/Loading workflow[:\s]+(.+)/i)
+    if (loadingMatch) {
+      this.updateInternalState({
+        phase: 'loading',
+        currentTask: loadingMatch[1].trim()
+      })
+      return
+    }
+
+    const processingMatch = message.match(/Processing node[:\s]+(.+?)(?:\s+\((\d+)\/(\d+)\))?/i)
+    if (processingMatch) {
+      const progress =
+        processingMatch[2] && processingMatch[3]
+          ? (parseInt(processingMatch[2]) / parseInt(processingMatch[3])) * 100
+          : undefined
+      this.updateInternalState({
+        phase: 'processing',
+        currentTask: processingMatch[1].trim(),
+        progress
+      })
+      return
+    }
+
+    if (
+      message.toLowerCase().includes('workflow complete') ||
+      message.toLowerCase().includes('execution complete')
+    ) {
+      this.updateInternalState({
+        phase: 'idle',
+        currentTask: undefined,
+        progress: undefined
+      })
+    }
+  }
+
+  /**
+   * Start process metrics collection
+   */
+  private async startMetricsCollection(): Promise<void> {
+    if (this.metricsIntervalId) {
+      clearInterval(this.metricsIntervalId)
+    }
+
+    // Dynamically import pidusage to avoid issues if not installed
+    let pidusage: typeof import('pidusage') | null = null
+    try {
+      pidusage = await import('pidusage')
+    } catch {
+      logger.warn('[ENGINE] pidusage not available, process metrics disabled')
+      return
+    }
+
+    this.metricsIntervalId = setInterval(async () => {
+      const pid = this.engineProcess?.pid
+      if (!pid || !pidusage) {
+        this.emit('engine:process-metrics', null)
+        return
+      }
+
+      try {
+        const stats = await pidusage.default(pid)
+        const metrics: ProcessMetrics = {
+          cpu: Math.round(stats.cpu * 10) / 10,
+          memory: stats.memory,
+          memoryMB: Math.round((stats.memory / (1024 * 1024)) * 10) / 10,
+          pid,
+          elapsed: Date.now() - this.engineStartTime,
+          timestamp: Date.now()
+        }
+        this.emit('engine:process-metrics', metrics)
+      } catch {
+        // Process may have exited
+        this.emit('engine:process-metrics', null)
+      }
+    }, 1000)
+  }
+
+  /**
+   * Stop process metrics collection
+   */
+  private stopMetricsCollection(): void {
+    if (this.metricsIntervalId) {
+      clearInterval(this.metricsIntervalId)
+      this.metricsIntervalId = null
+    }
+    this.emit('engine:process-metrics', null)
+  }
+
+  /**
+   * Start the engine using node-pty for proper terminal emulation
    */
   async startEngine(): Promise<void> {
     await this.waitForReady()
+
+    // Update startup progress
+    this.updateStartupProgress({
+      phase: 'spawning',
+      message: 'Starting engine process...',
+      progress: 10
+    })
 
     // Check if a local engine path is configured for development
     const localEnginePath = this.settingsService.getLocalEnginePath()
@@ -164,6 +426,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
     try {
       // Clear logs from previous session when starting fresh
       this.logs = []
+      this.outputBuffer = ''
 
       let command: string
       let args: string[]
@@ -189,95 +452,83 @@ export class EngineService extends EventEmitter<EngineEvents> {
         logger.info(`[ENGINE] Command: ${gtnPath} --no-update`)
       }
 
-      // Spawn the engine process
-      this.engineProcess = spawn(command, args, {
+      // Add debug flags if enabled
+      if (this.settingsService.getEngineVerboseLogging?.()) {
+        args.push('--verbose')
+      }
+
+      // Spawn the engine process using node-pty
+      this.engineProcess = pty.spawn(command, args, {
+        name: 'xterm-256color',
+        cols: 120,
+        rows: 30,
         cwd,
-        env: this.getEngineEnv(),
-        stdio: ['pipe', 'pipe', 'pipe'],
-        windowsHide: true
+        env: this.getEngineEnv() as { [key: string]: string }
       })
 
-      attachOutputForwarder(this.engineProcess, { logPrefix: 'GTN-ENGINE' })
+      this.engineStartTime = Date.now()
 
-      // Handle stdout with line buffering and carriage return handling
-      this.engineProcess.stdout?.on('data', (data) => {
-        this.stdoutBuffer += data.toString('utf8')
+      // Start process metrics collection
+      this.startMetricsCollection()
+
+      logger.info(`[ENGINE] Engine process started with PID: ${this.engineProcess.pid}`)
+
+      // Handle PTY data (combined stdout/stderr in PTY)
+      this.engineProcess.onData((data) => {
+        this.outputBuffer += data
 
         // Handle both Windows CRLF and Unix LF line endings
-        // First normalize Windows line endings
-        this.stdoutBuffer = this.stdoutBuffer.replace(/\r\n/g, '\n')
+        this.outputBuffer = this.outputBuffer.replace(/\r\n/g, '\n')
 
         // Handle carriage returns (\r) which are used for progress indicators
         // Split by \r to handle overwrites, keeping only the last one
-        const carriageReturnParts = this.stdoutBuffer.split('\r')
+        const carriageReturnParts = this.outputBuffer.split('\r')
         if (carriageReturnParts.length > 1) {
           // Keep only the last part after \r (this is what should be displayed)
-          this.stdoutBuffer = carriageReturnParts[carriageReturnParts.length - 1]
+          this.outputBuffer = carriageReturnParts[carriageReturnParts.length - 1]
         }
 
-        const lines = this.stdoutBuffer.split('\n')
+        const lines = this.outputBuffer.split('\n')
 
         // Keep the last incomplete line in the buffer
-        this.stdoutBuffer = lines.pop() || ''
+        this.outputBuffer = lines.pop() || ''
 
         // Process complete lines
         lines.forEach((line) => {
           if (line.trim().length > 0) {
+            // Log to file
+            logger.info(`[GTN-ENGINE] ${line}`)
+
+            // Parse for startup phases and internal state
+            this.parseStartupPhase(line)
+            this.parseInternalState(line)
+
+            // Add to UI logs (PTY output is treated as stdout)
             this.addLog('stdout', line)
           }
         })
       })
 
-      // Handle stderr with line buffering and carriage return handling
-      this.engineProcess.stderr?.on('data', (data) => {
-        this.stderrBuffer += data.toString('utf8')
-
-        // Handle both Windows CRLF and Unix LF line endings
-        // First normalize Windows line endings
-        this.stderrBuffer = this.stderrBuffer.replace(/\r\n/g, '\n')
-
-        // Handle carriage returns (\r) which are used for progress indicators
-        // Split by \r to handle overwrites, keeping only the last one
-        const carriageReturnParts = this.stderrBuffer.split('\r')
-        if (carriageReturnParts.length > 1) {
-          // Keep only the last part after \r (this is what should be displayed)
-          this.stderrBuffer = carriageReturnParts[carriageReturnParts.length - 1]
-        }
-
-        const lines = this.stderrBuffer.split('\n')
-
-        // Keep the last incomplete line in the buffer
-        this.stderrBuffer = lines.pop() || ''
-
-        // Process complete lines
-        lines.forEach((line) => {
-          if (line.trim().length > 0) {
-            this.addLog('stderr', line)
-          }
-        })
-      })
-
       // Handle process exit
-      this.engineProcess.once('exit', (code, _signal) => {
+      this.engineProcess.onExit(({ exitCode }) => {
         // Flush any remaining buffered data
-        if (this.stdoutBuffer.trim().length > 0) {
-          this.addLog('stdout', this.stdoutBuffer)
-          this.stdoutBuffer = ''
-        }
-        if (this.stderrBuffer.trim().length > 0) {
-          this.addLog('stderr', this.stderrBuffer)
-          this.stderrBuffer = ''
+        if (this.outputBuffer.trim().length > 0) {
+          this.addLog('stdout', this.outputBuffer)
+          this.outputBuffer = ''
         }
 
-        // Clean up the process and its listeners
-        this.engineProcess?.removeAllListeners()
-        this.engineProcess?.stdout?.removeAllListeners()
-        this.engineProcess?.stderr?.removeAllListeners()
-        // Explicitly destroy streams to release file handles (important for Windows)
-        this.engineProcess?.stdout?.destroy()
-        this.engineProcess?.stderr?.destroy()
-        this.engineProcess?.stdin?.destroy()
+        // Stop metrics collection
+        this.stopMetricsCollection()
+
+        // Clean up
         this.engineProcess = null
+
+        // Reset startup progress
+        this.updateStartupProgress({
+          phase: 'not-started',
+          message: '',
+          progress: undefined
+        })
 
         // Auto-restart if it crashed unexpectedly
         if (this.status == 'ready') {
@@ -286,31 +537,33 @@ export class EngineService extends EventEmitter<EngineEvents> {
           this.addLog('stdout', 'Engine stopped.')
         } else if (
           this.status == 'running' &&
-          code !== 0 &&
+          exitCode !== 0 &&
           this.restartAttempts < this.maxRestartAttempts
         ) {
           this.restartAttempts++
-          this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`)
+          this.addLog('stdout', `Engine process exited unexpectedly with exit code: ${exitCode}`)
           this.addLog(
             'stdout',
             `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`
           )
           setTimeout(() => this.startEngine(), this.restartDelay)
           this.setEngineStatus('ready')
-        } else {
+        } else if (exitCode !== 0) {
           this.addLog('stderr', 'Maximum restart attempts reached. Engine will not auto-restart.')
           this.setEngineStatus('error')
+          this.updateStartupProgress({
+            phase: 'error',
+            message: 'Engine failed to start'
+          })
         }
-      })
-
-      // Handle process error
-      this.engineProcess.on('error', (error) => {
-        this.addLog('stderr', `Engine process error: ${error}`)
-        this.setEngineStatus('error')
       })
     } catch (error: any) {
       this.addLog('stderr', `Failed to start engine: ${error.message}`)
       this.setEngineStatus('error')
+      this.updateStartupProgress({
+        phase: 'error',
+        message: `Failed to start: ${error.message}`
+      })
     }
   }
 
@@ -340,8 +593,8 @@ export class EngineService extends EventEmitter<EngineEvents> {
       filteredEnv[key] = value
     }
 
-    // Add color-forcing environment variables
-    return {
+    // Base environment with color-forcing variables
+    const env: NodeJS.ProcessEnv = {
       ...filteredEnv,
       // Force color output - these should be respected by most tools
       FORCE_COLOR: 'true',
@@ -363,6 +616,21 @@ export class EngineService extends EventEmitter<EngineEvents> {
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1'
     }
+
+    // Add verbose logging environment variables if enabled
+    if (this.settingsService.getEngineVerboseLogging?.()) {
+      env.GTN_LOG_LEVEL = 'DEBUG'
+      env.PYTHONVERBOSE = '1'
+    }
+
+    // Add debug mode environment variables if enabled
+    if (this.settingsService.getEngineDebugMode?.()) {
+      env.DEBUGPY_LISTEN_PORT = '5678'
+      // Set to 'true' to block until debugger attaches
+      env.DEBUGPY_WAIT_FOR_CLIENT = 'false'
+    }
+
+    return env
   }
 
   async stopEngine(): Promise<void> {
@@ -375,6 +643,9 @@ export class EngineService extends EventEmitter<EngineEvents> {
       this.setEngineStatus('ready')
     }
 
+    // Stop metrics collection
+    this.stopMetricsCollection()
+
     // Create a promise that resolves when the process actually exits
     const exitPromise = new Promise<void>((resolve) => {
       if (!this.engineProcess) {
@@ -382,22 +653,14 @@ export class EngineService extends EventEmitter<EngineEvents> {
         return
       }
 
-      const onExit = () => {
+      // node-pty uses onExit instead of 'exit' event listener
+      const disposable = this.engineProcess.onExit(() => {
+        disposable.dispose()
         resolve()
-      }
-
-      // Listen for the exit event
-      this.engineProcess.once('exit', onExit)
-
-      // Also handle the case where the process is already dead
-      // but we haven't received the exit event yet
-      if (this.engineProcess.exitCode !== null || this.engineProcess.killed) {
-        this.engineProcess.removeListener('exit', onExit)
-        resolve()
-      }
+      })
     })
 
-    // Try graceful shutdown first with SIGTERM.
+    // Try graceful shutdown first with SIGTERM (node-pty uses kill() method)
     logger.info('[ENGINE] Sending SIGTERM to engine process...')
     this.engineProcess.kill('SIGTERM')
 
@@ -431,7 +694,31 @@ export class EngineService extends EventEmitter<EngineEvents> {
   }
 
   async destroy(): Promise<void> {
+    this.stopMetricsCollection()
     await this.stopEngine()
     this.removeAllListeners()
+  }
+
+  /**
+   * Get current process metrics (one-time query)
+   */
+  async getProcessMetrics(): Promise<ProcessMetrics | null> {
+    const pid = this.engineProcess?.pid
+    if (!pid) return null
+
+    try {
+      const pidusage = await import('pidusage')
+      const stats = await pidusage.default(pid)
+      return {
+        cpu: Math.round(stats.cpu * 10) / 10,
+        memory: stats.memory,
+        memoryMB: Math.round((stats.memory / (1024 * 1024)) * 10) / 10,
+        pid,
+        elapsed: Date.now() - this.engineStartTime,
+        timestamp: Date.now()
+      }
+    } catch {
+      return null
+    }
   }
 }

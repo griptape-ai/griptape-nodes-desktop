@@ -6,6 +6,10 @@ import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin'
 export const mainConfig: Configuration = {
   mode: process.env.NODE_ENV as any,
   entry: './src/main/index.ts',
+  // Externalize node-pty to use prebuilt binaries from node_modules
+  externals: {
+    'node-pty': 'commonjs node-pty'
+  },
   module: {
     rules: [
       // Add support for native node modules
