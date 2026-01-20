@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { EngineProvider } from '../contexts/EngineContext'
 import Dashboard from '../pages/Dashboard'
 import Engine from '../pages/Engine'
@@ -9,9 +9,31 @@ import { EditorWebview } from './EditorWebview'
 import UpdateBanner from './UpdateBanner'
 import EngineUpdateBanner from './EngineUpdateBanner'
 import { ReleaseNotesModal } from './ReleaseNotesModal'
+import { TutorialProvider, TutorialOverlay, useTutorial } from './tutorial'
 import { useUpdateBanner } from '../hooks/useUpdateBanner'
 import { useEngineUpdateBanner } from '../hooks/useEngineUpdateBanner'
 import { useReleaseNotes } from '../hooks/useReleaseNotes'
+
+// Component to set up tutorial action handlers (must be inside TutorialProvider)
+function TutorialActionSetup({ onPageChange }: { onPageChange: (page: string) => void }) {
+  const { setActionHandler } = useTutorial()
+
+  const handleTutorialAction = useCallback(
+    (actionId: string) => {
+      if (actionId === 'open-editor') {
+        onPageChange('editor')
+      }
+    },
+    [onPageChange]
+  )
+
+  useEffect(() => {
+    setActionHandler(handleTutorialAction)
+    return () => setActionHandler(null)
+  }, [setActionHandler, handleTutorialAction])
+
+  return null
+}
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -114,75 +136,81 @@ const MainApp: React.FC = () => {
 
   return (
     <EngineProvider>
-      <div className={`flex flex-col h-screen bg-background ${isWindows ? 'pt-9' : ''}`}>
-        {/* Windows Custom Title Bar */}
-        {isWindows && <WindowsTitleBar />}
+      <TutorialProvider>
+        <TutorialActionSetup onPageChange={setCurrentPage} />
+        <div className={`flex flex-col h-screen bg-background ${isWindows ? 'pt-9' : ''}`}>
+          {/* Windows Custom Title Bar */}
+          {isWindows && <WindowsTitleBar />}
 
-        {/* Header with navigation */}
-        <Header
-          selectedPage={currentPage}
-          onPageChange={setCurrentPage}
-          showSystemMonitor={showSystemMonitor}
-        />
-
-        {/* Update Banner */}
-        {(shouldShowUpdateBanner || downloadError) && (
-          <UpdateBanner
-            version={updateVersion}
-            currentVersion={currentVersion}
-            isReadyToInstall={isUpdateReadyToInstall}
-            updateInfo={updateInfo}
-            onDismiss={handleDismissUpdate}
-            onNavigateToSettings={() => {
-              setCurrentPage('settings')
-              setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('scroll-to-updates'))
-              }, 100)
-            }}
-            externalError={downloadError}
-            onClearExternalError={clearDownloadError}
-            isDownloading={isDownloading}
-            downloadProgress={downloadProgress}
+          {/* Header with navigation */}
+          <Header
+            selectedPage={currentPage}
+            onPageChange={setCurrentPage}
+            showSystemMonitor={showSystemMonitor}
           />
-        )}
 
-        {/* Engine Update Banner */}
-        {shouldShowEngineUpdateBanner && engineUpdateInfo && (
-          <EngineUpdateBanner
-            currentVersion={engineUpdateInfo.currentVersion}
-            latestVersion={engineUpdateInfo.latestVersion || ''}
-            isUpdating={isEngineUpdating}
-            error={engineUpdateError}
-            onDismiss={handleDismissEngineUpdate}
-            onUpdate={handleEngineUpdate}
-            onClearError={clearEngineUpdateError}
-            onNavigateToSettings={() => {
-              setCurrentPage('settings')
-              setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('scroll-to-engine-updates'))
-              }, 100)
-            }}
-          />
-        )}
+          {/* Update Banner */}
+          {(shouldShowUpdateBanner || downloadError) && (
+            <UpdateBanner
+              version={updateVersion}
+              currentVersion={currentVersion}
+              isReadyToInstall={isUpdateReadyToInstall}
+              updateInfo={updateInfo}
+              onDismiss={handleDismissUpdate}
+              onNavigateToSettings={() => {
+                setCurrentPage('settings')
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('scroll-to-updates'))
+                }, 100)
+              }}
+              externalError={downloadError}
+              onClearExternalError={clearDownloadError}
+              isDownloading={isDownloading}
+              downloadProgress={downloadProgress}
+            />
+          )}
 
-        {/* Release Notes Modal */}
-        {showReleaseNotes && releaseNotes && (
-          <ReleaseNotesModal
-            releaseNotes={releaseNotes}
-            onDismiss={handleDismissReleaseNotes}
-            onOpenExternal={(url) => window.electronAPI.openExternal(url)}
-          />
-        )}
+          {/* Engine Update Banner */}
+          {shouldShowEngineUpdateBanner && engineUpdateInfo && (
+            <EngineUpdateBanner
+              currentVersion={engineUpdateInfo.currentVersion}
+              latestVersion={engineUpdateInfo.latestVersion || ''}
+              isUpdating={isEngineUpdating}
+              error={engineUpdateError}
+              onDismiss={handleDismissEngineUpdate}
+              onUpdate={handleEngineUpdate}
+              onClearError={clearEngineUpdateError}
+              onNavigateToSettings={() => {
+                setCurrentPage('settings')
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('scroll-to-engine-updates'))
+                }, 100)
+              }}
+            />
+          )}
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-hidden">
-          {/* Normal page content - hidden when editor is active */}
-          {currentPage !== 'editor' && renderContent()}
+          {/* Release Notes Modal */}
+          {showReleaseNotes && releaseNotes && (
+            <ReleaseNotesModal
+              releaseNotes={releaseNotes}
+              onDismiss={handleDismissReleaseNotes}
+              onOpenExternal={(url) => window.electronAPI.openExternal(url)}
+            />
+          )}
 
-          {/* Persistent EditorWebview - always mounted, visibility controlled */}
-          <EditorWebview isVisible={currentPage === 'editor'} />
-        </main>
-      </div>
+          {/* Main Content Area */}
+          <main className="flex-1 overflow-hidden">
+            {/* Normal page content - hidden when editor is active */}
+            {currentPage !== 'editor' && renderContent()}
+
+            {/* Persistent EditorWebview - always mounted, visibility controlled */}
+            <EditorWebview isVisible={currentPage === 'editor'} />
+          </main>
+
+          {/* Tutorial Overlay */}
+          <TutorialOverlay />
+        </div>
+      </TutorialProvider>
     </EngineProvider>
   )
 }

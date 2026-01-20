@@ -2248,6 +2248,24 @@ const setupIPC = () => {
     return { success: true }
   })
 
+  ipcMain.handle('onboarding:is-tutorial-completed', () => {
+    return onboardingService.isTutorialCompleted()
+  })
+
+  ipcMain.handle('onboarding:set-tutorial-completed', (_event, completed: boolean) => {
+    onboardingService.setTutorialCompleted(completed)
+    return { success: true }
+  })
+
+  ipcMain.handle('onboarding:get-tutorial-last-step', () => {
+    return onboardingService.getTutorialLastStep()
+  })
+
+  ipcMain.handle('onboarding:set-tutorial-last-step', (_event, step: number) => {
+    onboardingService.setTutorialLastStep(step)
+    return { success: true }
+  })
+
   // Test encryption to trigger keychain prompt immediately
   ipcMain.handle('onboarding:test-encryption', async () => {
     try {

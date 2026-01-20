@@ -1,6 +1,7 @@
-import { FolderOpen } from 'lucide-react'
+import { FolderOpen, Play, Square, Sparkles, Settings, RotateCcw, FileText } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { useEngine } from '../contexts/EngineContext'
+import { useTutorial } from '../components/tutorial'
 import { cn } from '../utils/utils'
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
 import headerLogoLightSrc from '@/assets/griptape_nodes_header_logo_light.svg'
@@ -11,15 +12,23 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
-  const { status: engineStatus } = useEngine()
+  const { status: engineStatus, startEngine, stopEngine } = useEngine()
+  const {
+    isTutorialCompleted,
+    startTutorial,
+    isActive: isTutorialActive,
+    refreshTutorialState
+  } = useTutorial()
   const [workspaceDir, setWorkspaceDir] = useState<string>('')
   const [loadingWorkspace, setLoadingWorkspace] = useState(true)
+  const [hasAutoStartedTutorial, setHasAutoStartedTutorial] = useState(false)
 
   useEffect(() => {
     loadWorkspaceDirectory()
+    refreshTutorialState()
     window.griptapeAPI.refreshConfig()
 
-    const handleWorkspaceChanged = (event: any, directory: string) => {
+    const handleWorkspaceChanged = (_event: unknown, directory: string) => {
       setWorkspaceDir(directory)
       setLoadingWorkspace(false)
     }
@@ -29,7 +38,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     return () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
     }
-  }, [])
+  }, [refreshTutorialState])
+
+  // Auto-start tutorial for first-time users
+  useEffect(() => {
+    if (!isTutorialCompleted && !isTutorialActive && !hasAutoStartedTutorial && !loadingWorkspace) {
+      setHasAutoStartedTutorial(true)
+      const timer = setTimeout(() => {
+        startTutorial()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [
+    isTutorialCompleted,
+    isTutorialActive,
+    hasAutoStartedTutorial,
+    startTutorial,
+    loadingWorkspace
+  ])
 
   const loadWorkspaceDirectory = async () => {
     try {
@@ -42,113 +68,179 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     }
   }
 
+  const handleEngineToggle = () => {
+    if (engineStatus === 'running') {
+      stopEngine()
+    } else if (engineStatus === 'ready') {
+      startEngine()
+    }
+  }
+
+  const isEngineReady = engineStatus === 'ready'
+  const isEngineRunning = engineStatus === 'running'
+  const isEngineInitializing = engineStatus === 'initializing'
+  const canStartStop = isEngineReady || isEngineRunning
+
+  const getStatusLabel = () => {
+    switch (engineStatus) {
+      case 'running':
+        return 'Running'
+      case 'ready':
+        return 'Stopped'
+      case 'initializing':
+        return 'Starting...'
+      case 'not-ready':
+        return 'Initializing...'
+      case 'error':
+        return 'Error'
+      default:
+        return engineStatus
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="p-6 max-w-3xl mx-auto space-y-6">
         {/* Logo Section */}
-        <div className="flex justify-center py-8">
+        <div className="flex justify-center py-4" data-tutorial="logo">
           <img
             src={headerLogoLightSrc}
-            className="block w-auto h-16 dark:hidden"
+            className="block w-auto h-12 dark:hidden"
             alt="Griptape Nodes Logo"
           />
           <img
             src={headerLogoDarkSrc}
-            className="hidden w-auto h-16 dark:block"
+            className="hidden w-auto h-12 dark:block"
             alt="Griptape Nodes Logo"
           />
         </div>
 
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h2 className="text-xl font-semibold mb-4">Welcome to Griptape Nodes Desktop</h2>
-          <div className="space-y-4 text-muted-foreground">
-            <p>
-              Griptape Nodes Desktop is your local development environment for building AI workflows
-              with the Griptape framework. This application manages the Griptape Nodes engine and
-              provides easy access to the visual workflow editor.
+        {/* Hero Button - Start Creating */}
+        <div className="text-center space-y-3">
+          <button
+            onClick={() => onPageChange('editor')}
+            disabled={!isEngineRunning}
+            data-tutorial="editor-button"
+            className={cn(
+              'inline-flex items-center justify-center gap-3 px-8 py-4 text-lg font-semibold rounded-xl transition-all group',
+              'shadow-lg hover:shadow-xl transform hover:scale-[1.04] active:scale-[0.98]',
+              isEngineRunning
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
+            )}
+          >
+            <Sparkles className="w-6 h-6 group-hover:animate-sparkle" />
+            Start Creating
+          </button>
+          {!isEngineRunning && (
+            <p className="text-sm text-muted-foreground">
+              {isEngineInitializing
+                ? 'Engine is starting up...'
+                : 'Start the engine below to begin'}
             </p>
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Getting Started:</h3>
-              <ol className="list-decimal list-inside space-y-2 text-sm">
-                <li>Ensure the engine is running (check the status below)</li>
-                <li>Click &quot;Open Editor&quot; to launch the visual workflow editor</li>
-                <li>
-                  In the editor, look for an engine named &quot;Griptape Nodes Desktop&quot; and
-                  click &quot;Start Session&quot;
-                </li>
-                <li>Pick a template or create a new workflow to start building</li>
-                <li>Your workflows are saved in the workspace directory shown below</li>
-              </ol>
-            </div>
-            <p className="text-sm">
-              The Griptape Nodes engine runs locally and provides the backend services for executing
-              your workflows. Use the Engine tab to monitor logs and troubleshoot any issues.
-            </p>
-          </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-            <h3 className="text-lg font-semibold mb-3">Engine Status</h3>
-            <div className="flex items-center gap-2">
-              {getStatusIcon(engineStatus, 'md')}
-              <span className={`font-medium ${getStatusColor(engineStatus)}`}>
-                {engineStatus === 'ready'
-                  ? 'Stopped'
-                  : engineStatus.charAt(0).toUpperCase() + engineStatus.slice(1).replace('-', ' ')}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Manage from the{' '}
-              <button
-                onClick={() => onPageChange('engine')}
-                className="text-primary hover:underline focus:outline-none focus:underline"
-              >
-                Engine tab
-              </button>
-            </p>
+        {/* Engine Control Card */}
+        <div
+          className="bg-card rounded-lg shadow-sm border border-border p-6"
+          data-tutorial="engine-status"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Engine</h3>
+            <button
+              onClick={() => onPageChange('engine')}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              View Logs
+            </button>
           </div>
 
-          <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-            <h3 className="text-lg font-semibold mb-3">Visual Editor</h3>
+          <div className="flex items-center justify-between">
+            {/* Status */}
+            <div className="flex items-center gap-3">
+              {getStatusIcon(engineStatus, 'md')}
+              <div>
+                <span className={cn('font-medium', getStatusColor(engineStatus))}>
+                  {getStatusLabel()}
+                </span>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isEngineRunning
+                    ? 'Ready to create workflows'
+                    : isEngineReady
+                      ? 'Click Start to begin'
+                      : isEngineInitializing
+                        ? 'Please wait...'
+                        : 'Setting up environment...'}
+                </p>
+              </div>
+            </div>
+
+            {/* Start/Stop Button */}
             <button
-              onClick={() => {
-                onPageChange('editor')
-              }}
-              disabled={engineStatus !== 'running'}
+              onClick={handleEngineToggle}
+              disabled={!canStartStop}
               className={cn(
-                'w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md mb-3',
-                'bg-primary text-primary-foreground hover:bg-primary/90 transition-colors',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
+                'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors',
+                isEngineRunning
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90',
+                !canStartStop && 'opacity-50 cursor-not-allowed'
               )}
             >
-              Open Editor
+              {isEngineRunning ? (
+                <>
+                  <Square className="w-4 h-4" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Start
+                </>
+              )}
             </button>
-            {engineStatus !== 'running' ? (
-              <p className="text-xs text-yellow-600">Start the engine first</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">Launch the workflow editor</p>
-            )}
           </div>
         </div>
 
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-          <h3 className="text-lg font-semibold mb-3">Workspace</h3>
-          <div className="flex items-start gap-2 mb-3">
-            <FolderOpen className="w-5 h-5 text-muted-foreground mt-0.5" />
-            <p className="text-sm font-mono text-muted-foreground break-all">
-              {loadingWorkspace ? 'Loading...' : workspaceDir || 'Not configured'}
-            </p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Manage from{' '}
+        {/* Workspace Card */}
+        <div
+          className="bg-card rounded-lg shadow-sm border border-border p-6"
+          data-tutorial="workspace"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold">Workspace</h3>
             <button
               onClick={() => onPageChange('settings')}
-              className="text-primary hover:underline focus:outline-none focus:underline"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              App Settings
+              <Settings className="w-4 h-4" />
+              Settings
             </button>
-          </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <FolderOpen className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-mono text-muted-foreground break-all">
+                {loadingWorkspace ? 'Loading...' : workspaceDir || 'Not configured'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Your workflows and project files are saved here.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Retake Tutorial Link */}
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={startTutorial}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+            {isTutorialCompleted ? 'Retake the tutorial' : 'Start the tutorial'}
+          </button>
         </div>
       </div>
     </div>

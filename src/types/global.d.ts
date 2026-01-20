@@ -385,6 +385,10 @@ declare global {
       setAdvancedLibraryEnabled: (enabled: boolean) => Promise<{ success: boolean }>
       isCloudLibraryEnabled: () => Promise<boolean>
       setCloudLibraryEnabled: (enabled: boolean) => Promise<{ success: boolean }>
+      isTutorialCompleted: () => Promise<boolean>
+      setTutorialCompleted: (completed: boolean) => Promise<{ success: boolean }>
+      getTutorialLastStep: () => Promise<number>
+      setTutorialLastStep: (step: number) => Promise<{ success: boolean }>
     }
     usageMetricsAPI: {
       reportLaunch: () => Promise<{ success: boolean; error?: string }>

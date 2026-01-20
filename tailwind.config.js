@@ -56,7 +56,8 @@ export default {
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out'
+        'accordion-up': 'accordion-up 0.2s ease-out',
+        sparkle: 'sparkle 1.5s ease-in-out infinite'
       },
       keyframes: {
         'accordion-down': {
@@ -66,6 +67,12 @@ export default {
         'accordion-up': {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' }
+        },
+        sparkle: {
+          '0%, 100%': { transform: 'scale(1) rotate(0deg)' },
+          '25%': { transform: 'scale(1.2) rotate(5deg)' },
+          '50%': { transform: 'scale(1) rotate(0deg)' },
+          '75%': { transform: 'scale(1.2) rotate(-5deg)' }
         }
       }
     }

@@ -14,6 +14,8 @@ interface OnboardingSchema {
   workspaceSetupComplete: boolean
   advancedLibraryEnabled: boolean
   cloudLibraryEnabled: boolean
+  tutorialCompleted: boolean
+  tutorialLastStep: number
 }
 
 export class OnboardingService extends EventEmitter<OnboardingServiceEvents> {
@@ -104,6 +106,24 @@ export class OnboardingService extends EventEmitter<OnboardingServiceEvents> {
     logger.info('OnboardingService: Cloud library enabled set to', enabled)
   }
 
+  isTutorialCompleted(): boolean {
+    return this.store.get('tutorialCompleted', false)
+  }
+
+  setTutorialCompleted(completed: boolean): void {
+    this.store.set('tutorialCompleted', completed)
+    logger.info('OnboardingService: Tutorial completed set to', completed)
+  }
+
+  getTutorialLastStep(): number {
+    return this.store.get('tutorialLastStep', 0)
+  }
+
+  setTutorialLastStep(step: number): void {
+    this.store.set('tutorialLastStep', step)
+    logger.info('OnboardingService: Tutorial last step set to', step)
+  }
+
   completeOnboarding(credentialStorageEnabled: boolean): void {
     this.setCredentialStorageEnabled(credentialStorageEnabled)
     this.setOnboardingComplete(true)
@@ -118,6 +138,8 @@ export class OnboardingService extends EventEmitter<OnboardingServiceEvents> {
     this.store.set('workspaceSetupComplete', false)
     this.store.set('advancedLibraryEnabled', false)
     this.store.set('cloudLibraryEnabled', false)
+    this.store.set('tutorialCompleted', false)
+    this.store.set('tutorialLastStep', 0)
     logger.info('OnboardingService: Onboarding state reset')
   }
 }
