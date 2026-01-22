@@ -162,9 +162,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible, navigat
 
     // Set the src to start loading (after listeners are attached)
     // Include navigation path if there's a pending navigation request
-    const initialUrl = navigationRef.current
-      ? editorUrl + navigationRef.current.path
-      : editorUrl
+    const initialUrl = navigationRef.current ? editorUrl + navigationRef.current.path : editorUrl
     console.log('[EditorWebview] Setting webview src:', initialUrl)
     webview.src = initialUrl
     // Mark this navigation as handled so the navigation effect doesn't duplicate it

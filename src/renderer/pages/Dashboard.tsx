@@ -106,10 +106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
   const [isRocketLaunching, setIsRocketLaunching] = useState(false)
 
   // Memoized computed values
-  const visibleWorkflows = useMemo(
-    () => workflows.slice(0, MAX_VISIBLE_WORKFLOWS),
-    [workflows]
-  )
+  const visibleWorkflows = useMemo(() => workflows.slice(0, MAX_VISIBLE_WORKFLOWS), [workflows])
   const hasMoreWorkflows = workflows.length > MAX_VISIBLE_WORKFLOWS
 
   // Memoized engine state derivations
@@ -301,7 +298,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
             ) : workflows.length === 0 ? (
               <div className="flex items-start gap-2">
                 <Workflow className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">No workflows registered yet. Launch the editor to create one.</p>
+                <p className="text-sm text-muted-foreground">
+                  No workflows registered yet. Launch the editor to create one.
+                </p>
               </div>
             ) : (
               <>
