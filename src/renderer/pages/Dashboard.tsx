@@ -11,7 +11,7 @@ import {
   X,
   ChevronRight
 } from 'lucide-react'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useEngine } from '../contexts/EngineContext'
 import { useTutorial } from '../components/tutorial'
 import { cn } from '../utils/utils'
@@ -22,6 +22,72 @@ import headerLogoDarkSrc from '@/assets/griptape_nodes_header_logo.svg'
 interface DashboardProps {
   onPageChange: (page: string, path?: string) => void
 }
+
+// Pure utility function - no component dependencies
+const formatRelativeTime = (timestamp: number): string => {
+  if (timestamp === 0) return ''
+  const now = Date.now()
+  const diff = now - timestamp
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+
+  if (days > 0) return `${days}d ago`
+  if (hours > 0) return `${hours}h ago`
+  if (minutes > 0) return `${minutes}m ago`
+  return 'just now'
+}
+
+// Memoized workflow item component to prevent unnecessary re-renders
+interface WorkflowItemProps {
+  workflow: { path: string; modifiedTime: number }
+  isEngineRunning: boolean
+  onNavigate: (path: string) => void
+  onOpen?: () => void
+}
+
+const WorkflowItem = React.memo<WorkflowItemProps>(
+  ({ workflow, isEngineRunning, onNavigate, onOpen }) => {
+    const workflowFile = workflow.path.split(/[/\\]/).pop() || ''
+    const workflowName = workflowFile.replace(/\.[^/.]+$/, '')
+    const modifiedTime = formatRelativeTime(workflow.modifiedTime)
+
+    const handleClick = useCallback(() => {
+      onNavigate(`/${workflowName}`)
+      onOpen?.()
+    }, [workflowName, onNavigate, onOpen])
+
+    return (
+      <div className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
+        <div className="flex items-center gap-2 min-w-0">
+          <Workflow className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-mono text-muted-foreground truncate">{workflowName}</p>
+            {modifiedTime && <p className="text-xs text-muted-foreground/60">{modifiedTime}</p>}
+          </div>
+        </div>
+        <button
+          onClick={handleClick}
+          disabled={!isEngineRunning}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors flex-shrink-0',
+            isEngineRunning
+              ? 'bg-primary/10 text-primary hover:bg-primary/20'
+              : 'bg-muted text-muted-foreground cursor-not-allowed'
+          )}
+        >
+          <ExternalLink className="w-3 h-3" />
+          Open
+        </button>
+      </div>
+    )
+  }
+)
+
+WorkflowItem.displayName = 'WorkflowItem'
+
+const MAX_VISIBLE_WORKFLOWS = 5
 
 const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
   const { status: engineStatus, startEngine, stopEngine } = useEngine()
@@ -39,31 +105,57 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
   const [showAllWorkflows, setShowAllWorkflows] = useState(false)
   const [isRocketLaunching, setIsRocketLaunching] = useState(false)
 
-  const MAX_VISIBLE_WORKFLOWS = 5
-  const visibleWorkflows = workflows.slice(0, MAX_VISIBLE_WORKFLOWS)
+  // Memoized computed values
+  const visibleWorkflows = useMemo(
+    () => workflows.slice(0, MAX_VISIBLE_WORKFLOWS),
+    [workflows]
+  )
   const hasMoreWorkflows = workflows.length > MAX_VISIBLE_WORKFLOWS
 
-  const formatRelativeTime = (timestamp: number): string => {
-    if (timestamp === 0) return ''
-    const now = Date.now()
-    const diff = now - timestamp
-    const seconds = Math.floor(diff / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-    const days = Math.floor(hours / 24)
+  // Memoized engine state derivations
+  const { isEngineReady, isEngineRunning, isEngineInitializing, canStartStop } = useMemo(
+    () => ({
+      isEngineReady: engineStatus === 'ready',
+      isEngineRunning: engineStatus === 'running',
+      isEngineInitializing: engineStatus === 'initializing',
+      canStartStop: engineStatus === 'ready' || engineStatus === 'running'
+    }),
+    [engineStatus]
+  )
 
-    if (days > 0) return `${days}d ago`
-    if (hours > 0) return `${hours}h ago`
-    if (minutes > 0) return `${minutes}m ago`
-    return 'just now'
-  }
+  // Memoized async loaders
+  const loadWorkspaceDirectory = useCallback(async () => {
+    try {
+      const directory = await window.griptapeAPI.getWorkspace()
+      setWorkspaceDir(directory)
+    } catch (err) {
+      console.error('Failed to load workspace directory:', err)
+    } finally {
+      setLoadingWorkspace(false)
+    }
+  }, [])
 
+  const loadWorkflows = useCallback(async () => {
+    try {
+      const workflowList = await window.griptapeAPI.getWorkflows()
+      setWorkflows(workflowList)
+    } catch (err) {
+      console.error('Failed to load workflows:', err)
+    } finally {
+      setLoadingWorkflows(false)
+    }
+  }, [])
+
+  // Initial data loading - runs once on mount
   useEffect(() => {
     loadWorkspaceDirectory()
     loadWorkflows()
     refreshTutorialState()
     window.griptapeAPI.refreshConfig()
+  }, [loadWorkspaceDirectory, loadWorkflows, refreshTutorialState])
 
+  // Workspace change listener - separate effect for cleaner cleanup
+  useEffect(() => {
     const handleWorkspaceChanged = (_event: unknown, directory: string) => {
       setWorkspaceDir(directory)
       setLoadingWorkspace(false)
@@ -74,7 +166,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     return () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
     }
-  }, [refreshTutorialState])
+  }, [])
 
   // Auto-start tutorial for first-time users
   useEffect(() => {
@@ -93,42 +185,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     loadingWorkspace
   ])
 
-  const loadWorkspaceDirectory = async () => {
-    try {
-      const directory = await window.griptapeAPI.getWorkspace()
-      setWorkspaceDir(directory)
-    } catch (err) {
-      console.error('Failed to load workspace directory:', err)
-    } finally {
-      setLoadingWorkspace(false)
-    }
-  }
-
-  const loadWorkflows = async () => {
-    try {
-      const workflowList = await window.griptapeAPI.getWorkflows()
-      setWorkflows(workflowList)
-    } catch (err) {
-      console.error('Failed to load workflows:', err)
-    } finally {
-      setLoadingWorkflows(false)
-    }
-  }
-
-  const handleEngineToggle = () => {
+  // Memoized event handlers
+  const handleEngineToggle = useCallback(() => {
     if (engineStatus === 'running') {
       stopEngine()
     } else if (engineStatus === 'ready') {
       startEngine()
     }
-  }
+  }, [engineStatus, startEngine, stopEngine])
 
-  const isEngineReady = engineStatus === 'ready'
-  const isEngineRunning = engineStatus === 'running'
-  const isEngineInitializing = engineStatus === 'initializing'
-  const canStartStop = isEngineReady || isEngineRunning
-
-  const getStatusLabel = () => {
+  const getStatusLabel = useCallback(() => {
     switch (engineStatus) {
       case 'running':
         return 'Running'
@@ -143,47 +209,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
       default:
         return engineStatus
     }
-  }
+  }, [engineStatus])
 
-  const renderWorkflowItem = (
-    workflow: { path: string; modifiedTime: number },
-    index: number,
-    onOpen?: () => void
-  ) => {
-    const workflowFile = workflow.path.split(/[/\\]/).pop() || ''
-    const workflowName = workflowFile.replace(/\.[^/.]+$/, '')
-    const modifiedTime = formatRelativeTime(workflow.modifiedTime)
-    return (
-      <div
-        key={index}
-        className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <Workflow className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-mono text-muted-foreground truncate">{workflowName}</p>
-            {modifiedTime && <p className="text-xs text-muted-foreground/60">{modifiedTime}</p>}
-          </div>
-        </div>
-        <button
-          onClick={() => {
-            onPageChange('editor', `/${workflowName}`)
-            onOpen?.()
-          }}
-          disabled={!isEngineRunning}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors flex-shrink-0',
-            isEngineRunning
-              ? 'bg-primary/10 text-primary hover:bg-primary/20'
-              : 'bg-muted text-muted-foreground cursor-not-allowed'
-          )}
-        >
-          <ExternalLink className="w-3 h-3" />
-          Open
-        </button>
-      </div>
-    )
-  }
+  // Memoized navigation handler for workflow items
+  const handleWorkflowNavigate = useCallback(
+    (path: string) => {
+      onPageChange('editor', path)
+    },
+    [onPageChange]
+  )
+
+  const handleCloseModal = useCallback(() => {
+    setShowAllWorkflows(false)
+  }, [])
 
   return (
     <div className="h-full overflow-y-auto">
@@ -267,7 +305,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
               </div>
             ) : (
               <>
-                {visibleWorkflows.map((workflow, index) => renderWorkflowItem(workflow, index))}
+                {visibleWorkflows.map((workflow) => (
+                  <WorkflowItem
+                    key={workflow.path}
+                    workflow={workflow}
+                    isEngineRunning={isEngineRunning}
+                    onNavigate={handleWorkflowNavigate}
+                  />
+                ))}
                 {hasMoreWorkflows && (
                   <button
                     onClick={() => setShowAllWorkflows(true)}
@@ -413,9 +458,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {workflows.map((workflow, index) =>
-                renderWorkflowItem(workflow, index, () => setShowAllWorkflows(false))
-              )}
+              {workflows.map((workflow) => (
+                <WorkflowItem
+                  key={workflow.path}
+                  workflow={workflow}
+                  isEngineRunning={isEngineRunning}
+                  onNavigate={handleWorkflowNavigate}
+                  onOpen={handleCloseModal}
+                />
+              ))}
             </div>
           </div>
         </div>
