@@ -68,18 +68,15 @@ const WorkflowItem = React.memo<WorkflowItemProps>(
     const workflowName = workflow.name || workflowFile.replace(/\.[^/.]+$/, '')
     const modifiedTime = formatRelativeTime(workflow.modifiedTime)
 
-    const handleRowClick = useCallback(() => {
+    const handleRowClick = () => {
       onShowDetails(workflow)
-    }, [workflow, onShowDetails])
+    }
 
-    const handleOpenClick = useCallback(
-      (e: React.MouseEvent) => {
-        e.stopPropagation()
-        const urlName = workflowFile.replace(/\.[^/.]+$/, '')
-        onOpen(`/${urlName}`)
-      },
-      [workflowFile, onOpen]
-    )
+    const handleOpenClick = (e: React.MouseEvent) => {
+      e.stopPropagation()
+      const urlName = workflowFile.replace(/\.[^/.]+$/, '')
+      onOpen(`/${urlName}`)
+    }
 
     return (
       <div
