@@ -1,4 +1,16 @@
-import { FolderOpen, Play, Square, Sparkles, Settings, RotateCcw, FileText } from 'lucide-react'
+import {
+  FolderOpen,
+  Play,
+  Square,
+  Rocket,
+  Settings,
+  RotateCcw,
+  FileText,
+  Workflow,
+  ExternalLink,
+  X,
+  ChevronRight
+} from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { useEngine } from '../contexts/EngineContext'
 import { useTutorial } from '../components/tutorial'
@@ -8,7 +20,7 @@ import headerLogoLightSrc from '@/assets/griptape_nodes_header_logo_light.svg'
 import headerLogoDarkSrc from '@/assets/griptape_nodes_header_logo.svg'
 
 interface DashboardProps {
-  onPageChange: (page: string) => void
+  onPageChange: (page: string, path?: string) => void
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
@@ -22,9 +34,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
   const [workspaceDir, setWorkspaceDir] = useState<string>('')
   const [loadingWorkspace, setLoadingWorkspace] = useState(true)
   const [hasAutoStartedTutorial, setHasAutoStartedTutorial] = useState(false)
+  const [workflows, setWorkflows] = useState<{ path: string; modifiedTime: number }[]>([])
+  const [loadingWorkflows, setLoadingWorkflows] = useState(true)
+  const [showAllWorkflows, setShowAllWorkflows] = useState(false)
+  const [isRocketLaunching, setIsRocketLaunching] = useState(false)
+
+  const MAX_VISIBLE_WORKFLOWS = 5
+  const visibleWorkflows = workflows.slice(0, MAX_VISIBLE_WORKFLOWS)
+  const hasMoreWorkflows = workflows.length > MAX_VISIBLE_WORKFLOWS
+
+  const formatRelativeTime = (timestamp: number): string => {
+    if (timestamp === 0) return ''
+    const now = Date.now()
+    const diff = now - timestamp
+    const seconds = Math.floor(diff / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
+
+    if (days > 0) return `${days}d ago`
+    if (hours > 0) return `${hours}h ago`
+    if (minutes > 0) return `${minutes}m ago`
+    return 'just now'
+  }
 
   useEffect(() => {
     loadWorkspaceDirectory()
+    loadWorkflows()
     refreshTutorialState()
     window.griptapeAPI.refreshConfig()
 
@@ -68,6 +104,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     }
   }
 
+  const loadWorkflows = async () => {
+    try {
+      const workflowList = await window.griptapeAPI.getWorkflows()
+      setWorkflows(workflowList)
+    } catch (err) {
+      console.error('Failed to load workflows:', err)
+    } finally {
+      setLoadingWorkflows(false)
+    }
+  }
+
   const handleEngineToggle = () => {
     if (engineStatus === 'running') {
       stopEngine()
@@ -98,39 +145,103 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     }
   }
 
+  const renderWorkflowItem = (
+    workflow: { path: string; modifiedTime: number },
+    index: number,
+    onOpen?: () => void
+  ) => {
+    const workflowFile = workflow.path.split(/[/\\]/).pop() || ''
+    const workflowName = workflowFile.replace(/\.[^/.]+$/, '')
+    const modifiedTime = formatRelativeTime(workflow.modifiedTime)
+    return (
+      <div
+        key={index}
+        className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Workflow className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-mono text-muted-foreground truncate">{workflowName}</p>
+            {modifiedTime && <p className="text-xs text-muted-foreground/60">{modifiedTime}</p>}
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            onPageChange('editor', `/${workflowName}`)
+            onOpen?.()
+          }}
+          disabled={!isEngineRunning}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors flex-shrink-0',
+            isEngineRunning
+              ? 'bg-primary/10 text-primary hover:bg-primary/20'
+              : 'bg-muted text-muted-foreground cursor-not-allowed'
+          )}
+        >
+          <ExternalLink className="w-3 h-3" />
+          Open
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6 w-full">
         {/* Logo Section */}
-        <div className="flex justify-center py-4" data-tutorial="logo">
-          <img
-            src={headerLogoLightSrc}
-            className="block w-auto h-12 dark:hidden"
-            alt="Griptape Nodes Logo"
-          />
-          <img
-            src={headerLogoDarkSrc}
-            className="hidden w-auto h-12 dark:block"
-            alt="Griptape Nodes Logo"
-          />
+        <div className="flex items-center justify-between py-4" data-tutorial="logo">
+          <div className="w-10" /> {/* Spacer for centering */}
+          <div className="flex justify-center">
+            <img
+              src={headerLogoLightSrc}
+              className="block w-auto h-12 dark:hidden"
+              alt="Griptape Nodes Logo"
+            />
+            <img
+              src={headerLogoDarkSrc}
+              className="hidden w-auto h-12 dark:block"
+              alt="Griptape Nodes Logo"
+            />
+          </div>
+          <button
+            onClick={() => onPageChange('settings')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground bg-muted/50 hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Settings
+          </button>
         </div>
 
-        {/* Hero Button - Start Creating */}
+        {/* Hero Button - Launch Editor */}
         <div className="text-center space-y-3">
           <button
-            onClick={() => onPageChange('editor')}
-            disabled={!isEngineRunning}
+            onClick={() => {
+              if (!isEngineRunning || isRocketLaunching) return
+              setIsRocketLaunching(true)
+              setTimeout(() => {
+                onPageChange('editor')
+                setIsRocketLaunching(false)
+              }, 400)
+            }}
+            disabled={!isEngineRunning || isRocketLaunching}
             data-tutorial="editor-button"
             className={cn(
-              'inline-flex items-center justify-center gap-3 px-8 py-4 text-lg font-semibold rounded-xl transition-all group',
+              'inline-flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold rounded-xl transition-all group',
               'shadow-lg hover:shadow-xl transform hover:scale-[1.04] active:scale-[0.98]',
               isEngineRunning
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             )}
           >
-            <Sparkles className="w-6 h-6 group-hover:animate-sparkle" />
-            Start Creating
+            <Rocket
+              className={cn(
+                'w-5 h-5',
+                isRocketLaunching
+                  ? 'animate-rocket-launch'
+                  : isEngineRunning && 'group-hover:animate-rocket-rumble'
+              )}
+            />
+            Launch Editor
           </button>
           {!isEngineRunning && (
             <p className="text-sm text-muted-foreground">
@@ -139,6 +250,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
                 : 'Start the engine below to begin'}
             </p>
           )}
+        </div>
+
+        {/* Workflows Card */}
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold">Workflows</h3>
+          </div>
+          <div className="space-y-2">
+            {loadingWorkflows ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : workflows.length === 0 ? (
+              <div className="flex items-start gap-2">
+                <Workflow className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-muted-foreground">No workflows registered yet. Launch the editor to create one.</p>
+              </div>
+            ) : (
+              <>
+                {visibleWorkflows.map((workflow, index) => renderWorkflowItem(workflow, index))}
+                {hasMoreWorkflows && (
+                  <button
+                    onClick={() => setShowAllWorkflows(true)}
+                    className="flex items-center justify-center gap-1.5 w-full p-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+                  >
+                    Show all {workflows.length} workflows
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Engine Control Card */}
@@ -212,17 +353,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold">Workspace</h3>
             <button
-              onClick={() => onPageChange('settings')}
+              onClick={() => {
+                onPageChange('settings')
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('scroll-to-workspace'))
+                }, 100)
+              }}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <Settings className="w-4 h-4" />
               Settings
             </button>
           </div>
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2 min-w-0">
             <FolderOpen className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-mono text-muted-foreground break-all">
+            <div className="min-w-0 flex-1">
+              <p
+                className="text-sm font-mono text-muted-foreground truncate"
+                title={workspaceDir || undefined}
+              >
                 {loadingWorkspace ? 'Loading...' : workspaceDir || 'Not configured'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
@@ -243,6 +392,34 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
           </button>
         </div>
       </div>
+
+      {/* All Workflows Modal */}
+      {showAllWorkflows && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowAllWorkflows(false)}
+        >
+          <div
+            className="bg-card rounded-lg shadow-lg border border-border w-full max-w-lg max-h-[80vh] flex flex-col m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h2 className="text-lg font-semibold">All Workflows</h2>
+              <button
+                onClick={() => setShowAllWorkflows(false)}
+                className="p-1 rounded-md hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {workflows.map((workflow, index) =>
+                renderWorkflowItem(workflow, index, () => setShowAllWorkflows(false))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -15,7 +15,11 @@ import { useEngineUpdateBanner } from '../hooks/useEngineUpdateBanner'
 import { useReleaseNotes } from '../hooks/useReleaseNotes'
 
 // Component to set up tutorial action handlers (must be inside TutorialProvider)
-function TutorialActionSetup({ onPageChange }: { onPageChange: (page: string) => void }) {
+function TutorialActionSetup({
+  onPageChange
+}: {
+  onPageChange: (page: string, path?: string) => void
+}) {
   const { setActionHandler } = useTutorial()
 
   const handleTutorialAction = useCallback(
@@ -37,6 +41,10 @@ function TutorialActionSetup({ onPageChange }: { onPageChange: (page: string) =>
 
 const MainApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard')
+  const [editorNavigation, setEditorNavigation] = useState<{
+    path: string
+    timestamp: number
+  } | null>(null)
   const [showSystemMonitor, setShowSystemMonitor] = useState(false)
   const [platform, setPlatform] = useState<string>('')
 
@@ -121,23 +129,31 @@ const MainApp: React.FC = () => {
     }
   }, [])
 
+  // Handle page changes with optional editor path
+  const handlePageChange = useCallback((page: string, path?: string) => {
+    setCurrentPage(page)
+    if (page === 'editor' && path !== undefined) {
+      setEditorNavigation({ path, timestamp: Date.now() })
+    }
+  }, [])
+
   const renderContent = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onPageChange={setCurrentPage} />
+        return <Dashboard onPageChange={handlePageChange} />
       case 'engine':
-        return <Engine onNavigateToSettings={() => setCurrentPage('settings')} />
+        return <Engine onNavigateToSettings={() => handlePageChange('settings')} />
       case 'settings':
         return <Settings />
       default:
-        return <Dashboard onPageChange={setCurrentPage} />
+        return <Dashboard onPageChange={handlePageChange} />
     }
   }
 
   return (
     <EngineProvider>
       <TutorialProvider>
-        <TutorialActionSetup onPageChange={setCurrentPage} />
+        <TutorialActionSetup onPageChange={handlePageChange} />
         <div className={`flex flex-col h-screen bg-background ${isWindows ? 'pt-9' : ''}`}>
           {/* Windows Custom Title Bar */}
           {isWindows && <WindowsTitleBar />}
@@ -204,7 +220,7 @@ const MainApp: React.FC = () => {
             {currentPage !== 'editor' && renderContent()}
 
             {/* Persistent EditorWebview - always mounted, visibility controlled */}
-            <EditorWebview isVisible={currentPage === 'editor'} />
+            <EditorWebview isVisible={currentPage === 'editor'} navigateTo={editorNavigation} />
           </main>
 
           {/* Tutorial Overlay */}

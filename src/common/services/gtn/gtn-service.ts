@@ -458,6 +458,40 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     this.workspaceDirectory = config?.workspace_directory
   }
 
+  async getWorkflows(): Promise<{ path: string; modifiedTime: number }[]> {
+    const gtnConfigPath = getGtnConfigPath(this.userDataDir)
+    if (!fs.existsSync(gtnConfigPath)) {
+      return []
+    }
+    try {
+      const data = fs.readFileSync(gtnConfigPath, 'utf8')
+      const config = JSON.parse(data)
+      const workflowPaths =
+        config?.app_events?.on_app_initialization_complete?.workflows_to_register
+      if (!Array.isArray(workflowPaths)) {
+        return []
+      }
+
+      // Get metadata for each workflow and sort by modified time (most recent first)
+      const workflows = workflowPaths
+        .map((path: string) => {
+          try {
+            const stats = fs.statSync(path)
+            return { path, modifiedTime: stats.mtimeMs }
+          } catch {
+            // File doesn't exist or can't be accessed, use 0 as modified time
+            return { path, modifiedTime: 0 }
+          }
+        })
+        .sort((a, b) => b.modifiedTime - a.modifiedTime)
+
+      return workflows
+    } catch (error) {
+      logger.error('Failed to read workflows from config:', error)
+      return []
+    }
+  }
+
   async updateApiKey(apiKey: string) {
     await this.waitForReady()
     const gtnConfigPath = getGtnConfigPath(this.userDataDir)

@@ -1878,6 +1878,11 @@ const setupIPC = () => {
 
   ipcMain.handle('gtn:refresh-config', () => gtnService.refreshConfig())
 
+  ipcMain.handle('gtn:get-workflows', async () => {
+    await gtnService.waitForReady()
+    return gtnService.getWorkflows()
+  })
+
   ipcMain.handle(
     'gtn:reconfigure-engine',
     async (

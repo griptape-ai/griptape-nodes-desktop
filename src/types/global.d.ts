@@ -321,6 +321,7 @@ declare global {
       setWorkspace: (directory: string) => Promise<{ success: boolean; error?: string }>
       selectDirectory: () => Promise<string | null>
       refreshConfig: () => Promise<void>
+      getWorkflows: () => Promise<{ path: string; modifiedTime: number }[]>
       reconfigureEngine: (config: {
         workspaceDirectory: string
         advancedLibrary: boolean

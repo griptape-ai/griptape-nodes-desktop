@@ -3,15 +3,21 @@ import { useAuth } from '../contexts/AuthContext'
 
 interface EditorWebviewProps {
   isVisible: boolean
+  navigateTo?: { path: string; timestamp: number } | null
 }
 
-export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
+export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible, navigateTo }) => {
   const [error, setError] = useState<string | null>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
   const [preloadPath, setPreloadPath] = useState<string | null>(null)
   const [editorUrl, setEditorUrl] = useState<string | null>(null)
   const [hasEverBeenVisible, setHasEverBeenVisible] = useState(false)
   const webviewRef = useRef<HTMLWebViewElement>(null)
+  // Track navigation in a ref so initialization can read it without re-running
+  const navigationRef = useRef(navigateTo)
+  navigationRef.current = navigateTo
+  // Track the last navigated timestamp to avoid duplicate navigation
+  const lastNavigatedTimestamp = useRef<number | null>(null)
 
   // Use AuthContext instead of checking independently
   const { isLoading, isAuthenticated, tokens } = useAuth()
@@ -155,8 +161,16 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
     })
 
     // Set the src to start loading (after listeners are attached)
-    console.log('[EditorWebview] Setting webview src:', editorUrl)
-    webview.src = editorUrl
+    // Include navigation path if there's a pending navigation request
+    const initialUrl = navigationRef.current
+      ? editorUrl + navigationRef.current.path
+      : editorUrl
+    console.log('[EditorWebview] Setting webview src:', initialUrl)
+    webview.src = initialUrl
+    // Mark this navigation as handled so the navigation effect doesn't duplicate it
+    if (navigationRef.current) {
+      lastNavigatedTimestamp.current = navigationRef.current.timestamp
+    }
     setHasInitialized(true)
 
     return () => {
@@ -169,6 +183,27 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible }) => {
       webview.removeEventListener('leave-html-full-screen', handleLeaveFullscreen)
     }
   }, [hasInitialized, preloadPath, editorUrl])
+
+  // Handle navigation to a specific path
+  useEffect(() => {
+    const webview = webviewRef.current
+
+    if (!webview || !hasInitialized || !editorUrl || !navigateTo) {
+      return
+    }
+
+    // Skip if we already handled this navigation during initialization
+    if (lastNavigatedTimestamp.current === navigateTo.timestamp) {
+      return
+    }
+
+    // Navigate to the specific path
+    const targetUrl = editorUrl + navigateTo.path
+    console.log('[EditorWebview] Navigating to workflow:', targetUrl)
+    webview.src = targetUrl
+    lastNavigatedTimestamp.current = navigateTo.timestamp
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timestamp triggers navigation, path is read inside
+  }, [navigateTo?.timestamp, hasInitialized, editorUrl])
 
   // Listen for reload command from main process (triggered by CMD-R menu accelerator or channel change)
   useEffect(() => {
