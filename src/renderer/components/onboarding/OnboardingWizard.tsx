@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import KeychainExplanation from './KeychainExplanation'
 import WorkspaceSetup from './WorkspaceSetup'
+import LibrarySetup from './LibrarySetup'
 import headerLogoSrc from '../../../assets/griptape_nodes_header_logo.svg'
 
 interface OnboardingWizardProps {
@@ -8,7 +9,9 @@ interface OnboardingWizardProps {
 }
 
 const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplete }) => {
-  const [currentStep, setCurrentStep] = useState<'keychain' | 'workspace' | null>(null)
+  const [currentStep, setCurrentStep] = useState<'workspace' | 'libraries' | 'keychain' | null>(
+    null
+  )
   const [showKeychainStep, setShowKeychainStep] = useState(false)
   const [showWorkspaceStep, setShowWorkspaceStep] = useState(false)
   const [isCheckingSteps, setIsCheckingSteps] = useState(true)
@@ -53,11 +56,11 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
       setShowKeychainStep(needsKeychainStep)
       setShowWorkspaceStep(needsWorkspaceStep)
 
-      // Determine which step to show first
-      if (needsKeychainStep) {
-        setCurrentStep('keychain')
-      } else if (needsWorkspaceStep) {
+      // Determine which step to show first (workspace is always first)
+      if (needsWorkspaceStep) {
         setCurrentStep('workspace')
+      } else if (needsKeychainStep) {
+        setCurrentStep('keychain')
       } else {
         // No steps needed, complete immediately
         onOnboardingComplete()
@@ -76,26 +79,52 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
     checkWhichStepsNeeded()
   }, [checkWhichStepsNeeded])
 
-  const handleKeychainComplete = () => {
-    // Move to workspace step if needed, otherwise complete
-    if (showWorkspaceStep) {
-      setCurrentStep('workspace')
-    } else {
-      onOnboardingComplete()
+  const handleWorkspaceComplete = async (directory: string) => {
+    // User chose to complete setup without configuring libraries (use defaults)
+    try {
+      if (directory) {
+        await window.griptapeAPI.setWorkspacePreference(directory)
+      }
+
+      // Use default library settings (cloud library enabled, advanced disabled)
+      await window.onboardingAPI.setAdvancedLibraryEnabled(false)
+      await window.onboardingAPI.setCloudLibraryEnabled(true)
+
+      // Mark workspace setup as complete (this triggers GtnService to read the preferences)
+      await window.onboardingAPI.setWorkspaceSetupComplete(true)
+
+      // Move to keychain step if needed, otherwise complete
+      if (showKeychainStep) {
+        setCurrentStep('keychain')
+      } else {
+        onOnboardingComplete()
+      }
+    } catch (error) {
+      console.error('Failed to complete workspace setup:', error)
+      alert('Failed to complete setup. Please try again.')
     }
   }
 
-  const handleWorkspaceComplete = async (
-    workspaceDirectory: string,
-    advancedLibrary: boolean,
-    cloudLibrary: boolean
-  ) => {
+  const handleWorkspaceNextLibraries = async (directory: string) => {
+    // User chose to configure libraries - save workspace and move to library step
     try {
-      // Set the workspace directory preference (GTN will pick it up during initialization)
-      if (workspaceDirectory) {
-        await window.griptapeAPI.setWorkspacePreference(workspaceDirectory)
+      if (directory) {
+        await window.griptapeAPI.setWorkspacePreference(directory)
       }
+    } catch (error) {
+      console.error('Failed to save workspace preference:', error)
+    }
 
+    // Move to library setup step
+    setCurrentStep('libraries')
+  }
+
+  const handleLibrariesBack = () => {
+    setCurrentStep('workspace')
+  }
+
+  const handleLibrariesComplete = async (advancedLibrary: boolean, cloudLibrary: boolean) => {
+    try {
       // Set library preferences BEFORE marking setup complete (GTN will pick them up during initialization)
       await window.onboardingAPI.setAdvancedLibraryEnabled(advancedLibrary)
       await window.onboardingAPI.setCloudLibraryEnabled(cloudLibrary)
@@ -103,12 +132,20 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
       // Mark workspace setup as complete (this triggers GtnService to read the preferences)
       await window.onboardingAPI.setWorkspaceSetupComplete(true)
 
-      // Notify App component that wizard is complete
-      onOnboardingComplete()
+      // Move to keychain step if needed, otherwise complete
+      if (showKeychainStep) {
+        setCurrentStep('keychain')
+      } else {
+        onOnboardingComplete()
+      }
     } catch (error) {
-      console.error('Failed to complete workspace setup:', error)
+      console.error('Failed to complete library setup:', error)
       alert('Failed to complete setup. Please try again.')
     }
+  }
+
+  const handleKeychainComplete = () => {
+    onOnboardingComplete()
   }
 
   if (isCheckingSteps || currentStep === null) {
@@ -125,10 +162,18 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
             <img src={headerLogoSrc} alt="Griptape" className="h-10" />
           </div>
 
+          {currentStep === 'workspace' && showWorkspaceStep && (
+            <WorkspaceSetup
+              onComplete={handleWorkspaceComplete}
+              onNextLibraries={handleWorkspaceNextLibraries}
+            />
+          )}
+          {currentStep === 'libraries' && (
+            <LibrarySetup onComplete={handleLibrariesComplete} onBack={handleLibrariesBack} />
+          )}
           {currentStep === 'keychain' && showKeychainStep && (
             <KeychainExplanation onContinue={handleKeychainComplete} />
           )}
-          {currentStep === 'workspace' && <WorkspaceSetup onComplete={handleWorkspaceComplete} />}
         </div>
       </div>
     </div>

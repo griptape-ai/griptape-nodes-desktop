@@ -3,14 +3,12 @@ import { Folder, CheckCircle } from 'lucide-react'
 import { cn } from '../../utils/utils'
 
 interface WorkspaceSetupProps {
-  onComplete: (workspaceDirectory: string, advancedLibrary: boolean, cloudLibrary: boolean) => void
+  onComplete: (workspaceDirectory: string) => void
+  onNextLibraries: (workspaceDirectory: string) => void
 }
 
-const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
+const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete, onNextLibraries }) => {
   const [workspaceDirectory, setWorkspaceDirectory] = useState<string>('')
-  const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
-  const [cloudLibrary, setCloudLibrary] = useState<boolean>(true)
-  const [isCompleting, setIsCompleting] = useState(false)
 
   useEffect(() => {
     // Load the saved workspace directory, or default if none exists
@@ -53,19 +51,20 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
     }
   }
 
-  const handleComplete = async () => {
+  const handleComplete = () => {
     if (!workspaceDirectory) {
       alert('Please select a workspace directory')
       return
     }
+    onComplete(workspaceDirectory)
+  }
 
-    setIsCompleting(true)
-    try {
-      await onComplete(workspaceDirectory, advancedLibrary, cloudLibrary)
-    } catch (error) {
-      console.error('Failed to complete setup:', error)
-      setIsCompleting(false)
+  const handleNextLibraries = () => {
+    if (!workspaceDirectory) {
+      alert('Please select a workspace directory')
+      return
     }
+    onNextLibraries(workspaceDirectory)
   }
 
   return (
@@ -78,9 +77,9 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
               <Folder className="w-8 h-8 text-purple-400" />
             </div>
           </div>
-          <h2 className="text-3xl font-semibold text-foreground">Engine Setup</h2>
+          <h2 className="text-3xl font-semibold text-foreground">Workspace Setup</h2>
           <p className="text-muted-foreground text-lg">
-            Configure workspace location and optional libraries
+            Choose where your workflow files will be saved
           </p>
         </div>
 
@@ -129,60 +128,6 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
           </div>
         </div>
 
-        {/* Library options */}
-        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Optional Libraries</label>
-            <p className="text-xs text-muted-foreground">
-              Install additional libraries to extend Griptape Nodes capabilities
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={advancedLibrary}
-                onChange={(e) => setAdvancedLibrary(e.target.checked)}
-                className={cn(
-                  'mt-0.5 w-4 h-4 rounded border-input',
-                  'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
-                  'bg-background cursor-pointer'
-                )}
-              />
-              <div className="flex-1 space-y-1">
-                <span className="text-sm text-foreground group-hover:text-foreground transition-colors">
-                  Install Advanced Media Library
-                </span>
-                <p className="text-xs text-muted-foreground">
-                  Advanced image processing nodes (requires specific models to function)
-                </p>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={cloudLibrary}
-                onChange={(e) => setCloudLibrary(e.target.checked)}
-                className={cn(
-                  'mt-0.5 w-4 h-4 rounded border-input',
-                  'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
-                  'bg-background cursor-pointer'
-                )}
-              />
-              <div className="flex-1 space-y-1">
-                <span className="text-sm text-foreground group-hover:text-foreground transition-colors">
-                  Install Griptape Cloud Library
-                </span>
-                <p className="text-xs text-muted-foreground">
-                  Nodes for integrating with Griptape Cloud services
-                </p>
-              </div>
-            </label>
-          </div>
-        </div>
-
         {/* Info note */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/30 rounded-lg p-4">
           <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -192,19 +137,32 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({ onComplete }) => {
           </p>
         </div>
 
-        {/* Complete button */}
-        <div className="flex justify-center pt-4">
+        {/* Action buttons */}
+        <div className="flex justify-center gap-3 pt-4">
+          <button
+            onClick={handleNextLibraries}
+            disabled={!workspaceDirectory}
+            className={cn(
+              'px-6 py-2.5 text-sm font-medium rounded-md',
+              'border border-purple-500/50 text-purple-400',
+              'hover:bg-purple-500/10 active:bg-purple-500/20',
+              'transition-colors',
+              'disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+          >
+            Next: Libraries (Optional)
+          </button>
           <button
             onClick={handleComplete}
-            disabled={isCompleting || !workspaceDirectory}
+            disabled={!workspaceDirectory}
             className={cn(
-              'px-8 py-4 text-lg font-medium rounded-lg',
+              'px-6 py-2.5 text-sm font-medium rounded-md',
               'bg-green-600 hover:bg-green-500 active:bg-green-400',
               'text-white transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           >
-            {isCompleting ? 'Setting Up...' : 'Set Up'}
+            Complete Setup
           </button>
         </div>
       </div>

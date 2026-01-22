@@ -4,11 +4,17 @@ import { useAuth } from '../contexts/AuthContext'
 interface EditorWebviewProps {
   isVisible: boolean
   navigateTo?: { path: string; timestamp: number } | null
+  openWorkflowModal?: { timestamp: number } | null
 }
 
-export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible, navigateTo }) => {
+export const EditorWebview: React.FC<EditorWebviewProps> = ({
+  isVisible,
+  navigateTo,
+  openWorkflowModal
+}) => {
   const [error, setError] = useState<string | null>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
+  const [isWebviewReady, setIsWebviewReady] = useState(false)
   const [preloadPath, setPreloadPath] = useState<string | null>(null)
   const [editorUrl, setEditorUrl] = useState<string | null>(null)
   const [hasEverBeenVisible, setHasEverBeenVisible] = useState(false)
@@ -18,6 +24,8 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible, navigat
   navigationRef.current = navigateTo
   // Track the last navigated timestamp to avoid duplicate navigation
   const lastNavigatedTimestamp = useRef<number | null>(null)
+  // Track the last workflow modal open timestamp to avoid duplicate triggers
+  const lastWorkflowModalTimestamp = useRef<number | null>(null)
 
   // Use AuthContext instead of checking independently
   const { isLoading, isAuthenticated, tokens } = useAuth()
@@ -101,6 +109,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible, navigat
 
     const handleLoad = async () => {
       console.debug('[EditorWebview] Webview loaded successfully')
+      setIsWebviewReady(true)
     }
 
     const handleLoadFail = (event: any) => {
@@ -202,6 +211,36 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({ isVisible, navigat
     lastNavigatedTimestamp.current = navigateTo.timestamp
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timestamp triggers navigation, path is read inside
   }, [navigateTo?.timestamp, hasInitialized, editorUrl])
+
+  // Handle opening the workflow modal via executeJavaScript
+  useEffect(() => {
+    const webview = webviewRef.current as HTMLWebViewElement & {
+      executeJavaScript: (code: string) => Promise<unknown>
+    }
+
+    if (!webview || !hasInitialized || !isWebviewReady || !openWorkflowModal) {
+      return
+    }
+
+    // Skip if we already handled this trigger
+    if (lastWorkflowModalTimestamp.current === openWorkflowModal.timestamp) {
+      return
+    }
+
+    // Dispatch a custom event that the editor can listen for
+    console.log('[EditorWebview] Triggering workflow modal open')
+    webview
+      .executeJavaScript(
+        `
+      window.dispatchEvent(new CustomEvent('desktop-open-workflow-modal'));
+    `
+      )
+      .catch((err: unknown) => {
+        console.error('[EditorWebview] Failed to trigger workflow modal:', err)
+      })
+    lastWorkflowModalTimestamp.current = openWorkflowModal.timestamp
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timestamp triggers the effect
+  }, [openWorkflowModal?.timestamp, hasInitialized, isWebviewReady])
 
   // Listen for reload command from main process (triggered by CMD-R menu accelerator or channel change)
   useEffect(() => {

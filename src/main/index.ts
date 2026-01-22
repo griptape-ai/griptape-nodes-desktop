@@ -1113,6 +1113,26 @@ const createMenu = (getCurrentPage: () => string) => {
     })
   }
 
+  // Developer menu (dev mode only)
+  if (!isPackaged()) {
+    template.push({
+      label: 'Developer',
+      submenu: [
+        {
+          label: 'Reset Onboarding',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => {
+            onboardingService.resetOnboarding()
+            const focusedWindow = BrowserWindow.getFocusedWindow()
+            if (focusedWindow) {
+              focusedWindow.reload()
+            }
+          }
+        }
+      ]
+    })
+  }
+
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
 }

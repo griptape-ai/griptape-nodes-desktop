@@ -458,7 +458,159 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     this.workspaceDirectory = config?.workspace_directory
   }
 
-  async getWorkflows(): Promise<{ path: string; modifiedTime: number }[]> {
+  /**
+   * Parse workflow file header to extract metadata like image path
+   */
+  private parseWorkflowMetadata(workflowPath: string): {
+    image?: string
+    name?: string
+    description?: string
+  } {
+    try {
+      const content = fs.readFileSync(workflowPath, 'utf8')
+      // Find the header section between # /// script and # ///
+      const headerMatch = content.match(/# \/\/\/ script\n([\s\S]*?)\n# \/\/\//)
+      if (!headerMatch) {
+        return {}
+      }
+
+      const header = headerMatch[1]
+      const metadata: { image?: string; name?: string; description?: string } = {}
+
+      // Extract image field
+      const imageMatch = header.match(/^# image = "(.+)"$/m)
+      if (imageMatch) {
+        metadata.image = imageMatch[1]
+      }
+
+      // Extract name field
+      const nameMatch = header.match(/^# name = "(.+)"$/m)
+      if (nameMatch) {
+        metadata.name = nameMatch[1]
+      }
+
+      // Extract description field
+      const descriptionMatch = header.match(/^# description = "(.+)"$/m)
+      if (descriptionMatch) {
+        metadata.description = descriptionMatch[1]
+      }
+
+      return metadata
+    } catch {
+      return {}
+    }
+  }
+
+  /**
+   * Read an image file and return it as a base64 data URL
+   */
+  private readImageAsDataUrl(imagePath: string): string | undefined {
+    try {
+      if (!fs.existsSync(imagePath)) {
+        return undefined
+      }
+      const imageBuffer = fs.readFileSync(imagePath)
+      const ext = path.extname(imagePath).toLowerCase()
+      const mimeType =
+        ext === '.png'
+          ? 'image/png'
+          : ext === '.jpg' || ext === '.jpeg'
+            ? 'image/jpeg'
+            : ext === '.gif'
+              ? 'image/gif'
+              : ext === '.webp'
+                ? 'image/webp'
+                : 'image/png'
+      return `data:${mimeType};base64,${imageBuffer.toString('base64')}`
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * Process a single workflow file and return its metadata
+   */
+  private processWorkflowFile(workflowPath: string): {
+    path: string
+    modifiedTime: number
+    thumbnail?: string
+    name?: string
+    description?: string
+  } | null {
+    try {
+      const stats = fs.statSync(workflowPath)
+      if (!stats.isFile()) {
+        return null
+      }
+
+      const metadata = this.parseWorkflowMetadata(workflowPath)
+
+      // If there's an image, read it from staticfiles directory
+      let thumbnail: string | undefined
+      if (metadata.image && this.workspaceDirectory) {
+        const imagePath = path.join(this.workspaceDirectory, 'staticfiles', metadata.image)
+        thumbnail = this.readImageAsDataUrl(imagePath)
+      }
+
+      return {
+        path: workflowPath,
+        modifiedTime: stats.mtimeMs,
+        thumbnail,
+        name: metadata.name,
+        description: metadata.description
+      }
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Check if a .py file is a valid Griptape workflow by inspecting its header
+   */
+  private isValidWorkflowFile(filePath: string): boolean {
+    try {
+      const content = fs.readFileSync(filePath, 'utf8')
+      // Check for the workflow header markers and griptape-nodes tool section
+      const hasScriptHeader = content.includes('# /// script')
+      const hasGriptapeNodes = content.includes('[tool.griptape-nodes]')
+      return hasScriptHeader && hasGriptapeNodes
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Expand a path that could be a file or directory into workflow file paths
+   */
+  private expandWorkflowPath(inputPath: string): string[] {
+    try {
+      const stats = fs.statSync(inputPath)
+      if (stats.isDirectory()) {
+        // Scan directory for .py files that are valid workflow files
+        const files = fs.readdirSync(inputPath)
+        return files
+          .filter((file) => file.endsWith('.py'))
+          .map((file) => path.join(inputPath, file))
+          .filter((filePath) => this.isValidWorkflowFile(filePath))
+      } else if (stats.isFile() && inputPath.endsWith('.py')) {
+        // For directly listed files, also validate they are workflow files
+        return this.isValidWorkflowFile(inputPath) ? [inputPath] : []
+      }
+      return []
+    } catch {
+      return []
+    }
+  }
+
+  async getWorkflows(): Promise<
+    {
+      path: string
+      modifiedTime: number
+      thumbnail?: string
+      name?: string
+      description?: string
+    }[]
+  > {
     const gtnConfigPath = getGtnConfigPath(this.userDataDir)
     if (!fs.existsSync(gtnConfigPath)) {
       return []
@@ -472,17 +624,16 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         return []
       }
 
+      // Expand directories to individual workflow files
+      const expandedPaths = workflowPaths.flatMap((p: string) => this.expandWorkflowPath(p))
+
+      // Deduplicate paths (in case a file is both listed directly and in a directory)
+      const uniquePaths = [...new Set(expandedPaths)]
+
       // Get metadata for each workflow and sort by modified time (most recent first)
-      const workflows = workflowPaths
-        .map((path: string) => {
-          try {
-            const stats = fs.statSync(path)
-            return { path, modifiedTime: stats.mtimeMs }
-          } catch {
-            // File doesn't exist or can't be accessed, use 0 as modified time
-            return { path, modifiedTime: 0 }
-          }
-        })
+      const workflows = uniquePaths
+        .map((workflowPath) => this.processWorkflowFile(workflowPath))
+        .filter((w): w is NonNullable<typeof w> => w !== null)
         .sort((a, b) => b.modifiedTime - a.modifiedTime)
 
       return workflows

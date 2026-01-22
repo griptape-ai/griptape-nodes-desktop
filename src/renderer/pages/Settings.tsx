@@ -945,7 +945,9 @@ const Settings: React.FC = () => {
             <div className="border-t border-border pt-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium text-foreground">Optional Libraries</label>
+                  <label className="text-sm font-medium text-foreground">
+                    Additional Libraries
+                  </label>
                   <p className="text-xs text-muted-foreground mt-1 mb-3">
                     Install additional libraries to extend Griptape Nodes capabilities
                   </p>
