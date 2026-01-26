@@ -168,6 +168,10 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       // Ensure engines.json exists even if GTN was already initialized
       // This fixes the regression where engine names lost hostname after the init-skip change
       this.ensureEnginesJson()
+
+      // Still need to wait for authentication before starting engine
+      logger.info('Waiting for authentication before starting engine...')
+      await this.authService.waitForApiKey()
     } else {
       try {
         logger.info('Initializing GTN...')
