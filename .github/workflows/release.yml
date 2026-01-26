@@ -7,6 +7,11 @@ on:
         description: 'Release channel (stable, beta, dev, etc.) - defaults to stable for main and branch name otherwise'
         required: false
         type: string
+      skip_s3_upload:
+        description: 'Skip S3 upload (for test builds without auto-updates). Defaults to true for non-main branches.'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   validate:
@@ -14,6 +19,7 @@ jobs:
     outputs:
       should_proceed: ${{ steps.check.outputs.should_proceed }}
       channel: ${{ steps.check.outputs.channel }}
+      skip_s3_upload: ${{ steps.check.outputs.skip_s3_upload }}
 
     steps:
       - name: Checkout Repository
@@ -52,6 +58,21 @@ jobs:
 
           # Set outputs
           echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+
+          # Determine if we should skip S3 upload
+          # - If user explicitly set skip_s3_upload, use that value
+          # - Otherwise, auto-skip for non-stable channels (non-main branches)
+          if [[ "${{ inputs.skip_s3_upload }}" == "true" ]]; then
+            SKIP_S3="true"
+            echo "S3 upload will be skipped (explicitly requested)"
+          elif [[ "$CHANNEL" != "stable" ]]; then
+            SKIP_S3="true"
+            echo "S3 upload will be skipped (non-stable channel defaults to skip)"
+          else
+            SKIP_S3="false"
+            echo "S3 upload will proceed (stable channel)"
+          fi
+          echo "skip_s3_upload=$SKIP_S3" >> $GITHUB_OUTPUT
 
           # Note: Tag validation will be done per-platform during upload step
           # since we now have platform-specific channels and tags
@@ -250,7 +271,7 @@ jobs:
         run: dotnet tool install -g AzureSignTool
 
       - name: Download previous Velopack releases
-        if: env.DONE != 'true'
+        if: env.DONE != 'true' && needs.validate.outputs.skip_s3_upload != 'true'
         run: |
           echo "Downloading previous releases for channel: $FULL_CHANNEL"
           vpk download s3 --bucket griptape-nodes-desktop-releases --region us-west-2 --channel "$FULL_CHANNEL" --prefix "$USER_CHANNEL/"
@@ -312,9 +333,15 @@ jobs:
         shell: bash
 
       - name: Upload Velopack releases
-        if: env.DONE != 'true'
+        if: env.DONE != 'true' && needs.validate.outputs.skip_s3_upload != 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version")
+
+          # Safety check: prevent accidental S3 upload to stable from non-main
+          if [[ "$USER_CHANNEL" == "stable" && "${{ github.ref_name }}" != "main" ]]; then
+            echo "ERROR: Refusing to upload stable channel from non-main branch"
+            exit 1
+          fi
 
           # Tag and release naming
           if [[ "$USER_CHANNEL" == "stable" ]]; then
@@ -333,7 +360,7 @@ jobs:
         shell: bash
 
       - name: Upload DMG to S3 (macOS only)
-        if: env.DONE != 'true' && runner.os == 'macOS'
+        if: env.DONE != 'true' && runner.os == 'macOS' && needs.validate.outputs.skip_s3_upload != 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version")
           DMG_FILE="Releases/GriptapeNodes-${VERSION}-${FULL_CHANNEL}.dmg"
@@ -350,7 +377,7 @@ jobs:
         shell: bash
 
       - name: Upload Setup.exe to S3 (Windows only)
-        if: env.DONE != 'true' && runner.os == 'Windows'
+        if: env.DONE != 'true' && runner.os == 'Windows' && needs.validate.outputs.skip_s3_upload != 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version")
           SETUP_FILE="Releases/GriptapeNodes-${VERSION}-${FULL_CHANNEL}-Setup.exe"
@@ -405,18 +432,23 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           USER_CHANNEL="${{ needs.validate.outputs.channel }}"
+          SKIP_S3="${{ needs.validate.outputs.skip_s3_upload }}"
 
-          # Construct release tag and name
+          # Construct release tag, name, and flags based on channel
           if [[ "$USER_CHANNEL" == "stable" ]]; then
             TAG_NAME="v${VERSION}"
             RELEASE_NAME="Griptape Nodes Desktop ${VERSION}"
+            PRERELEASE_FLAG=""
           else
             TAG_NAME="v${VERSION}-${USER_CHANNEL}"
-            RELEASE_NAME="Griptape Nodes Desktop ${VERSION} (${USER_CHANNEL})"
+            RELEASE_NAME="[TEST] Griptape Nodes Desktop ${VERSION} (${USER_CHANNEL})"
+            PRERELEASE_FLAG="--prerelease"
           fi
 
           echo "Creating unified release: $TAG_NAME"
           echo "Release name: $RELEASE_NAME"
+          echo "Prerelease: ${PRERELEASE_FLAG:-no}"
+          echo "S3 upload skipped: $SKIP_S3"
 
           # Find the full installers from each platform
           MACOS_DMG=$(find artifacts/releases-osx-arm64 -name "GriptapeNodes-*.dmg" 2>/dev/null | head -1)
@@ -435,7 +467,8 @@ jobs:
 
           # Create release notes content with separator for app parsing
           # The separator allows the app to extract just the changelog section
-          INSTALL_NOTES=$(cat <<'EOF'
+          if [[ "$USER_CHANNEL" == "stable" ]]; then
+            INSTALL_NOTES=$(cat <<'EOF'
           <!-- release-notes-separator -->
 
           ## Installation
@@ -451,6 +484,28 @@ jobs:
           This application includes automatic updates.
           EOF
           )
+          else
+            INSTALL_NOTES=$(cat <<'EOF'
+          > **Warning**: This is a test build from a non-main branch.
+          > Auto-updates are not available for this build.
+          > This build should not be used in production.
+
+          <!-- release-notes-separator -->
+
+          ## Installation
+
+          Download the installer for your platform:
+          - **macOS (Apple Silicon)**: Download the .dmg file
+          - **Linux x64**: Download the linux-x64 .AppImage file
+          - **Linux ARM64**: Download the linux-arm64 .AppImage file
+          - **Windows**: Download the Setup.exe file
+
+          ## Updates
+
+          This is a test build. Auto-updates are not available.
+          EOF
+          )
+          fi
 
           # Create the release with all available installers
           # --generate-notes creates changelog from PRs, --notes appends installation instructions
@@ -459,6 +514,7 @@ jobs:
             --title "$RELEASE_NAME" \
             --generate-notes \
             --notes "$INSTALL_NOTES" \
+            $PRERELEASE_FLAG \
             ${MACOS_DMG:+"$MACOS_DMG"} \
             ${LINUX_X64_APPIMAGE:+"$LINUX_X64_APPIMAGE"} \
             ${LINUX_ARM64_APPIMAGE:+"$LINUX_ARM64_APPIMAGE"} \
