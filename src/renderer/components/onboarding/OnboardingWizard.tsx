@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import KeychainExplanation from './KeychainExplanation'
 import WorkspaceSetup from './WorkspaceSetup'
 import LibrarySetup from './LibrarySetup'
+import MigrationSetup from './MigrationSetup'
 import headerLogoSrc from '../../../assets/griptape_nodes_header_logo.svg'
 import { cn } from '../../utils/utils'
 
@@ -10,13 +11,16 @@ interface OnboardingWizardProps {
 }
 
 const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplete }) => {
-  const [currentStep, setCurrentStep] = useState<'workspace' | 'libraries' | 'keychain' | null>(
-    null
-  )
+  const [currentStep, setCurrentStep] = useState<
+    'workspace' | 'libraries' | 'keychain' | 'migration' | null
+  >(null)
   const [showKeychainStep, setShowKeychainStep] = useState(false)
   const [showWorkspaceStep, setShowWorkspaceStep] = useState(false)
   const [isCheckingSteps, setIsCheckingSteps] = useState(true)
   const [platform, setPlatform] = useState<NodeJS.Platform | null>(null)
+  const [importedWorkspaceDirectory, setImportedWorkspaceDirectory] = useState<string | undefined>(
+    undefined
+  )
 
   useEffect(() => {
     window.electronAPI.getPlatform().then(setPlatform)
@@ -154,6 +158,20 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
     onOnboardingComplete()
   }
 
+  const handleStartMigration = () => {
+    setCurrentStep('migration')
+  }
+
+  const handleMigrationComplete = (workspaceDirectory?: string) => {
+    // Always update the imported workspace directory (clear it if skipping)
+    setImportedWorkspaceDirectory(workspaceDirectory)
+    setCurrentStep('workspace')
+  }
+
+  const handleMigrationBack = () => {
+    setCurrentStep('workspace')
+  }
+
   if (isCheckingSteps || currentStep === null) {
     return null // Or a loading spinner
   }
@@ -176,7 +194,12 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
           <WorkspaceSetup
             onComplete={handleWorkspaceComplete}
             onNextLibraries={handleWorkspaceNextLibraries}
+            onStartMigration={handleStartMigration}
+            initialWorkspaceDirectory={importedWorkspaceDirectory}
           />
+        )}
+        {currentStep === 'migration' && (
+          <MigrationSetup onComplete={handleMigrationComplete} onBack={handleMigrationBack} />
         )}
         {currentStep === 'libraries' && (
           <LibrarySetup onComplete={handleLibrariesComplete} onBack={handleLibrariesBack} />

@@ -108,6 +108,30 @@ export interface ReleaseNotesInfo {
   content: string
 }
 
+// Migration config file result type
+export interface ConfigFileResult {
+  path: string
+  isValid: boolean
+  workspaceDirectory?: string
+  hasEnvFile: boolean
+  error?: string
+}
+
+// Migration import result type
+export interface ImportResult {
+  success: boolean
+  workspaceDirectory?: string
+  envImported: boolean
+  error?: string
+}
+
+// Migration copy workspace result type
+export interface CopyWorkspaceResult {
+  success: boolean
+  filesCopied: number
+  error?: string
+}
+
 declare global {
   interface Window {
     pythonAPI: {
@@ -398,6 +422,14 @@ declare global {
       setTutorialCompleted: (completed: boolean) => Promise<{ success: boolean }>
       getTutorialLastStep: () => Promise<number>
       setTutorialLastStep: (step: number) => Promise<{ success: boolean }>
+    }
+    migrationAPI: {
+      checkDefaultLocations: () => Promise<ConfigFileResult[]>
+      scanHomeDirectory: () => Promise<ConfigFileResult[]>
+      validateConfig: (filePath: string) => Promise<ConfigFileResult>
+      importConfig: (filePath: string) => Promise<ImportResult>
+      selectConfigFile: () => Promise<string | null>
+      copyWorkspace: (sourceDir: string, destDir: string) => Promise<CopyWorkspaceResult>
     }
     usageMetricsAPI: {
       reportLaunch: () => Promise<{ success: boolean; error?: string }>
