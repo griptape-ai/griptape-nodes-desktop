@@ -21,7 +21,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     target: '[data-tutorial="logo"]',
     title: 'Welcome to Griptape Nodes!',
     description:
-      "Griptape Nodes Desktop is your local development environment for building AI workflows. This app manages the Griptape Nodes engine and provides easy access to the visual workflow editor. Let's take a quick tour!",
+      "Griptape Nodes Desktop is your local workspace for building AI workflows with nodes. From here, you'll start the engine and work in the visual editor. Let's take a quick tour so you know where everything lives.",
     position: 'bottom'
   },
   {
@@ -37,7 +37,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     target: '[data-tutorial="engine-tab"]',
     title: 'Engine Page',
     description:
-      'The Engine tab gives you detailed logs and advanced controls for troubleshooting.',
+      "The Engine tab shows detailed logs and advanced controls. You'll mostly use this for troubleshooting or when you want to see what the engine is doing under the hood.",
     position: 'bottom'
   },
   {
@@ -45,7 +45,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     target: '[data-tutorial="workspace"]',
     title: 'Your Workspace',
     description:
-      'Your workflows and project files are saved here. You can change this location in Settings.',
+      'Griptape Nodes saves your workflows and project files here by default. You can change this later in Settings if needed.',
     position: 'top'
   },
   {
