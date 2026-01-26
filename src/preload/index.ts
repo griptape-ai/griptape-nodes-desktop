@@ -129,6 +129,7 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
   setWorkspace: (directory: string) => ipcRenderer.invoke('gtn:set-workspace', directory),
   selectDirectory: () => ipcRenderer.invoke('gtn:select-directory'),
   refreshConfig: () => ipcRenderer.invoke('gtn:refresh-config'),
+  getWorkflows: () => ipcRenderer.invoke('gtn:get-workflows'),
   reconfigureEngine: (config: {
     workspaceDirectory: string
     advancedLibrary: boolean
@@ -237,7 +238,13 @@ contextBridge.exposeInMainWorld('onboardingAPI', {
     ipcRenderer.invoke('onboarding:set-advanced-library-enabled', enabled),
   isCloudLibraryEnabled: () => ipcRenderer.invoke('onboarding:is-cloud-library-enabled'),
   setCloudLibraryEnabled: (enabled: boolean) =>
-    ipcRenderer.invoke('onboarding:set-cloud-library-enabled', enabled)
+    ipcRenderer.invoke('onboarding:set-cloud-library-enabled', enabled),
+  isTutorialCompleted: () => ipcRenderer.invoke('onboarding:is-tutorial-completed'),
+  setTutorialCompleted: (completed: boolean) =>
+    ipcRenderer.invoke('onboarding:set-tutorial-completed', completed),
+  getTutorialLastStep: () => ipcRenderer.invoke('onboarding:get-tutorial-last-step'),
+  setTutorialLastStep: (step: number) =>
+    ipcRenderer.invoke('onboarding:set-tutorial-last-step', step)
 })
 
 contextBridge.exposeInMainWorld('usageMetricsAPI', {

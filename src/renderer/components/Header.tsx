@@ -117,7 +117,11 @@ export function Header({
             </button>
           )
 
-          return <div key={item.id}>{button}</div>
+          return (
+            <div key={item.id} data-tutorial={`${item.id}-tab`}>
+              {button}
+            </div>
+          )
         })}
       </nav>
 

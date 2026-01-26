@@ -181,12 +181,14 @@ const Settings: React.FC = () => {
     const handleScrollToUpdates = () => scrollToAndHighlight('desktop-app-updates')
     const handleScrollToEngineUpdates = () => scrollToAndHighlight('engine-updates')
     const handleScrollToLogging = () => scrollToAndHighlight('logging-diagnostics')
+    const handleScrollToWorkspace = () => scrollToAndHighlight('workspace-settings')
 
     window.griptapeAPI.onWorkspaceChanged(handleWorkspaceChanged)
     window.pythonAPI.onEnvironmentInfoUpdated(handleEnvironmentInfoUpdated)
     window.addEventListener('scroll-to-updates', handleScrollToUpdates)
     window.addEventListener('scroll-to-engine-updates', handleScrollToEngineUpdates)
     window.addEventListener('scroll-to-logging', handleScrollToLogging)
+    window.addEventListener('scroll-to-workspace', handleScrollToWorkspace)
 
     return () => {
       window.griptapeAPI.removeWorkspaceChanged(handleWorkspaceChanged)
@@ -194,6 +196,7 @@ const Settings: React.FC = () => {
       window.removeEventListener('scroll-to-updates', handleScrollToUpdates)
       window.removeEventListener('scroll-to-engine-updates', handleScrollToEngineUpdates)
       window.removeEventListener('scroll-to-logging', handleScrollToLogging)
+      window.removeEventListener('scroll-to-workspace', handleScrollToWorkspace)
     }
   }, [loadEnvironmentInfo])
 
@@ -894,7 +897,10 @@ const Settings: React.FC = () => {
         </div>
 
         {/* Workspace & Library Configuration Section */}
-        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <div
+          id="workspace-settings"
+          className="bg-card rounded-lg shadow-sm border border-border p-6 transition-all"
+        >
           <h2 className="text-lg font-semibold mb-4">Workspace & Libraries</h2>
           <div className="space-y-6">
             <div className="space-y-4">
@@ -939,7 +945,9 @@ const Settings: React.FC = () => {
             <div className="border-t border-border pt-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium text-foreground">Optional Libraries</label>
+                  <label className="text-sm font-medium text-foreground">
+                    Additional Libraries
+                  </label>
                   <p className="text-xs text-muted-foreground mt-1 mb-3">
                     Install additional libraries to extend Griptape Nodes capabilities
                   </p>

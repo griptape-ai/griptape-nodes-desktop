@@ -321,6 +321,15 @@ declare global {
       setWorkspace: (directory: string) => Promise<{ success: boolean; error?: string }>
       selectDirectory: () => Promise<string | null>
       refreshConfig: () => Promise<void>
+      getWorkflows: () => Promise<
+        {
+          path: string
+          modifiedTime: number
+          thumbnail?: string
+          name?: string
+          description?: string
+        }[]
+      >
       reconfigureEngine: (config: {
         workspaceDirectory: string
         advancedLibrary: boolean
@@ -385,6 +394,10 @@ declare global {
       setAdvancedLibraryEnabled: (enabled: boolean) => Promise<{ success: boolean }>
       isCloudLibraryEnabled: () => Promise<boolean>
       setCloudLibraryEnabled: (enabled: boolean) => Promise<{ success: boolean }>
+      isTutorialCompleted: () => Promise<boolean>
+      setTutorialCompleted: (completed: boolean) => Promise<{ success: boolean }>
+      getTutorialLastStep: () => Promise<number>
+      setTutorialLastStep: (step: number) => Promise<{ success: boolean }>
     }
     usageMetricsAPI: {
       reportLaunch: () => Promise<{ success: boolean; error?: string }>

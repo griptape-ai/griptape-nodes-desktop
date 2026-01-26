@@ -1113,6 +1113,26 @@ const createMenu = (getCurrentPage: () => string) => {
     })
   }
 
+  // Developer menu (dev mode only)
+  if (!isPackaged()) {
+    template.push({
+      label: 'Developer',
+      submenu: [
+        {
+          label: 'Reset Onboarding',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => {
+            onboardingService.resetOnboarding()
+            const focusedWindow = BrowserWindow.getFocusedWindow()
+            if (focusedWindow) {
+              focusedWindow.reload()
+            }
+          }
+        }
+      ]
+    })
+  }
+
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
 }
@@ -1878,6 +1898,11 @@ const setupIPC = () => {
 
   ipcMain.handle('gtn:refresh-config', () => gtnService.refreshConfig())
 
+  ipcMain.handle('gtn:get-workflows', async () => {
+    await gtnService.waitForReady()
+    return gtnService.getWorkflows()
+  })
+
   ipcMain.handle(
     'gtn:reconfigure-engine',
     async (
@@ -2245,6 +2270,24 @@ const setupIPC = () => {
 
   ipcMain.handle('onboarding:set-cloud-library-enabled', (event, enabled: boolean) => {
     onboardingService.setCloudLibraryEnabled(enabled)
+    return { success: true }
+  })
+
+  ipcMain.handle('onboarding:is-tutorial-completed', () => {
+    return onboardingService.isTutorialCompleted()
+  })
+
+  ipcMain.handle('onboarding:set-tutorial-completed', (_event, completed: boolean) => {
+    onboardingService.setTutorialCompleted(completed)
+    return { success: true }
+  })
+
+  ipcMain.handle('onboarding:get-tutorial-last-step', () => {
+    return onboardingService.getTutorialLastStep()
+  })
+
+  ipcMain.handle('onboarding:set-tutorial-last-step', (_event, step: number) => {
+    onboardingService.setTutorialLastStep(step)
     return { success: true }
   })
 
