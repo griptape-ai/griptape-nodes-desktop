@@ -23,7 +23,12 @@ export const rendererConfig: Configuration = {
   },
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css'],
-    plugins: [new TsconfigPathsPlugin()]
+    plugins: [new TsconfigPathsPlugin()],
+    // Polyfill fallbacks for Node.js core modules used by dependencies like react-markdown/debug
+    fallback: {
+      tty: false,
+      util: false
+    }
   },
   plugins
 }

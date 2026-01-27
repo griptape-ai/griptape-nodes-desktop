@@ -218,11 +218,7 @@ const MainApp: React.FC = () => {
 
           {/* Release Notes Modal */}
           {showReleaseNotes && releaseNotes && (
-            <ReleaseNotesModal
-              releaseNotes={releaseNotes}
-              onDismiss={handleDismissReleaseNotes}
-              onOpenExternal={(url) => window.electronAPI.openExternal(url)}
-            />
+            <ReleaseNotesModal releaseNotes={releaseNotes} onDismiss={handleDismissReleaseNotes} />
           )}
 
           {/* Main Content Area */}
