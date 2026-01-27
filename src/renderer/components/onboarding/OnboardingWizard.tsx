@@ -3,6 +3,7 @@ import KeychainExplanation from './KeychainExplanation'
 import WorkspaceSetup from './WorkspaceSetup'
 import LibrarySetup from './LibrarySetup'
 import headerLogoSrc from '../../../assets/griptape_nodes_header_logo.svg'
+import { cn } from '../../utils/utils'
 
 interface OnboardingWizardProps {
   onOnboardingComplete: () => void
@@ -15,6 +16,11 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
   const [showKeychainStep, setShowKeychainStep] = useState(false)
   const [showWorkspaceStep, setShowWorkspaceStep] = useState(false)
   const [isCheckingSteps, setIsCheckingSteps] = useState(true)
+  const [platform, setPlatform] = useState<NodeJS.Platform | null>(null)
+
+  useEffect(() => {
+    window.electronAPI.getPlatform().then(setPlatform)
+  }, [])
 
   const checkWhichStepsNeeded = useCallback(async () => {
     try {
@@ -153,28 +159,31 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center draggable">
-      <div className="w-screen h-screen flex flex-col bg-gray-900 border-t border-blue-500/30 non-draggable">
-        {/* Content area */}
-        <div className="flex-1 overflow-y-auto px-8 py-12">
-          {/* Logo */}
-          <div className="flex items-center justify-center mb-8">
-            <img src={headerLogoSrc} alt="Griptape" className="h-10" />
-          </div>
+    <div className="fixed inset-0 z-[100] flex h-screen w-screen flex-col bg-gray-900">
+      {/* Draggable title bar region */}
+      <div
+        className={cn('h-10 w-full flex-shrink-0 draggable', platform === 'darwin' && 'pl-20')}
+      />
 
-          {currentStep === 'workspace' && showWorkspaceStep && (
-            <WorkspaceSetup
-              onComplete={handleWorkspaceComplete}
-              onNextLibraries={handleWorkspaceNextLibraries}
-            />
-          )}
-          {currentStep === 'libraries' && (
-            <LibrarySetup onComplete={handleLibrariesComplete} onBack={handleLibrariesBack} />
-          )}
-          {currentStep === 'keychain' && showKeychainStep && (
-            <KeychainExplanation onContinue={handleKeychainComplete} />
-          )}
+      {/* Content area */}
+      <div className="flex-1 overflow-y-auto px-8 py-12">
+        {/* Logo */}
+        <div className="flex items-center justify-center mb-8">
+          <img src={headerLogoSrc} alt="Griptape" className="h-10" />
         </div>
+
+        {currentStep === 'workspace' && showWorkspaceStep && (
+          <WorkspaceSetup
+            onComplete={handleWorkspaceComplete}
+            onNextLibraries={handleWorkspaceNextLibraries}
+          />
+        )}
+        {currentStep === 'libraries' && (
+          <LibrarySetup onComplete={handleLibrariesComplete} onBack={handleLibrariesBack} />
+        )}
+        {currentStep === 'keychain' && showKeychainStep && (
+          <KeychainExplanation onContinue={handleKeychainComplete} />
+        )}
       </div>
     </div>
   )
