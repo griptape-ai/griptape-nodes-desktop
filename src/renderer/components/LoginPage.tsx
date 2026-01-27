@@ -92,8 +92,13 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center draggable">
-      <div className="w-screen h-screen flex flex-col bg-gray-900 border-t border-blue-500/30 non-draggable">
+    <div className="fixed inset-0 z-[100] flex h-screen w-screen flex-col bg-gray-900">
+      {/* Draggable title bar region */}
+      <div
+        className={cn('h-10 w-full flex-shrink-0 draggable', platform === 'darwin' && 'pl-20')}
+      />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Update Available Banner */}
         {(shouldShowUpdateBanner || downloadError) && (
           <div className={platform === 'darwin' ? 'pl-20' : ''}>
