@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Sparkles, X } from 'lucide-react'
 import type { ReleaseNotesInfo } from '@/types/global'
@@ -8,42 +8,11 @@ interface ReleaseNotesModalProps {
   onDismiss: (dontShowAgain: boolean) => void
 }
 
-/**
- * Pre-processes release notes content:
- * - Removes "Full Changelog" lines with GitHub URLs
- * - Strips GitHub attribution from list items (e.g., "by @user in #123")
- */
-function preprocessContent(content: string): string {
-  return content
-    .split('\n')
-    .filter((line) => {
-      const trimmed = line.trim()
-      // Remove "Full Changelog" lines with GitHub URLs
-      if (trimmed.includes('Full Changelog') && trimmed.includes('github.com')) {
-        return false
-      }
-      return true
-    })
-    .map((line) => {
-      // Strip GitHub attribution from list items
-      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-        return line.replace(/\s+by\s+@[\w-]+\s+in\s+#\d+\s*$/i, '')
-      }
-      return line
-    })
-    .join('\n')
-}
-
 export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
   releaseNotes,
   onDismiss
 }) => {
   const [dontShowAgain, setDontShowAgain] = useState(false)
-
-  const processedContent = useMemo(
-    () => preprocessContent(releaseNotes.content),
-    [releaseNotes.content]
-  )
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -76,7 +45,6 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4">
           <ReactMarkdown
             components={{
-              // Custom link handler - skip GitHub URLs, open others externally
               a: ({ href, children }) => {
                 return (
                   <a
@@ -112,7 +80,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
               strong: ({ children }) => <strong className="font-semibold">{children}</strong>
             }}
           >
-            {processedContent}
+            {releaseNotes.content}
           </ReactMarkdown>
         </div>
 

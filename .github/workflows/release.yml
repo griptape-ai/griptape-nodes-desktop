@@ -31,53 +31,7 @@ jobs:
       - name: Check for existing release
         id: check
         shell: bash
-        run: |
-          # Determine channel from input or branch name
-          CURRENT_BRANCH="${{ github.ref_name }}"
-
-          if [[ -n "${{ inputs.channel }}" ]]; then
-            CHANNEL="${{ inputs.channel }}"
-          elif [[ "$CURRENT_BRANCH" == "main" ]]; then
-            CHANNEL="stable"
-          else
-            # Sanitize branch name for use as channel (replace / with -)
-            CHANNEL=$(echo "$CURRENT_BRANCH" | sed 's/\//-/g')
-          fi
-
-          echo "Current branch: $CURRENT_BRANCH"
-          echo "Channel: $CHANNEL"
-
-          # Validate: channel must be "stable" if and only if branch is "main"
-          if [[ "$CURRENT_BRANCH" == "main" && "$CHANNEL" != "stable" ]]; then
-            echo "ERROR: Branch 'main' requires channel to be 'stable', but got '$CHANNEL'"
-            exit 1
-          elif [[ "$CURRENT_BRANCH" != "main" && "$CHANNEL" == "stable" ]]; then
-            echo "ERROR: Channel 'stable' can only be used from branch 'main', but current branch is '$CURRENT_BRANCH'"
-            exit 1
-          fi
-
-          # Set outputs
-          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
-
-          # Determine if we should skip S3 upload
-          # - If user explicitly set skip_s3_upload, use that value
-          # - Otherwise, auto-skip for non-stable channels (non-main branches)
-          if [[ "${{ inputs.skip_s3_upload }}" == "true" ]]; then
-            SKIP_S3="true"
-            echo "S3 upload will be skipped (explicitly requested)"
-          elif [[ "$CHANNEL" != "stable" ]]; then
-            SKIP_S3="true"
-            echo "S3 upload will be skipped (non-stable channel defaults to skip)"
-          else
-            SKIP_S3="false"
-            echo "S3 upload will proceed (stable channel)"
-          fi
-          echo "skip_s3_upload=$SKIP_S3" >> $GITHUB_OUTPUT
-
-          # Note: Tag validation will be done per-platform during upload step
-          # since we now have platform-specific channels and tags
-          echo "Channel validation passed"
-          echo "should_proceed=true" >> $GITHUB_OUTPUT
+        run: ./scripts/ci/validate-channel.sh "${{ github.ref_name }}" "${{ inputs.channel }}" "${{ inputs.skip_s3_upload }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -102,61 +56,7 @@ jobs:
 
       - name: Setup platform variables and check for existing release
         id: platform
-        run: |
-          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
-          VERSION=$(jq -r .version package.json)
-
-          # Determine OS and architecture for channel naming
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            OS="linux"
-            ARCH=$(uname -m)
-            if [[ "$ARCH" == "aarch64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="x64"
-            fi
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            OS="osx"
-            ARCH=$(uname -m)
-            if [[ "$ARCH" == "arm64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="x64"
-            fi
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            OS="win"
-            ARCH="x64"
-          fi
-
-          FULL_CHANNEL="${OS}-${ARCH}-${USER_CHANNEL}"
-
-          # Export platform variables for subsequent steps
-          echo "OS=$OS" >> $GITHUB_ENV
-          echo "ARCH=$ARCH" >> $GITHUB_ENV
-          echo "USER_CHANNEL=$USER_CHANNEL" >> $GITHUB_ENV
-          echo "FULL_CHANNEL=$FULL_CHANNEL" >> $GITHUB_ENV
-
-          echo "Platform: $OS-$ARCH"
-          echo "Channel: $USER_CHANNEL"
-          echo "Full channel: $FULL_CHANNEL"
-
-          # Tag naming logic
-          if [[ "$USER_CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}-${OS}-${ARCH}"
-          else
-            TAG_NAME="v${VERSION}-${FULL_CHANNEL}"
-          fi
-
-          echo "Checking for existing tag: $TAG_NAME"
-
-          # Check if tag exists on GitHub
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
-            echo "Tag $TAG_NAME already exists, skipping build for this platform"
-            echo "DONE=true" >> $GITHUB_ENV
-          else
-            echo "Tag $TAG_NAME does not exist, proceeding with build"
-            echo "DONE=false" >> $GITHUB_ENV
-          fi
+        run: ./scripts/ci/setup-platform.sh "${{ needs.validate.outputs.channel }}"
         shell: bash
 
       - name: Configure AWS creds via OIDC
@@ -188,48 +88,9 @@ jobs:
         if: env.DONE != 'true'
         run: npm ci
 
-      - name: Generate release notes
+      - name: Generate and preprocess release notes
         if: env.DONE != 'true'
-        run: |
-          VERSION=$(jq -r .version package.json)
-
-          # Determine the previous tag for generating notes
-          # For stable releases, find the previous stable tag
-          # For other channels, this will generate notes from all commits
-          PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
-
-          echo "Current version: v${VERSION}"
-          echo "Previous tag: ${PREV_TAG:-none}"
-
-          # Use GitHub API to generate release notes content
-          if [ -n "$PREV_TAG" ]; then
-            NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes \
-              -f tag_name="v${VERSION}" \
-              -f target_commitish="${{ github.sha }}" \
-              -f previous_tag_name="$PREV_TAG" \
-              --jq '.body' 2>/dev/null || echo "")
-          else
-            NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes \
-              -f tag_name="v${VERSION}" \
-              -f target_commitish="${{ github.sha }}" \
-              --jq '.body' 2>/dev/null || echo "")
-          fi
-
-          # Write to file, with fallback if API fails
-          if [ -n "$NOTES" ]; then
-            echo "$NOTES" > RELEASE_NOTES.md
-            echo "Generated release notes from GitHub API"
-          else
-            cat << EOF > RELEASE_NOTES.md
-          ## What's New in v${VERSION}
-
-          This release includes bug fixes and improvements.
-          EOF
-            echo "Using fallback release notes (API returned empty)"
-          fi
-
-          echo "=== Release notes content ==="
-          cat RELEASE_NOTES.md
+        run: ./scripts/ci/generate-release-notes.sh "${{ github.repository }}" "${{ github.sha }}"
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -402,6 +263,14 @@ jobs:
           name: releases-${{ env.OS }}-${{ env.ARCH }}
           path: Releases/
 
+      # Upload cleaned release notes only from one platform (linux-x64) to avoid conflicts
+      - name: Upload cleaned release notes
+        if: env.DONE != 'true' && env.OS == 'linux' && env.ARCH == 'x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: RELEASE_NOTES.md
+
   create-github-release:
     needs: [validate, release]
     runs-on: ubuntu-latest
@@ -427,96 +296,7 @@ jobs:
           path: artifacts
 
       - name: Create unified GitHub release
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          USER_CHANNEL="${{ needs.validate.outputs.channel }}"
-          SKIP_S3="${{ needs.validate.outputs.skip_s3_upload }}"
-
-          # Construct release tag, name, and flags based on channel
-          if [[ "$USER_CHANNEL" == "stable" ]]; then
-            TAG_NAME="v${VERSION}"
-            RELEASE_NAME="Griptape Nodes Desktop ${VERSION}"
-            PRERELEASE_FLAG=""
-          else
-            TAG_NAME="v${VERSION}-${USER_CHANNEL}"
-            RELEASE_NAME="[TEST] Griptape Nodes Desktop ${VERSION} (${USER_CHANNEL})"
-            PRERELEASE_FLAG="--prerelease"
-          fi
-
-          echo "Creating unified release: $TAG_NAME"
-          echo "Release name: $RELEASE_NAME"
-          echo "Prerelease: ${PRERELEASE_FLAG:-no}"
-          echo "S3 upload skipped: $SKIP_S3"
-
-          # Find the full installers from each platform
-          MACOS_DMG=$(find artifacts/releases-osx-arm64 -name "GriptapeNodes-*.dmg" 2>/dev/null | head -1)
-          LINUX_X64_APPIMAGE=$(find artifacts/releases-linux-x64 -name "*.AppImage" 2>/dev/null | head -1)
-          LINUX_ARM64_APPIMAGE=$(find artifacts/releases-linux-arm64 -name "*.AppImage" 2>/dev/null | head -1)
-          WINDOWS_SETUP=$(find artifacts/releases-win-* -name "*-Setup.exe" 2>/dev/null | head -1)
-
-          # Debug: list all artifacts
-          echo "=== All artifacts ==="
-          find artifacts -type f -name "*.dmg" -o -name "*.AppImage" -o -name "*-Setup.exe" 2>/dev/null || true
-          echo "=== Found installers ==="
-          echo "MACOS_DMG: $MACOS_DMG"
-          echo "LINUX_X64_APPIMAGE: $LINUX_X64_APPIMAGE"
-          echo "LINUX_ARM64_APPIMAGE: $LINUX_ARM64_APPIMAGE"
-          echo "WINDOWS_SETUP: $WINDOWS_SETUP"
-
-          # Create release notes content with separator for app parsing
-          # The separator allows the app to extract just the changelog section
-          if [[ "$USER_CHANNEL" == "stable" ]]; then
-            INSTALL_NOTES=$(cat <<'EOF'
-
-          ## Installation
-
-          Download the installer for your platform:
-          - **macOS (Apple Silicon)**: Download the .dmg file
-          - **Linux x64**: Download the linux-x64 .AppImage file
-          - **Linux ARM64**: Download the linux-arm64 .AppImage file
-          - **Windows**: Download the Setup.exe file
-
-          <!-- release-notes-separator -->
-
-          EOF
-          )
-          else
-            INSTALL_NOTES=$(cat <<'EOF'
-          > **Warning**: This is a test build from a non-main branch.
-          > Auto-updates are not available for this build.
-          > This build should not be used in production.
-
-          <!-- release-notes-separator -->
-
-          ## Installation
-
-          Download the installer for your platform:
-          - **macOS (Apple Silicon)**: Download the .dmg file
-          - **Linux x64**: Download the linux-x64 .AppImage file
-          - **Linux ARM64**: Download the linux-arm64 .AppImage file
-          - **Windows**: Download the Setup.exe file
-
-          ## Updates
-
-          This is a test build. Auto-updates are not available.
-          EOF
-          )
-          fi
-
-          # Create the release with all available installers
-          # --generate-notes creates changelog from PRs, --notes appends installation instructions
-          gh release create "$TAG_NAME" \
-            --target "${{ github.sha }}" \
-            --title "$RELEASE_NAME" \
-            --generate-notes \
-            --notes "$INSTALL_NOTES" \
-            $PRERELEASE_FLAG \
-            ${MACOS_DMG:+"$MACOS_DMG"} \
-            ${LINUX_X64_APPIMAGE:+"$LINUX_X64_APPIMAGE"} \
-            ${LINUX_ARM64_APPIMAGE:+"$LINUX_ARM64_APPIMAGE"} \
-            ${WINDOWS_SETUP:+"$WINDOWS_SETUP"}
-
-          echo "GitHub release created successfully!"
+        run: ./scripts/ci/create-github-release.sh "${{ needs.validate.outputs.channel }}" "${{ github.sha }}"
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
