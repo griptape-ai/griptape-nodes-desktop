@@ -1,207 +1,49 @@
-import React, { useState } from 'react'
-import { Sparkles, ExternalLink, X } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { Sparkles, X } from 'lucide-react'
 import type { ReleaseNotesInfo } from '@/types/global'
 
 interface ReleaseNotesModalProps {
   releaseNotes: ReleaseNotesInfo
   onDismiss: (dontShowAgain: boolean) => void
-  onOpenExternal: (url: string) => void
 }
 
 /**
- * Strips GitHub attribution from list items (e.g., "by @user in #123")
+ * Pre-processes release notes content:
+ * - Removes "Full Changelog" lines with GitHub URLs
+ * - Strips GitHub attribution from list items (e.g., "by @user in #123")
  */
-function stripAttribution(text: string): string {
-  return text.replace(/\s+by\s+@[\w-]+\s+in\s+#\d+\s*$/i, '').trim()
-}
-
-/**
- * Simple markdown-like renderer for release notes content.
- * Handles headers, bold, lists, and links.
- */
-function renderMarkdown(content: string): React.ReactNode {
-  const lines = content.split('\n')
-  const elements: React.ReactNode[] = []
-  let listItems: React.ReactNode[] = []
-
-  const processInlineFormatting = (text: string): React.ReactNode => {
-    // Handle links: [text](url)
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g
-    const parts: React.ReactNode[] = []
-    let lastIndex = 0
-    let match
-
-    while ((match = linkRegex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(processBold(text.slice(lastIndex, match.index)))
+function preprocessContent(content: string): string {
+  return content
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim()
+      // Remove "Full Changelog" lines with GitHub URLs
+      if (trimmed.includes('Full Changelog') && trimmed.includes('github.com')) {
+        return false
       }
-      parts.push(
-        <a
-          key={match.index}
-          href={match[2]}
-          onClick={(e) => {
-            e.preventDefault()
-            window.electronAPI.openExternal(match[2])
-          }}
-          className="text-blue-400 hover:text-blue-300 underline"
-        >
-          {match[1]}
-        </a>
-      )
-      lastIndex = match.index + match[0].length
-    }
-
-    if (lastIndex < text.length) {
-      parts.push(processBold(text.slice(lastIndex)))
-    }
-
-    return parts.length > 0 ? parts : processBold(text)
-  }
-
-  const processBold = (text: string): React.ReactNode => {
-    // Handle bold: **text** or __text__
-    const boldRegex = /\*\*([^*]+)\*\*|__([^_]+)__/g
-    const parts: React.ReactNode[] = []
-    let lastIndex = 0
-    let match
-
-    while ((match = boldRegex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(processUrls(text.slice(lastIndex, match.index)))
+      return true
+    })
+    .map((line) => {
+      // Strip GitHub attribution from list items
+      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+        return line.replace(/\s+by\s+@[\w-]+\s+in\s+#\d+\s*$/i, '')
       }
-      parts.push(
-        <strong key={match.index} className="font-semibold">
-          {match[1] || match[2]}
-        </strong>
-      )
-      lastIndex = match.index + match[0].length
-    }
-
-    if (lastIndex < text.length) {
-      parts.push(processUrls(text.slice(lastIndex)))
-    }
-
-    return parts.length > 0 ? parts : processUrls(text)
-  }
-
-  const processUrls = (text: string): React.ReactNode => {
-    // Handle bare URLs: https://...
-    // Display "Full Changelog" as link text for changelog URLs, otherwise show the URL
-    const urlRegex = /(https?:\/\/[^\s]+)/g
-    const parts: React.ReactNode[] = []
-    let lastIndex = 0
-    let match: RegExpExecArray | null
-
-    while ((match = urlRegex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(text.slice(lastIndex, match.index))
-      }
-      const url = match[1]
-      parts.push(
-        <a
-          key={match.index}
-          href={url}
-          onClick={(e) => {
-            e.preventDefault()
-            window.electronAPI.openExternal(url)
-          }}
-          className="text-blue-400 hover:text-blue-300 underline"
-        >
-          {url}
-        </a>
-      )
-      lastIndex = match.index + match[0].length
-    }
-
-    if (lastIndex < text.length) {
-      parts.push(text.slice(lastIndex))
-    }
-
-    return parts.length > 0 ? parts : text
-  }
-
-  const flushList = () => {
-    if (listItems.length > 0) {
-      elements.push(
-        <ul key={`list-${elements.length}`} className="list-disc list-inside space-y-1 mb-3">
-          {listItems}
-        </ul>
-      )
-      listItems = []
-    }
-  }
-
-  lines.forEach((line, index) => {
-    const trimmedLine = line.trim()
-
-    // Skip empty lines
-    if (!trimmedLine) {
-      flushList()
-      return
-    }
-
-    // Headers
-    if (trimmedLine.startsWith('# ')) {
-      flushList()
-      elements.push(
-        <h1 key={index} className="text-xl font-bold mb-3 text-foreground">
-          {processInlineFormatting(trimmedLine.slice(2))}
-        </h1>
-      )
-      return
-    }
-
-    if (trimmedLine.startsWith('## ')) {
-      flushList()
-      elements.push(
-        <h2 key={index} className="text-lg font-semibold mb-2 mt-4 text-foreground">
-          {processInlineFormatting(trimmedLine.slice(3))}
-        </h2>
-      )
-      return
-    }
-
-    if (trimmedLine.startsWith('### ')) {
-      flushList()
-      elements.push(
-        <h3 key={index} className="text-base font-semibold mb-2 mt-3 text-foreground">
-          {processInlineFormatting(trimmedLine.slice(4))}
-        </h3>
-      )
-      return
-    }
-
-    // List items
-    if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
-      const itemText = stripAttribution(trimmedLine.slice(2))
-      listItems.push(
-        <li key={index} className="text-muted-foreground">
-          {processInlineFormatting(itemText)}
-        </li>
-      )
-      return
-    }
-
-    // Regular paragraph
-    flushList()
-    elements.push(
-      <p key={index} className="text-muted-foreground mb-2">
-        {processInlineFormatting(trimmedLine)}
-      </p>
-    )
-  })
-
-  flushList()
-  return elements
+      return line
+    })
+    .join('\n')
 }
 
 export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
   releaseNotes,
-  onDismiss,
-  onOpenExternal
+  onDismiss
 }) => {
   const [dontShowAgain, setDontShowAgain] = useState(false)
-  const releaseUrl = `https://github.com/griptape-ai/griptape-nodes-desktop/releases/tag/v${releaseNotes.version}`
+
+  const processedContent = useMemo(
+    () => preprocessContent(releaseNotes.content),
+    [releaseNotes.content]
+  )
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -231,17 +73,51 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">{renderMarkdown(releaseNotes.content)}</div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <ReactMarkdown
+            components={{
+              // Custom link handler - skip GitHub URLs, open others externally
+              a: ({ href, children }) => {
+                return (
+                  <a
+                    href={href}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (href) window.electronAPI.openExternal(href)
+                    }}
+                    className="text-blue-400 hover:text-blue-300 underline"
+                  >
+                    {children}
+                  </a>
+                )
+              },
+              // Styled headers
+              h1: ({ children }) => (
+                <h1 className="text-xl font-bold mb-3 text-foreground">{children}</h1>
+              ),
+              h2: ({ children }) => (
+                <h2 className="text-lg font-semibold mb-2 mt-4 text-foreground">{children}</h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-base font-semibold mb-2 mt-3 text-foreground">{children}</h3>
+              ),
+              // Styled lists
+              ul: ({ children }) => (
+                <ul className="list-disc list-inside space-y-1 mb-3">{children}</ul>
+              ),
+              li: ({ children }) => <li className="text-muted-foreground">{children}</li>,
+              // Styled paragraphs
+              p: ({ children }) => <p className="text-muted-foreground mb-2">{children}</p>,
+              // Styled bold
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>
+            }}
+          >
+            {processedContent}
+          </ReactMarkdown>
+        </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-border">
-          <button
-            onClick={() => onOpenExternal(releaseUrl)}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" />
-            View on GitHub
-          </button>
+        <div className="flex items-center justify-end p-4 border-t border-border">
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
               <input

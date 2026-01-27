@@ -221,7 +221,6 @@ const MainApp: React.FC = () => {
             <ReleaseNotesModal
               releaseNotes={releaseNotes}
               onDismiss={handleDismissReleaseNotes}
-              onOpenExternal={(url) => window.electronAPI.openExternal(url)}
             />
           )}
 

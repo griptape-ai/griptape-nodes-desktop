@@ -224,8 +224,6 @@ jobs:
           ## What's New in v${VERSION}
 
           This release includes bug fixes and improvements.
-
-          See the [full changelog](https://github.com/${{ github.repository }}/releases) for details.
           EOF
             echo "Using fallback release notes (API returned empty)"
           fi
@@ -469,7 +467,6 @@ jobs:
           # The separator allows the app to extract just the changelog section
           if [[ "$USER_CHANNEL" == "stable" ]]; then
             INSTALL_NOTES=$(cat <<'EOF'
-          <!-- release-notes-separator -->
 
           ## Installation
 
@@ -479,9 +476,8 @@ jobs:
           - **Linux ARM64**: Download the linux-arm64 .AppImage file
           - **Windows**: Download the Setup.exe file
 
-          ## Updates
+          <!-- release-notes-separator -->
 
-          This application includes automatic updates.
           EOF
           )
           else
