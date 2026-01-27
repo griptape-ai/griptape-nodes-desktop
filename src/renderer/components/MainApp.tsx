@@ -218,10 +218,7 @@ const MainApp: React.FC = () => {
 
           {/* Release Notes Modal */}
           {showReleaseNotes && releaseNotes && (
-            <ReleaseNotesModal
-              releaseNotes={releaseNotes}
-              onDismiss={handleDismissReleaseNotes}
-            />
+            <ReleaseNotesModal releaseNotes={releaseNotes} onDismiss={handleDismissReleaseNotes} />
           )}
 
           {/* Main Content Area */}
