@@ -38,6 +38,7 @@ import { DeviceIdService } from '../common/services/device-id-service'
 import { SystemMonitorService } from '../common/services/system-monitor-service'
 import { SettingsService } from '../common/services/settings-service'
 import { EngineLogFileService } from '../common/services/engine-log-file-service'
+import { MigrationService } from '../common/services/migration/migration-service'
 import type { UpdateBehavior } from '@/types/global'
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string
@@ -122,6 +123,7 @@ const gtnService = new GtnService(
 const engineService = new EngineService(userDataPath, gtnService, settingsService)
 const engineLogFileService = new EngineLogFileService(app.getPath('logs'), settingsService)
 const updateService = new UpdateService(isPackaged())
+const migrationService = new MigrationService(userDataPath)
 
 /**
  * Builds context menu items for text editing with spell check support
@@ -2342,6 +2344,42 @@ const setupIPC = () => {
   // Check if encrypted credentials store exists
   ipcMain.handle('auth:has-existing-encrypted-store', () => {
     return authService.hasExistingEncryptedStore()
+  })
+
+  // Migration handlers
+  ipcMain.handle('migration:check-default-locations', async () => {
+    return migrationService.checkDefaultLocations()
+  })
+
+  ipcMain.handle('migration:scan-home-directory', async () => {
+    return migrationService.scanHomeDirectory()
+  })
+
+  ipcMain.handle('migration:validate-config', async (_event, filePath: string) => {
+    return migrationService.validateConfigFile(filePath)
+  })
+
+  ipcMain.handle('migration:import-config', async (_event, filePath: string) => {
+    return migrationService.importConfig(filePath)
+  })
+
+  ipcMain.handle('migration:copy-workspace', async (_event, sourceDir: string, destDir: string) => {
+    return migrationService.copyWorkspace(sourceDir, destDir)
+  })
+
+  ipcMain.handle('migration:select-config-file', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      title: 'Select Griptape Nodes Config File',
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths[0]
+    }
+    return null
   })
 
   // Usage metrics handlers
