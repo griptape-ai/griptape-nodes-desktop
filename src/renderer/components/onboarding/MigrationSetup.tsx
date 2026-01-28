@@ -10,13 +10,10 @@ interface MigrationSetupProps {
 
 type MigrationState = 'checking' | 'found' | 'not-found' | 'scanning' | 'importing' | 'error'
 
-type MigrationChoice = 'skip' | 'import'
-
 const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) => {
   const [state, setState] = useState<MigrationState>('checking')
   const [configFiles, setConfigFiles] = useState<ConfigFileResult[]>([])
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const [migrationChoice, setMigrationChoice] = useState<MigrationChoice>('import')
   const [error, setError] = useState<string | null>(null)
 
   const checkDefaultLocations = useCallback(async () => {
@@ -74,7 +71,11 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
       if (filePath) {
         const result = await window.migrationAPI.validateConfig(filePath)
         if (result.isValid) {
-          setConfigFiles([result])
+          // Add to existing configs if not already present
+          setConfigFiles((prev) => {
+            const exists = prev.some((c) => c.path === result.path)
+            return exists ? prev : [...prev, result]
+          })
           setSelectedPath(result.path)
           setState('found')
         } else {
@@ -117,8 +118,8 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
   const selectedConfig = configFiles.find((c) => c.path === selectedPath)
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col items-center justify-center min-h-full py-12">
-      <div className="w-full space-y-8">
+    <div className="max-w-3xl w-full">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="flex justify-center mb-4">
@@ -126,7 +127,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
               <FileSearch className="w-8 h-8 text-blue-400" />
             </div>
           </div>
-          <h2 className="text-3xl font-semibold text-foreground">Migrate from CLI</h2>
+          <h2 className="text-3xl font-semibold text-foreground">Import Configuration</h2>
           <p className="text-muted-foreground text-lg">
             Import your existing Griptape Nodes configuration
           </p>
@@ -161,140 +162,85 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
 
           {/* Found configs */}
           {state === 'found' && (
-            <>
-              <div className="space-y-4">
-                {/* Option 1: Skip migration (default) */}
-                <label
-                  className={cn(
-                    'flex items-start gap-3 p-4 rounded-lg cursor-pointer transition-colors border',
-                    migrationChoice === 'skip'
-                      ? 'border-purple-500/50 bg-purple-500/5 dark:border-purple-500/30'
-                      : 'border-border hover:bg-muted/50'
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="migrationChoice"
-                    checked={migrationChoice === 'skip'}
-                    onChange={() => setMigrationChoice('skip')}
-                    className="mt-1 accent-purple-500"
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-foreground">
-                      Continue without importing
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Start fresh with default settings
-                    </p>
-                  </div>
-                  {migrationChoice === 'skip' && (
-                    <Check className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                  )}
-                </label>
-
-                {/* Option 2: Import configuration */}
-                <label
-                  className={cn(
-                    'flex items-start gap-3 p-4 rounded-lg cursor-pointer transition-colors border',
-                    migrationChoice === 'import'
-                      ? 'border-blue-500/50 bg-blue-500/5 dark:border-blue-500/30'
-                      : 'border-border hover:bg-muted/50'
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="migrationChoice"
-                    checked={migrationChoice === 'import'}
-                    onChange={() => setMigrationChoice('import')}
-                    className="mt-1 accent-blue-500"
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm font-medium text-foreground">
-                      Import existing configuration
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Found {configFiles.length} configuration file
-                      {configFiles.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  {migrationChoice === 'import' && (
-                    <Check className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                  )}
-                </label>
-
-                {/* Config file selection (shown when import is selected) */}
-                {migrationChoice === 'import' && (
-                  <div className="ml-7 space-y-3">
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Select configuration to import:
-                    </label>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {configFiles.map((config) => (
-                        <label
-                          key={config.path}
-                          className={cn(
-                            'flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors',
-                            'border',
-                            selectedPath === config.path
-                              ? 'border-blue-500 bg-blue-500/10'
-                              : 'border-border hover:bg-muted/50'
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="config"
-                            checked={selectedPath === config.path}
-                            onChange={() => setSelectedPath(config.path)}
-                            className="mt-1 accent-blue-500"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-mono text-foreground truncate">
-                              {config.path}
-                            </p>
-                            {config.workspaceDirectory && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Workspace: {config.workspaceDirectory}
-                              </p>
-                            )}
-                            {config.hasEnvFile && (
-                              <div className="flex items-center gap-1 mt-1">
-                                <Key className="w-3 h-3 text-green-400" />
-                                <span className="text-xs text-green-400">API key included</span>
-                              </div>
-                            )}
-                          </div>
-                          {selectedPath === config.path && (
-                            <Check className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                          )}
-                        </label>
-                      ))}
-                    </div>
-
-                    {selectedConfig && (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/30 rounded-lg p-3">
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
-                          This configuration will be imported
-                          {selectedConfig.workspaceDirectory &&
-                            ` with workspace "${selectedConfig.workspaceDirectory}"`}
-                          .{selectedConfig.hasEnvFile && ' Your API key will also be imported.'}
-                        </p>
-                      </div>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-muted-foreground">
+                Select configuration to import:
+              </label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {configFiles.map((config) => (
+                  <div
+                    key={config.path}
+                    onClick={() =>
+                      setSelectedPath(selectedPath === config.path ? null : config.path)
+                    }
+                    className={cn(
+                      'flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors',
+                      'border',
+                      selectedPath === config.path
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : 'border-border hover:bg-muted/50'
                     )}
-
-                    <button
-                      onClick={handleBrowse}
-                      className={cn(
-                        'px-4 py-2 text-sm font-medium rounded-md',
-                        'border border-border text-muted-foreground',
-                        'hover:bg-muted/50 transition-colors'
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedPath === config.path}
+                      onChange={() => {}}
+                      className="mt-1 accent-blue-500"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-mono text-foreground truncate">{config.path}</p>
+                      {config.workspaceDirectory && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Workspace: {config.workspaceDirectory}
+                        </p>
                       )}
-                    >
-                      Browse for another...
-                    </button>
+                      {config.hasEnvFile && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Key className="w-3 h-3 text-green-400" />
+                          <span className="text-xs text-green-400">API key included</span>
+                        </div>
+                      )}
+                    </div>
+                    {selectedPath === config.path && (
+                      <Check className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            </>
+
+              {selectedConfig && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 rounded-lg p-3">
+                  <p className="text-sm text-amber-800 dark:text-amber-200 font-medium mb-1">
+                    What will be imported:
+                  </p>
+                  <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1 list-disc list-inside">
+                    {selectedConfig.workspaceDirectory && (
+                      <li>
+                        Workspace:{' '}
+                        <span className="font-mono text-xs">
+                          {selectedConfig.workspaceDirectory}
+                        </span>
+                      </li>
+                    )}
+                    {selectedConfig.hasEnvFile && <li>API key from .env file</li>}
+                  </ul>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                    Your current settings will be replaced. Workspace files will not be modified.
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={handleBrowse}
+                className={cn(
+                  'px-4 py-2 text-sm font-medium rounded-md',
+                  'border border-border text-muted-foreground',
+                  'hover:bg-muted/50 transition-colors'
+                )}
+              >
+                Browse for another...
+              </button>
+            </div>
           )}
 
           {/* Not found state */}
@@ -402,18 +348,14 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
             {/* Show Continue button for found state */}
             {state === 'found' && (
               <button
-                onClick={migrationChoice === 'skip' ? handleSkip : handleImport}
-                disabled={migrationChoice === 'import' && !selectedPath}
+                onClick={selectedPath === null ? handleSkip : handleImport}
                 className={cn(
                   'px-6 py-2.5 text-sm font-medium rounded-md',
-                  migrationChoice === 'skip'
-                    ? 'bg-purple-600 hover:bg-purple-500 active:bg-purple-400'
-                    : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-400',
-                  'text-white transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  'bg-blue-600 hover:bg-blue-500 active:bg-blue-400',
+                  'text-white transition-colors'
                 )}
               >
-                {migrationChoice === 'skip' ? 'Continue' : 'Import & Continue'}
+                Continue
               </button>
             )}
           </div>

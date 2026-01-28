@@ -184,9 +184,14 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
       />
 
       {/* Content area */}
-      <div className="flex-1 overflow-y-auto px-8 py-12">
+      <div
+        className={cn(
+          'flex-1 flex flex-col items-center overflow-y-auto px-8 py-4',
+          platform === 'darwin' && 'pl-20'
+        )}
+      >
         {/* Logo */}
-        <div className="flex items-center justify-center mb-8">
+        <div className="flex items-center justify-center mb-10">
           <img src={headerLogoSrc} alt="Griptape" className="h-10" />
         </div>
 

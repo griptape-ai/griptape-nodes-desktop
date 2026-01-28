@@ -1,4 +1,14 @@
-import { Moon, Sun, Monitor, RefreshCw, ChevronDown, FolderOpen, X } from 'lucide-react'
+import {
+  Moon,
+  Sun,
+  Monitor,
+  RefreshCw,
+  ChevronDown,
+  FolderOpen,
+  X,
+  FileUp,
+  Check
+} from 'lucide-react'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useEngine } from '../contexts/EngineContext'
@@ -6,6 +16,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
 import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
 import type { UpdateBehavior, IpcEvent, EnvironmentInfo } from '@/types/global'
+import MigrationSetup from '../components/onboarding/MigrationSetup'
 
 const UpdateBehaviorDescription: React.FC = () => (
   <p className="text-xs text-muted-foreground mt-1">
@@ -64,6 +75,8 @@ const Settings: React.FC = () => {
   const [switchingChannel, setSwitchingChannel] = useState(false)
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [importSuccess, setImportSuccess] = useState(false)
   const [editorChannel, setEditorChannel] = useState<'stable' | 'nightly' | 'local'>('stable')
   const [showLocalOption, setShowLocalOption] = useState<boolean>(false)
   const [localEnginePath, setLocalEnginePath] = useState<string | null>(null)
@@ -743,6 +756,28 @@ const Settings: React.FC = () => {
     }, 2000)
   }, [reinstallEngine, setIsUpgradePending, handleRefreshEnvironmentInfo])
 
+  const handleImportComplete = useCallback(
+    async (workspaceDirectory?: string) => {
+      setShowImportDialog(false)
+
+      if (workspaceDirectory) {
+        // Update workspace and pending workspace
+        setWorkspaceDir(workspaceDirectory)
+        setPendingWorkspaceDir(workspaceDirectory)
+
+        // Reload library settings in case they were imported
+        await loadLibrarySettings()
+
+        // Show success checkmark
+        setImportSuccess(true)
+
+        // Mark as having changes that need to be applied
+        setHasUnsavedChanges(true)
+      }
+    },
+    [loadLibrarySettings]
+  )
+
   const themeOptions = [
     { value: 'light', label: 'Light', icon: Sun },
     { value: 'dark', label: 'Dark', icon: Moon },
@@ -938,6 +973,29 @@ const Settings: React.FC = () => {
                 >
                   Browse
                 </button>
+              </div>
+
+              {/* Import Configuration Button */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowImportDialog(true)}
+                  disabled={isApplyingChanges}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2 text-sm rounded-md',
+                    'border border-border text-muted-foreground',
+                    'hover:bg-muted/50 transition-colors',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                >
+                  <FileUp className="w-4 h-4" />
+                  Import existing configuration
+                </button>
+                {importSuccess && (
+                  <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                    <Check className="w-4 h-4" />
+                    Imported
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1632,6 +1690,28 @@ const Settings: React.FC = () => {
                 Reinstall
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Configuration Dialog */}
+      {showImportDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg shadow-xl max-w-3xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Import Configuration</h3>
+              <button
+                onClick={() => setShowImportDialog(false)}
+                className="p-1 rounded-md hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <MigrationSetup
+              onComplete={handleImportComplete}
+              onBack={() => setShowImportDialog(false)}
+            />
           </div>
         </div>
       )}
