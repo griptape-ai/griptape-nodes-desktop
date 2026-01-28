@@ -8,7 +8,7 @@ import {
   FileText,
   ChevronRight,
   Workflow,
-  X
+  X,
 } from 'lucide-react'
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useEngine } from '../contexts/EngineContext'
@@ -118,7 +118,7 @@ const WorkflowItem = React.memo<WorkflowItemProps>(
               'flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors',
               isEngineRunning
                 ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                : 'bg-muted text-muted-foreground cursor-not-allowed',
             )}
           >
             Open
@@ -127,7 +127,7 @@ const WorkflowItem = React.memo<WorkflowItemProps>(
         </div>
       </div>
     )
-  }
+  },
 )
 
 WorkflowItem.displayName = 'WorkflowItem'
@@ -140,7 +140,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     isTutorialCompleted,
     startTutorial,
     isActive: isTutorialActive,
-    refreshTutorialState
+    refreshTutorialState,
   } = useTutorial()
   const [workspaceDir, setWorkspaceDir] = useState<string>('')
   const [loadingWorkspace, setLoadingWorkspace] = useState(true)
@@ -160,9 +160,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
       isEngineReady: engineStatus === 'ready',
       isEngineRunning: engineStatus === 'running',
       isEngineInitializing: engineStatus === 'initializing',
-      canStartStop: engineStatus === 'ready' || engineStatus === 'running'
+      canStartStop: engineStatus === 'ready' || engineStatus === 'running',
     }),
-    [engineStatus]
+    [engineStatus],
   )
 
   // Memoized async loaders
@@ -224,7 +224,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     isTutorialActive,
     hasAutoStartedTutorial,
     startTutorial,
-    loadingWorkspace
+    loadingWorkspace,
   ])
 
   // Memoized event handlers
@@ -258,7 +258,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
     (path: string) => {
       onPageChange('editor', path)
     },
-    [onPageChange]
+    [onPageChange],
   )
 
   return (
@@ -306,7 +306,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
               'shadow-lg hover:shadow-xl transform hover:scale-[1.04] active:scale-[0.98]',
               isEngineRunning
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                : 'bg-muted text-muted-foreground cursor-not-allowed',
             )}
           >
             <Rocket
@@ -314,7 +314,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
                 'w-5 h-5',
                 isRocketLaunching
                   ? 'animate-rocket-launch'
-                  : isEngineRunning && 'group-hover:animate-rocket-rumble'
+                  : isEngineRunning && 'group-hover:animate-rocket-rumble',
               )}
             />
             Launch Editor
@@ -413,7 +413,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
                 isEngineRunning
                   ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
                   : 'bg-primary text-primary-foreground hover:bg-primary/90',
-                !canStartStop && 'opacity-50 cursor-not-allowed'
+                !canStartStop && 'opacity-50 cursor-not-allowed',
               )}
             >
               {isEngineRunning ? (
@@ -521,8 +521,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
                     className="w-24 h-24 rounded-lg flex items-center justify-center"
                     style={{
                       backgroundColor: getMutedHslColorForChar(
-                        (selectedWorkflow.name || 'W').charAt(0)
-                      )
+                        (selectedWorkflow.name || 'W').charAt(0),
+                      ),
                     }}
                   >
                     <span className="text-3xl font-semibold text-white">
@@ -579,7 +579,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
                   'px-4 py-2 text-sm font-medium rounded-md transition-colors',
                   isEngineRunning
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed',
                 )}
               >
                 Open in Editor

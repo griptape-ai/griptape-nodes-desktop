@@ -4,7 +4,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  ReactNode
+  ReactNode,
 } from 'react'
 import { TUTORIAL_STEPS } from './tutorialSteps'
 
@@ -119,7 +119,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
         isTutorialCompleted: isLoading ? true : isTutorialCompleted,
         refreshTutorialState,
         onAction: actionHandler,
-        setActionHandler
+        setActionHandler,
       }}
     >
       {children}

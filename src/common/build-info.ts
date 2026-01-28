@@ -11,19 +11,19 @@ export const getBuildInfo = () => {
     const commitHash = execSync('git rev-parse HEAD', {
       encoding: 'utf8',
       shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
-      stdio: ['ignore', 'pipe', 'ignore']
+      stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
 
     const commitDate = execSync('git log -1 --format=%ci', {
       encoding: 'utf8',
       shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
-      stdio: ['ignore', 'pipe', 'ignore']
+      stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
 
     const branch = execSync('git rev-parse --abbrev-ref HEAD', {
       encoding: 'utf8',
       shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
-      stdio: ['ignore', 'pipe', 'ignore']
+      stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
 
     return {
@@ -32,7 +32,7 @@ export const getBuildInfo = () => {
       commitDate,
       branch,
       buildDate: new Date().toISOString(),
-      buildId: Date.now().toString()
+      buildId: Date.now().toString(),
     }
   } catch (error) {
     console.warn('Failed to generate build info:', error)
@@ -42,7 +42,7 @@ export const getBuildInfo = () => {
       commitDate: 'unknown',
       branch: 'unknown',
       buildDate: new Date().toISOString(),
-      buildId: Date.now().toString()
+      buildId: Date.now().toString(),
     }
   }
 }

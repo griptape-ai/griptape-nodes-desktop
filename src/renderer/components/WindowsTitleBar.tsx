@@ -24,7 +24,7 @@ function MenuDropdown({
   isOpen,
   onOpenChange,
   onHover,
-  anyMenuOpen
+  anyMenuOpen,
 }: MenuDropdownProps) {
   return (
     <div className="relative">
@@ -32,7 +32,7 @@ function MenuDropdown({
         type="button"
         className={cn(
           'non-draggable cursor-default focus:outline-none rounded px-3 py-1 text-sm text-gray-300 hover:bg-gray-800',
-          isOpen && 'bg-gray-800'
+          isOpen && 'bg-gray-800',
         )}
         onClick={() => onOpenChange(!isOpen)}
         onMouseEnter={() => {
@@ -65,7 +65,7 @@ function MenuDropdown({
                     )}
                   </button>
                 </li>
-              )
+              ),
             )}
           </ul>
         </div>
@@ -100,13 +100,13 @@ export function WindowsTitleBar() {
     cut: () => document.execCommand('cut'),
     copy: () => document.execCommand('copy'),
     paste: () => document.execCommand('paste'),
-    selectAll: () => document.execCommand('selectAll')
+    selectAll: () => document.execCommand('selectAll'),
   }
 
   const menus = [
     {
       label: 'File',
-      items: [{ label: 'App Settings', action: () => window.menuAPI.appSettings() }]
+      items: [{ label: 'App Settings', action: () => window.menuAPI.appSettings() }],
     },
     {
       label: 'Edit',
@@ -118,8 +118,8 @@ export function WindowsTitleBar() {
         { label: 'Copy', shortcut: 'Ctrl+C', action: editActions.copy },
         { label: 'Paste', shortcut: 'Ctrl+V', action: editActions.paste },
         { separator: true },
-        { label: 'Select All', shortcut: 'Ctrl+A', action: editActions.selectAll }
-      ]
+        { label: 'Select All', shortcut: 'Ctrl+A', action: editActions.selectAll },
+      ],
     },
     {
       label: 'View',
@@ -128,12 +128,12 @@ export function WindowsTitleBar() {
         {
           label: 'Force Reload',
           shortcut: 'Ctrl+Shift+R',
-          action: () => window.menuAPI.forceReload()
+          action: () => window.menuAPI.forceReload(),
         },
         {
           label: 'Toggle Developer Tools',
           shortcut: 'Ctrl+Shift+I',
-          action: () => window.menuAPI.toggleDevTools()
+          action: () => window.menuAPI.toggleDevTools(),
         },
         { separator: true },
         { label: 'Actual Size', shortcut: 'Ctrl+0', action: () => window.menuAPI.resetZoom() },
@@ -143,25 +143,25 @@ export function WindowsTitleBar() {
         {
           label: 'Toggle Fullscreen',
           shortcut: 'F11',
-          action: () => window.menuAPI.toggleFullscreen()
-        }
-      ]
+          action: () => window.menuAPI.toggleFullscreen(),
+        },
+      ],
     },
     {
       label: 'Window',
       items: [
         { label: 'Minimize', action: () => window.menuAPI.minimize() },
-        { label: 'Close', shortcut: 'Alt+F4', action: () => window.menuAPI.close() }
-      ]
+        { label: 'Close', shortcut: 'Alt+F4', action: () => window.menuAPI.close() },
+      ],
     },
     {
       label: 'Help',
       items: [
         { label: 'About Griptape Nodes', action: () => window.menuAPI.about() },
         { separator: true },
-        { label: 'Check for Updates...', action: () => window.menuAPI.checkForUpdates() }
-      ]
-    }
+        { label: 'Check for Updates...', action: () => window.menuAPI.checkForUpdates() },
+      ],
+    },
   ]
 
   return (

@@ -9,10 +9,10 @@ describe('EngineService', () => {
   let service: EngineService
   const mockGtnService = {
     waitForReady: jest.fn().mockResolvedValue(undefined),
-    getGtnExecutablePath: jest.fn().mockResolvedValue('/path/to/gtn')
+    getGtnExecutablePath: jest.fn().mockResolvedValue('/path/to/gtn'),
   }
   const mockSettingsService = {
-    getLocalEnginePath: jest.fn().mockReturnValue(null)
+    getLocalEnginePath: jest.fn().mockReturnValue(null),
   }
 
   beforeEach(() => {
@@ -60,8 +60,8 @@ describe('EngineService', () => {
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'stdout',
-          message: 'test message'
-        })
+          message: 'test message',
+        }),
       )
     })
 

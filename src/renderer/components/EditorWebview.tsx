@@ -10,7 +10,7 @@ interface EditorWebviewProps {
 export const EditorWebview: React.FC<EditorWebviewProps> = ({
   isVisible,
   navigateTo,
-  openWorkflowModal
+  openWorkflowModal,
 }) => {
   const [error, setError] = useState<string | null>(null)
   const [hasInitialized, setHasInitialized] = useState(false)
@@ -240,7 +240,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({
           display: isVisible ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--background)'
+          backgroundColor: 'var(--background)',
         }}
       >
         <div className="text-center">
@@ -260,7 +260,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({
           display: isVisible ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--background)'
+          backgroundColor: 'var(--background)',
         }}
       >
         <div className="text-center max-w-md">
@@ -280,7 +280,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({
           display: isVisible ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--background)'
+          backgroundColor: 'var(--background)',
         }}
       >
         <div className="text-center max-w-md">
@@ -306,7 +306,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({
           display: isVisible ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--background)'
+          backgroundColor: 'var(--background)',
         }}
       >
         <div className="text-center">
@@ -321,7 +321,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({
       style={{
         width: '100%',
         height: '100%',
-        display: isVisible ? 'block' : 'none'
+        display: isVisible ? 'block' : 'none',
       }}
     >
       {/* eslint-disable react/no-unknown-property */}
@@ -330,7 +330,7 @@ export const EditorWebview: React.FC<EditorWebviewProps> = ({
         style={{
           width: '100%',
           height: '100%',
-          border: 'none'
+          border: 'none',
         }}
         partition="persist:editor"
         preload={preloadPath || undefined}

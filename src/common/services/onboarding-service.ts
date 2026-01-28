@@ -25,7 +25,7 @@ export class OnboardingService extends EventEmitter<OnboardingServiceEvents> {
     super()
     // Simple JSON file storage - won't trigger keychain access
     this.store = new Store<OnboardingSchema>({
-      name: 'onboarding'
+      name: 'onboarding',
     })
   }
 

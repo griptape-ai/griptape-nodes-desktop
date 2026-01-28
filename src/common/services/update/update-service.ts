@@ -19,7 +19,7 @@ export class UpdateService {
   constructor(isPackaged: boolean) {
     this.isPackaged = isPackaged
     this.store = new Store<UpdateConfigSchema>({
-      name: isPackaged ? 'update-config' : 'update-config-dev'
+      name: isPackaged ? 'update-config' : 'update-config-dev',
     })
 
     // Get the build-time channel (will be undefined when not packaged)
@@ -47,7 +47,7 @@ export class UpdateService {
     // Note: Only ExplicitChannel and AllowVersionDowngrade are supported in velopack 0.0.1053
     const options = {
       ExplicitChannel: channel,
-      AllowVersionDowngrade: true
+      AllowVersionDowngrade: true,
     }
 
     logger.info(`UpdateService: Configured with channel: ${channel}, URL: ${updateUrl}`)

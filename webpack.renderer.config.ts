@@ -7,19 +7,19 @@ import { plugins } from './webpack.plugins'
 
 rules.push({
   test: /\.css$/,
-  use: [{ loader: 'style-loader' }, { loader: 'css-loader' }, { loader: 'postcss-loader' }]
+  use: [{ loader: 'style-loader' }, { loader: 'css-loader' }, { loader: 'postcss-loader' }],
 })
 
 plugins.push(
   new HtmlWebpackPlugin({
-    template: 'index.html'
-  })
+    template: 'index.html',
+  }),
 )
 
 export const rendererConfig: Configuration = {
   mode: process.env.NODE_ENV as any,
   module: {
-    rules
+    rules,
   },
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css'],
@@ -27,8 +27,8 @@ export const rendererConfig: Configuration = {
     // Polyfill fallbacks for Node.js core modules used by dependencies like react-markdown/debug
     fallback: {
       tty: false,
-      util: false
-    }
+      util: false,
+    },
   },
-  plugins
+  plugins,
 }

@@ -4,19 +4,19 @@ import { HttpAuthService } from './index'
 // Mock electron dependencies
 jest.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: jest.fn(() => [])
+    getAllWindows: jest.fn(() => []),
   },
   app: {
-    getPath: jest.fn(() => '/mock/user/data')
+    getPath: jest.fn(() => '/mock/user/data'),
   },
   shell: {
-    openExternal: jest.fn()
-  }
+    openExternal: jest.fn(),
+  },
 }))
 
 // Mock fs
 jest.mock('fs', () => ({
-  existsSync: jest.fn(() => false)
+  existsSync: jest.fn(() => false),
 }))
 
 // Mock express to avoid starting real server
@@ -27,9 +27,9 @@ jest.mock('express', () => {
       callback()
       return {
         on: jest.fn(),
-        close: jest.fn((callback: () => void) => callback())
+        close: jest.fn((callback: () => void) => callback()),
       }
-    })
+    }),
   }
   return jest.fn(() => mockApp)
 })

@@ -5,6 +5,6 @@ jest.mock('@/main/utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    fatal: jest.fn()
-  }
+    fatal: jest.fn(),
+  },
 }))

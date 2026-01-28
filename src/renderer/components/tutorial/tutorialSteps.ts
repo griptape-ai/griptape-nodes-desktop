@@ -22,7 +22,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: 'Welcome to Griptape Nodes!',
     description:
       "Griptape Nodes Desktop is your local workspace for building AI workflows with nodes. From here, you'll start the engine and work in the visual editor. Let's take a quick tour so you know where everything lives.",
-    position: 'bottom'
+    position: 'bottom',
   },
   {
     id: 'engine-status',
@@ -30,7 +30,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: 'Engine Controls',
     description:
       'This is your engine control center. Start and stop the engine here, check its status, and access the logs. The engine must be running to create workflows.',
-    position: 'bottom'
+    position: 'bottom',
   },
   {
     id: 'engine-tab',
@@ -38,7 +38,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: 'Engine Page',
     description:
       "The Engine tab shows detailed logs and advanced controls. You'll mostly use this for troubleshooting or when you want to see what the engine is doing under the hood.",
-    position: 'bottom'
+    position: 'bottom',
   },
   {
     id: 'workspace',
@@ -46,7 +46,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: 'Your Workspace',
     description:
       'Griptape Nodes saves your workflows and project files here by default. You can change this later in Settings if needed.',
-    position: 'top'
+    position: 'top',
   },
   {
     id: 'open-editor',
@@ -57,8 +57,8 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     position: 'bottom',
     action: {
       label: 'Start Creating',
-      actionId: 'open-editor'
+      actionId: 'open-editor',
     },
-    showDismiss: true
-  }
+    showDismiss: true,
+  },
 ]

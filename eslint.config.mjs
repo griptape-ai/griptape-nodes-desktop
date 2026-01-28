@@ -15,8 +15,8 @@ export default [
       'Releases/**',
       '*.log*',
       '.eslintcache',
-      '_*/**' // Dev directories like _userdata, _documents, _logs
-    ]
+      '_*/**', // Dev directories like _userdata, _documents, _logs
+    ],
   },
   // Configuration for TypeScript files
   {
@@ -27,8 +27,8 @@ export default [
         ecmaVersion: 'latest',
         sourceType: 'module',
         ecmaFeatures: {
-          jsx: true
-        }
+          jsx: true,
+        },
       },
       globals: {
         // Node.js globals
@@ -41,13 +41,13 @@ export default [
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
-        console: 'readonly'
-      }
+        console: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
       react: reactPlugin,
-      'react-hooks': reactHooksPlugin
+      'react-hooks': reactHooksPlugin,
     },
     rules: {
       // TypeScript recommended rules
@@ -64,19 +64,19 @@ export default [
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_'
-        }
+          caughtErrorsIgnorePattern: '^_',
+        },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       'react/prop-types': 'off', // TypeScript handles this
       'react-hooks/set-state-in-effect': 'off', // Going to be too disruptive to fix at this point
-      '@typescript-eslint/no-explicit-any': 'off' // We're too far gone at this point
+      '@typescript-eslint/no-explicit-any': 'off', // We're too far gone at this point
     },
     settings: {
       react: {
-        version: 'detect'
-      }
-    }
+        version: 'detect',
+      },
+    },
   },
   // Configuration for JavaScript files (allow CommonJS)
   {
@@ -87,8 +87,8 @@ export default [
         ecmaVersion: 'latest',
         sourceType: 'script', // Allow CommonJS
         ecmaFeatures: {
-          jsx: true
-        }
+          jsx: true,
+        },
       },
       globals: {
         // Node.js globals
@@ -97,32 +97,32 @@ export default [
         __filename: 'readonly',
         module: 'readonly',
         require: 'readonly',
-        console: 'readonly'
-      }
+        console: 'readonly',
+      },
     },
     plugins: {
-      react: reactPlugin
+      react: reactPlugin,
     },
     rules: {
       // React recommended rules for JSX files
       ...reactPlugin.configs.recommended.rules,
       ...reactPlugin.configs['jsx-runtime'].rules,
       'react/prop-types': 'off',
-      '@typescript-eslint/no-require-imports': 'off' // Allow require() in JS files
+      '@typescript-eslint/no-require-imports': 'off', // Allow require() in JS files
     },
     settings: {
       react: {
-        version: 'detect'
-      }
-    }
+        version: 'detect',
+      },
+    },
   },
   // Configuration for build config files (allow require in TypeScript too)
   {
     files: ['*.config.ts', '*.config.js', 'forge.*.ts', 'webpack.*.ts'],
     rules: {
-      '@typescript-eslint/no-require-imports': 'off' // Allow require() in config files
-    }
+      '@typescript-eslint/no-require-imports': 'off', // Allow require() in config files
+    },
   },
   // Prettier must be last to disable conflicting rules
-  prettierConfig
+  prettierConfig,
 ]

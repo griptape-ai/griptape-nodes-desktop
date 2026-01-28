@@ -19,7 +19,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
   const [isCheckingSteps, setIsCheckingSteps] = useState(true)
   const [platform, setPlatform] = useState<NodeJS.Platform | null>(null)
   const [importedWorkspaceDirectory, setImportedWorkspaceDirectory] = useState<string | undefined>(
-    undefined
+    undefined,
   )
 
   useEffect(() => {
@@ -187,7 +187,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onOnboardingComplet
       <div
         className={cn(
           'flex-1 flex flex-col items-center overflow-y-auto px-8 py-4',
-          platform === 'darwin' && 'pl-20'
+          platform === 'darwin' && 'pl-20',
         )}
       >
         {/* Logo */}

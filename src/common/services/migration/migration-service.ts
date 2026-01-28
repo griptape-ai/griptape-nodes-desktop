@@ -46,7 +46,7 @@ const SKIP_DIRECTORIES = new Set([
   'dist',
   'build',
   '.next',
-  'target'
+  'target',
 ])
 
 export class MigrationService {
@@ -64,7 +64,7 @@ export class MigrationService {
         path.join(appData, 'griptape_nodes', 'griptape_nodes_config.json'),
         path.join(appData, 'griptape-nodes', 'griptape_nodes_config.json'),
         path.join(appData, 'griptape_nodes', 'griptape-nodes-config.json'),
-        path.join(appData, 'griptape-nodes', 'griptape-nodes-config.json')
+        path.join(appData, 'griptape-nodes', 'griptape-nodes-config.json'),
       ]
     } else {
       // macOS and Linux - XDG_CONFIG_HOME defaults to ~/.config
@@ -73,7 +73,7 @@ export class MigrationService {
         path.join(xdgConfig, 'griptape_nodes', 'griptape_nodes_config.json'),
         path.join(xdgConfig, 'griptape-nodes', 'griptape_nodes_config.json'),
         path.join(xdgConfig, 'griptape_nodes', 'griptape-nodes-config.json'),
-        path.join(xdgConfig, 'griptape-nodes', 'griptape-nodes-config.json')
+        path.join(xdgConfig, 'griptape-nodes', 'griptape-nodes-config.json'),
       ]
     }
   }
@@ -149,7 +149,7 @@ export class MigrationService {
     const result: ConfigFileResult = {
       path: filePath,
       isValid: false,
-      hasEnvFile: false
+      hasEnvFile: false,
     }
 
     try {
@@ -203,7 +203,7 @@ export class MigrationService {
         return {
           success: false,
           filesCopied: 0,
-          error: 'Source is not a directory'
+          error: 'Source is not a directory',
         }
       }
 
@@ -217,7 +217,7 @@ export class MigrationService {
 
       return {
         success: true,
-        filesCopied
+        filesCopied,
       }
     } catch (error) {
       logger.error('Failed to copy workspace:', error)
@@ -225,13 +225,13 @@ export class MigrationService {
         return {
           success: false,
           filesCopied: 0,
-          error: 'Source directory not found'
+          error: 'Source directory not found',
         }
       }
       return {
         success: false,
         filesCopied: 0,
-        error: (error as Error).message || 'Failed to copy workspace'
+        error: (error as Error).message || 'Failed to copy workspace',
       }
     }
   }
@@ -270,7 +270,7 @@ export class MigrationService {
         return {
           success: false,
           envImported: false,
-          error: validation.error || 'Invalid config file'
+          error: validation.error || 'Invalid config file',
         }
       }
 
@@ -304,14 +304,14 @@ export class MigrationService {
       return {
         success: true,
         workspaceDirectory: validation.workspaceDirectory,
-        envImported
+        envImported,
       }
     } catch (error) {
       logger.error('Failed to import config:', error)
       return {
         success: false,
         envImported: false,
-        error: (error as Error).message || 'Failed to import config'
+        error: (error as Error).message || 'Failed to import config',
       }
     }
   }

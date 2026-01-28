@@ -27,7 +27,7 @@ describe('FakeUpdateManager', () => {
         currentVersion: '1.0.0',
         targetVersion: '2.0.0',
         packageId: 'custom-package-id',
-        updateAvailable: false
+        updateAvailable: false,
       })
       expect(manager.getCurrentVersion()).toBe('1.0.0')
       expect(manager.getAppId()).toBe('custom-package-id')
@@ -82,7 +82,7 @@ describe('FakeUpdateManager', () => {
       const manager = new FakeUpdateManager({
         updateAvailable: true,
         targetVersion: '2.0.0',
-        downloadTimeMs: 10
+        downloadTimeMs: 10,
       })
 
       const updateInfo = await manager.checkForUpdatesAsync()
@@ -104,7 +104,7 @@ describe('FakeUpdateManager', () => {
       const manager = new FakeUpdateManager({
         updateAvailable: true,
         targetVersion: '5.0.0',
-        packageId: 'test-app'
+        packageId: 'test-app',
       })
 
       const result = await manager.checkForUpdatesAsync()
@@ -118,7 +118,7 @@ describe('FakeUpdateManager', () => {
     it('should throw when failCheck is true', async () => {
       const manager = new FakeUpdateManager({ failCheck: true })
       await expect(manager.checkForUpdatesAsync()).rejects.toThrow(
-        'FakeUpdateManager: Simulated update check failure'
+        'FakeUpdateManager: Simulated update check failure',
       )
     })
   })
@@ -127,7 +127,7 @@ describe('FakeUpdateManager', () => {
     it('should complete download successfully', async () => {
       const manager = new FakeUpdateManager({
         updateAvailable: true,
-        downloadTimeMs: 10
+        downloadTimeMs: 10,
       })
 
       const updateInfo = await manager.checkForUpdatesAsync()
@@ -139,7 +139,7 @@ describe('FakeUpdateManager', () => {
     it('should report progress during download', async () => {
       const manager = new FakeUpdateManager({
         updateAvailable: true,
-        downloadTimeMs: 50
+        downloadTimeMs: 50,
       })
 
       const updateInfo = await manager.checkForUpdatesAsync()
@@ -159,12 +159,12 @@ describe('FakeUpdateManager', () => {
       const manager = new FakeUpdateManager({
         updateAvailable: true,
         failDownload: true,
-        downloadTimeMs: 50
+        downloadTimeMs: 50,
       })
 
       const updateInfo = await manager.checkForUpdatesAsync()
       await expect(manager.downloadUpdateAsync(updateInfo!)).rejects.toThrow(
-        'FakeUpdateManager: Simulated download failure'
+        'FakeUpdateManager: Simulated download failure',
       )
     })
   })
@@ -173,7 +173,7 @@ describe('FakeUpdateManager', () => {
     it('should not throw', async () => {
       const manager = new FakeUpdateManager({
         updateAvailable: true,
-        downloadTimeMs: 10
+        downloadTimeMs: 10,
       })
 
       const updateInfo = await manager.checkForUpdatesAsync()
@@ -265,7 +265,7 @@ describe('FakeEngineUpdateManager', () => {
       const manager = new FakeEngineUpdateManager({
         updateAvailable: true,
         currentVersion: '1.0.0',
-        latestVersion: '2.0.0'
+        latestVersion: '2.0.0',
       })
       const result = await manager.checkForUpdate()
       expect(result.currentVersion).toBe('1.0.0')
@@ -298,7 +298,7 @@ describe('FakeEngineUpdateManager', () => {
       const manager = new FakeEngineUpdateManager({
         updateAvailable: true,
         currentVersion: '1.0.0',
-        latestVersion: '2.0.0'
+        latestVersion: '2.0.0',
       })
 
       const result = await manager.checkForUpdate()
@@ -312,7 +312,7 @@ describe('FakeEngineUpdateManager', () => {
   describe('performUpdate', () => {
     it('should complete update successfully', async () => {
       const manager = new FakeEngineUpdateManager({
-        updateTimeMs: 30
+        updateTimeMs: 30,
       })
 
       await expect(manager.performUpdate()).resolves.toBeUndefined()
@@ -320,7 +320,7 @@ describe('FakeEngineUpdateManager', () => {
 
     it('should report progress during update', async () => {
       const manager = new FakeEngineUpdateManager({
-        updateTimeMs: 60
+        updateTimeMs: 60,
       })
 
       const progressMessages: string[] = []
@@ -339,11 +339,11 @@ describe('FakeEngineUpdateManager', () => {
     it('should throw when failUpdate is true', async () => {
       const manager = new FakeEngineUpdateManager({
         failUpdate: true,
-        updateTimeMs: 60
+        updateTimeMs: 60,
       })
 
       await expect(manager.performUpdate()).rejects.toThrow(
-        'FakeEngineUpdateManager: Simulated engine update failure'
+        'FakeEngineUpdateManager: Simulated engine update failure',
       )
     })
   })

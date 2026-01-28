@@ -142,7 +142,7 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
                 'px-6 py-3 rounded-md',
                 'bg-gray-700 hover:bg-gray-600',
                 'text-white font-medium text-sm',
-                'transition-colors'
+                'transition-colors',
               )}
             >
               Skip for Now
@@ -152,7 +152,7 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
               className={cn(
                 'px-6 py-3 text-sm font-medium rounded-md',
                 'bg-sky-700 hover:bg-sky-500 active:bg-sky-300',
-                'text-white transition-colors'
+                'text-white transition-colors',
               )}
             >
               Save Credentials
@@ -196,7 +196,7 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
                   'px-4 py-2 rounded-md',
                   'bg-gray-700 hover:bg-gray-600',
                   'text-white font-medium text-sm',
-                  'transition-colors'
+                  'transition-colors',
                 )}
               >
                 Restart
@@ -207,7 +207,7 @@ const KeychainExplanation: React.FC<KeychainExplanationProps> = ({ onContinue })
                   'px-4 py-2 rounded-md',
                   'bg-sky-700 hover:bg-sky-500 active:bg-sky-300',
                   'text-white font-medium text-sm',
-                  'transition-colors'
+                  'transition-colors',
                 )}
               >
                 Skip

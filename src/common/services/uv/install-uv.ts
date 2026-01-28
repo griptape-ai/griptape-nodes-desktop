@@ -20,7 +20,7 @@ function spawnWindows(userDataDir: string, uvInstallDir: string): ChildProcess {
       '-ExecutionPolicy',
       'ByPass',
       '-c',
-      `$env:UV_UNMANAGED_INSTALL = "${uvInstallDir}";irm https://astral.sh/uv/install.ps1 | iex`
+      `$env:UV_UNMANAGED_INSTALL = "${uvInstallDir}";irm https://astral.sh/uv/install.ps1 | iex`,
     ],
     {
       // Important! We must not use the default value of `process.env`. If we do,
@@ -30,8 +30,8 @@ function spawnWindows(userDataDir: string, uvInstallDir: string): ChildProcess {
       // then we will get a bunch of errors relating to import failures of core powershell
       // modules.
       env: {},
-      cwd: getCwd(userDataDir)
-    }
+      cwd: getCwd(userDataDir),
+    },
   )
 }
 
@@ -41,9 +41,9 @@ function spawnUnix(userDataDir: string, uvInstallDir: string): ChildProcess {
     {
       env: {
         ...getEnv(userDataDir),
-        PATH: '/usr/bin:/bin' // A minimal path that should work on unix.
+        PATH: '/usr/bin:/bin', // A minimal path that should work on unix.
       },
-      cwd: getCwd(userDataDir)
-    }
+      cwd: getCwd(userDataDir),
+    },
   )
 }

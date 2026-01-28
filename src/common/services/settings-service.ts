@@ -24,7 +24,7 @@ export class SettingsService {
   constructor() {
     // Simple JSON file storage for app settings
     this.store = new Store<SettingsSchema>({
-      name: 'settings'
+      name: 'settings',
     })
   }
 

@@ -28,16 +28,16 @@ window.addEventListener('message', async (event) => {
         const authData = ipcRenderer.sendSync('webview:auth-token-request')
         console.debug('[WebviewPreload] Sending AUTH_TOKEN_RESPONSE:', {
           hasToken: !!authData?.token,
-          error: authData?.error
+          error: authData?.error,
         })
         window.postMessage(
           {
             type: 'AUTH_TOKEN_RESPONSE',
             requestId,
             token: authData?.token || null,
-            error: authData?.error || null
+            error: authData?.error || null,
           },
-          event.origin
+          event.origin,
         )
         break
       }
@@ -46,16 +46,16 @@ window.addEventListener('message', async (event) => {
         const userData = ipcRenderer.sendSync('webview:user-info-request')
         console.debug('[WebviewPreload] Sending USER_INFO_RESPONSE:', {
           hasUser: !!userData?.user,
-          error: userData?.error
+          error: userData?.error,
         })
         window.postMessage(
           {
             type: 'USER_INFO_RESPONSE',
             requestId,
             user: userData?.user || null,
-            error: userData?.error || null
+            error: userData?.error || null,
           },
-          event.origin
+          event.origin,
         )
         break
       }
@@ -68,9 +68,9 @@ window.addEventListener('message', async (event) => {
             type: 'LOGOUT_RESPONSE',
             requestId,
             success: result?.success || false,
-            error: result?.error || null
+            error: result?.error || null,
           },
-          event.origin
+          event.origin,
         )
         break
       }
@@ -81,9 +81,9 @@ window.addEventListener('message', async (event) => {
       {
         type: `${type.replace('_REQUEST', '_RESPONSE')}`,
         requestId,
-        error: err instanceof Error ? err.message : 'Unknown error'
+        error: err instanceof Error ? err.message : 'Unknown error',
       },
-      event.origin
+      event.origin,
     )
   }
 })

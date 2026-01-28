@@ -302,7 +302,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       apiKey,
       tokens,
       user,
-      expiresAt
+      expiresAt,
     }
   }
 
@@ -354,7 +354,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     // This prevents concurrent refresh attempts from both startup and renderer
     if (stored.tokens?.refresh_token) {
       logger.info(
-        '[attemptSilentLogin] Tokens expired, requesting refresh via attemptTokenRefresh()...'
+        '[attemptSilentLogin] Tokens expired, requesting refresh via attemptTokenRefresh()...',
       )
       const refreshResult = await this.attemptTokenRefresh()
 
@@ -376,7 +376,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   // Internal method to refresh tokens - should not be called directly from outside
   // Use attemptTokenRefresh() instead which handles mutex and uses stored token
   private async refreshTokensInternal(
-    refreshToken: string
+    refreshToken: string,
   ): Promise<{ success: boolean; tokens?: any; error?: string }> {
     try {
       logger.info('Attempting to refresh tokens...')
@@ -384,13 +384,13 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       const response = await fetch('https://auth.cloud.griptape.ai/oauth/token', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           grant_type: 'refresh_token',
           client_id: 'bK5Fijuoy90ftmcwVUZABA5THOZyzHnH',
-          refresh_token: refreshToken
-        })
+          refresh_token: refreshToken,
+        }),
       })
 
       if (!response.ok) {
@@ -398,7 +398,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         logger.error(`Token refresh failed: ${response.statusText} - ${error}`)
         return {
           success: false,
-          error: `Token refresh failed: ${response.statusText}`
+          error: `Token refresh failed: ${response.statusText}`,
         }
       }
 
@@ -406,7 +406,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       if (!tokens?.access_token) {
         return {
           success: false,
-          error: 'Expected access_token in response'
+          error: 'Expected access_token in response',
         }
       }
 
@@ -421,13 +421,13 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
 
       return {
         success: true,
-        tokens
+        tokens,
       }
     } catch (error) {
       logger.error('Error refreshing tokens:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   }
@@ -439,7 +439,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     // This prevents concurrent refresh attempts from using the same token
     if (this.refreshPromise) {
       logger.info(
-        '[attemptTokenRefresh] Refresh already in progress, waiting for existing request (mutex active)...'
+        '[attemptTokenRefresh] Refresh already in progress, waiting for existing request (mutex active)...',
       )
       return this.refreshPromise
     }
@@ -452,7 +452,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       logger.warn('No refresh token available in store')
       return {
         success: false,
-        error: 'No refresh token available'
+        error: 'No refresh token available',
       }
     }
 
@@ -461,7 +461,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       logger.info('Tokens still valid, no refresh needed')
       return {
         success: true,
-        tokens: stored.tokens
+        tokens: stored.tokens,
       }
     }
 
@@ -484,7 +484,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         success: true,
         tokens: stored?.tokens,
         user: stored?.user,
-        apiKey: stored?.apiKey
+        apiKey: stored?.apiKey,
       }
     }
 
@@ -525,7 +525,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
             this.authReject = null
           }
         },
-        5 * 60 * 1000
+        5 * 60 * 1000,
       )
     })
   }
@@ -574,7 +574,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         success: true,
         tokens,
         user: userInfo,
-        apiKey
+        apiKey,
       })
     } catch (error) {
       logger.error('Error handling auth code:', error)
@@ -595,15 +595,15 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     const response = await fetch('https://auth.cloud.griptape.ai/oauth/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         grant_type: 'authorization_code',
         client_id: 'bK5Fijuoy90ftmcwVUZABA5THOZyzHnH',
         code,
         redirect_uri: REDIRECT_URI,
-        audience: 'https://cloud.griptape.ai/api'
-      })
+        audience: 'https://cloud.griptape.ai/api',
+      }),
     })
 
     if (!response.ok) {
@@ -622,8 +622,8 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   private async getUserInfo(accessToken: string) {
     const response = await fetch('https://auth.cloud.griptape.ai/userinfo', {
       headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
+        Authorization: `Bearer ${accessToken}`,
+      },
     })
 
     if (!response.ok) {
@@ -639,9 +639,9 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
-        Accept: 'application/json'
+        Accept: 'application/json',
       },
-      body: JSON.stringify({})
+      body: JSON.stringify({}),
     })
 
     if (!response.ok) {

@@ -248,7 +248,7 @@ declare global {
       }>
       onEnvironmentInfoUpdated: (callback: (event: IpcEvent, info: EnvironmentInfo) => void) => void
       removeEnvironmentInfoUpdated: (
-        callback: (event: IpcEvent, info: EnvironmentInfo) => void
+        callback: (event: IpcEvent, info: EnvironmentInfo) => void,
       ) => void
     }
     oauthAPI: {
@@ -390,16 +390,16 @@ declare global {
       removeDownloadProgress: (callback: (event: IpcEvent, progress: number) => void) => void
       removeDownloadComplete: (callback: () => void) => void
       onDownloadFailed: (
-        callback: (event: IpcEvent, updateInfo: UpdateInfo, errorMessage: string) => void
+        callback: (event: IpcEvent, updateInfo: UpdateInfo, errorMessage: string) => void,
       ) => void
       removeDownloadFailed: (
-        callback: (event: IpcEvent, updateInfo: UpdateInfo, errorMessage: string) => void
+        callback: (event: IpcEvent, updateInfo: UpdateInfo, errorMessage: string) => void,
       ) => void
       onUpdateAvailable: (callback: (event: IpcEvent, updateInfo: UpdateInfo) => void) => void
       removeUpdateAvailable: (callback: (event: IpcEvent, updateInfo: UpdateInfo) => void) => void
       onUpdateReadyToInstall: (callback: (event: IpcEvent, updateInfo: UpdateInfo) => void) => void
       removeUpdateReadyToInstall: (
-        callback: (event: IpcEvent, updateInfo: UpdateInfo) => void
+        callback: (event: IpcEvent, updateInfo: UpdateInfo) => void,
       ) => void
     }
     onboardingAPI: {
@@ -447,13 +447,13 @@ declare global {
       setShowSystemMonitor: (show: boolean) => Promise<{ success: boolean }>
       getEngineChannel: () => Promise<'stable' | 'nightly'>
       setEngineChannel: (
-        channel: 'stable' | 'nightly'
+        channel: 'stable' | 'nightly',
       ) => Promise<{ success: boolean; error?: string }>
       getAvailableEngineChannels: () => Promise<string[]>
       isChannelSwitchInProgress: () => Promise<boolean>
       getEditorChannel: () => Promise<'stable' | 'nightly' | 'local'>
       setEditorChannel: (
-        channel: 'stable' | 'nightly' | 'local'
+        channel: 'stable' | 'nightly' | 'local',
       ) => Promise<{ success: boolean; error?: string }>
       getUpdateBehavior: () => Promise<UpdateBehavior>
       setUpdateBehavior: (behavior: UpdateBehavior) => Promise<{ success: boolean }>
@@ -564,22 +564,22 @@ declare global {
     addEventListener<K extends keyof HTMLElementEventMap>(
       type: K,
       listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
-      options?: boolean | AddEventListenerOptions
+      options?: boolean | AddEventListenerOptions,
     ): void
     addEventListener(
       type: string,
       listener: EventListenerOrEventListenerObject,
-      options?: boolean | AddEventListenerOptions
+      options?: boolean | AddEventListenerOptions,
     ): void
     removeEventListener<K extends keyof HTMLElementEventMap>(
       type: K,
       listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
-      options?: boolean | EventListenerOptions
+      options?: boolean | EventListenerOptions,
     ): void
     removeEventListener(
       type: string,
       listener: EventListenerOrEventListenerObject,
-      options?: boolean | EventListenerOptions
+      options?: boolean | EventListenerOptions,
     ): void
   }
 }

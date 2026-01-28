@@ -23,7 +23,7 @@ const TOOLTIP_OFFSET = 16
 function calculateTooltipPosition(
   targetRect: TargetRect,
   position: TooltipPosition,
-  tooltipHeight: number
+  tooltipHeight: number,
 ): TooltipPosition2D {
   const centerX = targetRect.left + targetRect.width / 2
   const centerY = targetRect.top + targetRect.height / 2
@@ -33,35 +33,35 @@ function calculateTooltipPosition(
       return {
         left: Math.max(
           16,
-          Math.min(centerX - TOOLTIP_WIDTH / 2, window.innerWidth - TOOLTIP_WIDTH - 16)
+          Math.min(centerX - TOOLTIP_WIDTH / 2, window.innerWidth - TOOLTIP_WIDTH - 16),
         ),
-        top: Math.max(16, targetRect.top - SPOTLIGHT_PADDING - tooltipHeight - TOOLTIP_OFFSET)
+        top: Math.max(16, targetRect.top - SPOTLIGHT_PADDING - tooltipHeight - TOOLTIP_OFFSET),
       }
     case 'bottom':
       return {
         left: Math.max(
           16,
-          Math.min(centerX - TOOLTIP_WIDTH / 2, window.innerWidth - TOOLTIP_WIDTH - 16)
+          Math.min(centerX - TOOLTIP_WIDTH / 2, window.innerWidth - TOOLTIP_WIDTH - 16),
         ),
-        top: targetRect.top + targetRect.height + SPOTLIGHT_PADDING + TOOLTIP_OFFSET
+        top: targetRect.top + targetRect.height + SPOTLIGHT_PADDING + TOOLTIP_OFFSET,
       }
     case 'left':
       return {
         left: Math.max(16, targetRect.left - SPOTLIGHT_PADDING - TOOLTIP_WIDTH - TOOLTIP_OFFSET),
-        top: Math.max(16, centerY - tooltipHeight / 2)
+        top: Math.max(16, centerY - tooltipHeight / 2),
       }
     case 'right':
       return {
         left: Math.min(
           targetRect.left + targetRect.width + SPOTLIGHT_PADDING + TOOLTIP_OFFSET,
-          window.innerWidth - TOOLTIP_WIDTH - 16
+          window.innerWidth - TOOLTIP_WIDTH - 16,
         ),
-        top: Math.max(16, centerY - tooltipHeight / 2)
+        top: Math.max(16, centerY - tooltipHeight / 2),
       }
     default:
       return {
         left: centerX - TOOLTIP_WIDTH / 2,
-        top: targetRect.top + targetRect.height + TOOLTIP_OFFSET
+        top: targetRect.top + targetRect.height + TOOLTIP_OFFSET,
       }
   }
 }
@@ -75,7 +75,7 @@ export function TutorialOverlay() {
     prevStep,
     skipTutorial,
     completeTutorial,
-    onAction
+    onAction,
   } = useTutorial()
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null)
   const [tooltipHeight, setTooltipHeight] = useState(200)
@@ -97,7 +97,7 @@ export function TutorialOverlay() {
         left: rect.left,
         top: rect.top,
         width: rect.width,
-        height: rect.height
+        height: rect.height,
       })
     } else {
       setTargetRect(null)
@@ -170,7 +170,7 @@ export function TutorialOverlay() {
         <div
           className={cn(
             'fixed rounded-xl pointer-events-none',
-            'transition-all duration-500 ease-out'
+            'transition-all duration-500 ease-out',
           )}
           style={{
             left: targetRect.left - SPOTLIGHT_PADDING,
@@ -179,7 +179,7 @@ export function TutorialOverlay() {
             height: targetRect.height + SPOTLIGHT_PADDING * 2,
             boxShadow: isVisible
               ? '0 0 0 9999px rgba(0, 0, 0, 0.8), 0 0 30px 5px rgba(var(--primary-rgb, 59, 130, 246), 0.3)'
-              : '0 0 0 9999px rgba(0, 0, 0, 0)'
+              : '0 0 0 9999px rgba(0, 0, 0, 0)',
           }}
         />
       )}
@@ -189,7 +189,7 @@ export function TutorialOverlay() {
         <div
           className={cn(
             'fixed inset-0 transition-opacity duration-500',
-            isVisible ? 'bg-black/80' : 'bg-black/0'
+            isVisible ? 'bg-black/80' : 'bg-black/0',
           )}
         />
       )}
@@ -200,13 +200,13 @@ export function TutorialOverlay() {
         className={cn(
           'fixed bg-card border border-border rounded-xl shadow-2xl p-5',
           'transition-all duration-500 ease-out',
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2',
         )}
         style={{
           left: tooltipPos.left,
           top: tooltipPos.top,
           width: TOOLTIP_WIDTH,
-          zIndex: 10000
+          zIndex: 10000,
         }}
       >
         {/* Progress dots */}
@@ -220,7 +220,7 @@ export function TutorialOverlay() {
                   ? 'w-6 bg-primary'
                   : index < currentStep
                     ? 'w-1.5 bg-primary/50'
-                    : 'w-1.5 bg-muted-foreground/30'
+                    : 'w-1.5 bg-muted-foreground/30',
               )}
             />
           ))}
@@ -242,7 +242,7 @@ export function TutorialOverlay() {
                   'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold rounded-lg',
                   'bg-primary text-primary-foreground hover:bg-primary/90',
                   'transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]',
-                  'shadow-md hover:shadow-lg group'
+                  'shadow-md hover:shadow-lg group',
                 )}
               >
                 <Sparkles className="w-4 h-4 group-hover:animate-sparkle" />
@@ -255,7 +255,7 @@ export function TutorialOverlay() {
                 className={cn(
                   'w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg',
                   'border border-border hover:bg-accent',
-                  'transition-colors'
+                  'transition-colors',
                 )}
               >
                 Let&apos;s Go!
@@ -302,7 +302,7 @@ export function TutorialOverlay() {
         className={cn(
           'fixed top-4 right-4 p-2 rounded-full bg-card/90 backdrop-blur border border-border',
           'hover:bg-accent transition-all duration-300',
-          isVisible ? 'opacity-100' : 'opacity-0'
+          isVisible ? 'opacity-100' : 'opacity-0',
         )}
         style={{ zIndex: 10001 }}
         aria-label="Close tutorial"

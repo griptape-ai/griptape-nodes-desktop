@@ -22,7 +22,7 @@ const EngineUpdateBanner: React.FC<EngineUpdateBannerProps> = ({
   onDismiss,
   onUpdate,
   onClearError,
-  onNavigateToSettings
+  onNavigateToSettings,
 }) => {
   const hasError = !!error
   const isDisabled = isUpdating

@@ -37,7 +37,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
   constructor(
     private userDataDir: string,
     private gtnService: GtnService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
   ) {
     super()
   }
@@ -137,7 +137,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
     const log: EngineLog = {
       timestamp: new Date(),
       type,
-      message: cleanMessage
+      message: cleanMessage,
     }
 
     this.logs.push(log)
@@ -194,7 +194,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
         cwd,
         env: this.getEngineEnv(),
         stdio: ['pipe', 'pipe', 'pipe'],
-        windowsHide: true
+        windowsHide: true,
       })
 
       attachOutputForwarder(this.engineProcess, { logPrefix: 'GTN-ENGINE' })
@@ -293,7 +293,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
           this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`)
           this.addLog(
             'stdout',
-            `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`
+            `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`,
           )
           setTimeout(() => this.startEngine(), this.restartDelay)
           this.setEngineStatus('ready')
@@ -361,7 +361,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
       TERM: 'xterm-256color',
       // Fix Windows Unicode encoding issues
       PYTHONIOENCODING: 'utf-8',
-      PYTHONUTF8: '1'
+      PYTHONUTF8: '1',
     }
   }
 
@@ -404,7 +404,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
     // Wait up to 3 seconds for graceful shutdown
     const gracefulShutdown = await Promise.race([
       exitPromise.then(() => true),
-      new Promise<false>((resolve) => setTimeout(() => resolve(false), 3000))
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 3000)),
     ])
 
     // Force kill with SIGKILL if process still exists after grace period.

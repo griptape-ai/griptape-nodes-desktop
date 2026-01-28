@@ -18,7 +18,7 @@ function spawnWindows(userDataDir: string, uvInstallDir: string): ChildProcess {
       '-ExecutionPolicy',
       'ByPass',
       '-c',
-      `$env:UV_INSTALL_DIR = "${uvInstallDir}";irm https://astral.sh/uv/install.ps1 | iex`
+      `$env:UV_INSTALL_DIR = "${uvInstallDir}";irm https://astral.sh/uv/install.ps1 | iex`,
     ],
     {
       cwd: getCwd(userDataDir),
@@ -28,8 +28,8 @@ function spawnWindows(userDataDir: string, uvInstallDir: string): ChildProcess {
       // from powershell 7, but the default installed version of powershell.exe is 5,
       // then we will get a bunch of errors relating to import failures of core powershell
       // modules.
-      env: {}
-    }
+      env: {},
+    },
   )
 }
 
@@ -38,7 +38,7 @@ function spawnUnix(userDataDir: string, uvInstallDir: string): ChildProcess {
     `curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${uvInstallDir}" sh`,
     {
       cwd: getCwd(userDataDir),
-      env: {}
-    }
+      env: {},
+    },
   )
 }

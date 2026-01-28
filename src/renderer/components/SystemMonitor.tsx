@@ -5,7 +5,7 @@ import {
   formatPercentage,
   formatMemory,
   getUsageBarColor,
-  clampPercentage
+  clampPercentage,
 } from '../utils/system-monitor'
 
 export function SystemMonitor() {

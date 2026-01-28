@@ -26,7 +26,7 @@ const UpdateBanner: React.FC<UpdateBannerProps> = ({
   externalError,
   onClearExternalError,
   isDownloading = false,
-  downloadProgress = 0
+  downloadProgress = 0,
 }) => {
   const [isApplying, setIsApplying] = useState(false)
   const [shouldApplyAfterDownload, setShouldApplyAfterDownload] = useState(false)

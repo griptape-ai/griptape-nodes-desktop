@@ -84,7 +84,7 @@ export class SystemMonitorService extends EventEmitter {
       if (nvidiaGpuNames.length > 0) {
         this.gpuModels = nvidiaGpuNames
         logger.info(
-          `SystemMonitorService: Found ${nvidiaGpuNames.length} NVIDIA GPU(s) via nvidia-smi`
+          `SystemMonitorService: Found ${nvidiaGpuNames.length} NVIDIA GPU(s) via nvidia-smi`,
         )
       } else {
         // Fall back to Electron app.getGPUInfo() for non-NVIDIA GPUs
@@ -101,7 +101,7 @@ export class SystemMonitorService extends EventEmitter {
             return `GPU (Vendor: ${device.vendorId}, Device: ${device.deviceId})`
           })
           logger.info(
-            `SystemMonitorService: Found ${gpuInfo.gpuDevice.length} GPU(s) via Electron, using ${filteredDevices.length} (filtered)`
+            `SystemMonitorService: Found ${gpuInfo.gpuDevice.length} GPU(s) via Electron, using ${filteredDevices.length} (filtered)`,
           )
         } else {
           this.gpuModels = []
@@ -119,7 +119,7 @@ export class SystemMonitorService extends EventEmitter {
       0x10de: 'NVIDIA',
       0x1002: 'AMD',
       0x8086: 'Intel',
-      0x106b: 'Apple'
+      0x106b: 'Apple',
     }
     return vendors[vendorId] || null
   }
@@ -134,7 +134,7 @@ export class SystemMonitorService extends EventEmitter {
     // If we have both discrete and integrated GPUs, prefer discrete
     const discreteGpus = devices.filter((d) => this.isDiscreteGpu(d.vendorId))
     const integratedGpus = devices.filter(
-      (d) => d.vendorId === 0x8086 // Intel integrated
+      (d) => d.vendorId === 0x8086, // Intel integrated
     )
 
     // If we have discrete GPUs, use only those
@@ -164,7 +164,7 @@ export class SystemMonitorService extends EventEmitter {
     try {
       const { stdout } = await execFileAsync(this.nvidiaSmiPath, [
         '--query-gpu=name',
-        '--format=csv,noheader,nounits'
+        '--format=csv,noheader,nounits',
       ])
 
       const names = stdout
@@ -191,7 +191,7 @@ export class SystemMonitorService extends EventEmitter {
       return foundPath
     } catch (_err) {
       logger.info(
-        'SystemMonitorService: nvidia-smi not found in PATH, GPU metrics will be unavailable'
+        'SystemMonitorService: nvidia-smi not found in PATH, GPU metrics will be unavailable',
       )
       return null
     }
@@ -222,7 +222,7 @@ export class SystemMonitorService extends EventEmitter {
       // Use the cached full path to nvidia-smi
       const { stdout } = await execFileAsync(this.nvidiaSmiPath, [
         '--query-gpu=utilization.gpu,memory.used,memory.total',
-        '--format=csv,noheader,nounits'
+        '--format=csv,noheader,nounits',
       ])
 
       logger.debug('SystemMonitorService: nvidia-smi output:', stdout)
@@ -235,7 +235,7 @@ export class SystemMonitorService extends EventEmitter {
         return {
           utilization: isNaN(utilization) ? -1 : utilization,
           memoryUsed: isNaN(memoryUsed) ? -1 : memoryUsed / 1024, // Convert MB to GB
-          memoryTotal: isNaN(memoryTotal) ? -1 : memoryTotal / 1024 // Convert MB to GB
+          memoryTotal: isNaN(memoryTotal) ? -1 : memoryTotal / 1024, // Convert MB to GB
         }
       })
     } catch (err) {
@@ -361,7 +361,7 @@ export class SystemMonitorService extends EventEmitter {
           used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
           cached: Math.round((cached / (1024 * 1024 * 1024)) * 10) / 10,
           available: Math.round((available / (1024 * 1024 * 1024)) * 10) / 10,
-          total: Math.round(totalGB * 10) / 10
+          total: Math.round(totalGB * 10) / 10,
         }
       } else if (process.platform === 'darwin') {
         // Use vm_stat for macOS memory breakdown
@@ -405,7 +405,7 @@ export class SystemMonitorService extends EventEmitter {
           used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
           cached: Math.round((cached / (1024 * 1024 * 1024)) * 10) / 10,
           available: Math.round((available / (1024 * 1024 * 1024)) * 10) / 10,
-          total: Math.round(totalGB * 10) / 10
+          total: Math.round(totalGB * 10) / 10,
         }
       } else if (process.platform === 'win32') {
         // Use PowerShell to get all memory values from a single, consistent source
@@ -427,7 +427,7 @@ export class SystemMonitorService extends EventEmitter {
             $standbyCore = ($counters.CounterSamples | Where-Object { $_.Path -like '*Core*' }).CookedValue
             $total = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory
             "$available,$($standbyNormal + $standbyReserve + $standbyCore),$total"
-            `.trim()
+            `.trim(),
           ])
 
           const parts = stdout.trim().split(',')
@@ -447,7 +447,7 @@ export class SystemMonitorService extends EventEmitter {
               used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
               cached: Math.round((cached / (1024 * 1024 * 1024)) * 10) / 10,
               available: Math.round((availableMem / (1024 * 1024 * 1024)) * 10) / 10,
-              total: Math.round((totalMemPS / (1024 * 1024 * 1024)) * 10) / 10
+              total: Math.round((totalMemPS / (1024 * 1024 * 1024)) * 10) / 10,
             }
           }
         } catch (err) {
@@ -461,7 +461,7 @@ export class SystemMonitorService extends EventEmitter {
           used: Math.round((used / (1024 * 1024 * 1024)) * 10) / 10,
           cached: 0,
           available: Math.round((freeMem / (1024 * 1024 * 1024)) * 10) / 10,
-          total: Math.round(totalGB * 10) / 10
+          total: Math.round(totalGB * 10) / 10,
         }
       }
     } catch (err) {
@@ -495,8 +495,8 @@ export class SystemMonitorService extends EventEmitter {
         usage: -1, // Will be updated by nvidia-smi if available
         memory: {
           used: -1, // Will be updated by nvidia-smi if available
-          total: -1 // Will be updated by nvidia-smi if available
-        }
+          total: -1, // Will be updated by nvidia-smi if available
+        },
       }))
 
       // Try to get real-time GPU metrics from nvidia-smi
@@ -512,7 +512,7 @@ export class SystemMonitorService extends EventEmitter {
             gpuInfos = nvidiaNames.map((name) => ({
               model: name,
               usage: -1,
-              memory: { used: -1, total: -1 }
+              memory: { used: -1, total: -1 },
             }))
             // Update our cached models for future calls
             this.gpuModels = nvidiaNames
@@ -528,23 +528,23 @@ export class SystemMonitorService extends EventEmitter {
           }
         })
         logger.debug(
-          `SystemMonitorService: Updated ${nvidiaSmiMetrics.length} GPU(s) with nvidia-smi data`
+          `SystemMonitorService: Updated ${nvidiaSmiMetrics.length} GPU(s) with nvidia-smi data`,
         )
       }
 
       return {
         cpu: {
           usage: Math.round(cpuUsage * 10) / 10, // Round to 1 decimal
-          model: this.cpuModel
+          model: this.cpuModel,
         },
         memory: {
           used: Math.round(memUsedGB * 10) / 10,
           total: Math.round(memTotalGB * 10) / 10,
           percentage: Math.round(memPercentage * 10) / 10,
           type: this.hasUnifiedMemory ? 'unified' : 'system',
-          breakdown: memoryBreakdown ?? undefined
+          breakdown: memoryBreakdown ?? undefined,
         },
-        gpus: gpuInfos
+        gpus: gpuInfos,
       }
     } catch (err) {
       logger.error('SystemMonitorService: Failed to get metrics:', err)

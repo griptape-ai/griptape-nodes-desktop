@@ -3,7 +3,7 @@ import {
   getUvToolBinDir,
   getUvToolDir,
   getXdgConfigHome,
-  getXdgDataHome
+  getXdgDataHome,
 } from './paths'
 
 export function getEnv(userDataDir: string) {
@@ -20,6 +20,6 @@ export function getEnv(userDataDir: string) {
     UV_NO_PROGRESS: '1',
     XDG_CONFIG_HOME: getXdgConfigHome(userDataDir),
     XDG_DATA_HOME: getXdgDataHome(userDataDir),
-    GTN_CONFIG_LOG_LEVEL: 'DEBUG'
+    GTN_CONFIG_LOG_LEVEL: 'DEBUG',
   }
 }

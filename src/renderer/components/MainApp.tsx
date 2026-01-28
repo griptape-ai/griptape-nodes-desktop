@@ -16,7 +16,7 @@ import { useReleaseNotes } from '../hooks/useReleaseNotes'
 
 // Component to set up tutorial action handlers (must be inside TutorialProvider)
 function TutorialActionSetup({
-  onPageChange
+  onPageChange,
 }: {
   onPageChange: (page: string, path?: string) => void
 }) {
@@ -28,7 +28,7 @@ function TutorialActionSetup({
         onPageChange('editor')
       }
     },
-    [onPageChange]
+    [onPageChange],
   )
 
   useEffect(() => {
@@ -68,7 +68,7 @@ const MainApp: React.FC = () => {
     isDownloading,
     downloadProgress,
     handleDismissUpdate,
-    clearDownloadError
+    clearDownloadError,
   } = useUpdateBanner()
 
   // Engine update banner state
@@ -79,14 +79,14 @@ const MainApp: React.FC = () => {
     shouldShowBanner: shouldShowEngineUpdateBanner,
     handleDismiss: handleDismissEngineUpdate,
     handleUpdate: handleEngineUpdate,
-    clearError: clearEngineUpdateError
+    clearError: clearEngineUpdateError,
   } = useEngineUpdateBanner()
 
   // Release notes modal state (MainApp only renders when authenticated)
   const {
     releaseNotes,
     isVisible: showReleaseNotes,
-    handleDismiss: handleDismissReleaseNotes
+    handleDismiss: handleDismissReleaseNotes,
   } = useReleaseNotes(true)
 
   // Notify main process when page changes
@@ -145,7 +145,7 @@ const MainApp: React.FC = () => {
         }
       }
     },
-    []
+    [],
   )
 
   const renderContent = () => {

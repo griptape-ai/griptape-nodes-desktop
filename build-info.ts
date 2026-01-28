@@ -23,17 +23,17 @@ export function getBuildInfo(): BuildInfo {
   try {
     const commitHash = execSync('git rev-parse HEAD', {
       encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore']
+      stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
 
     const commitDate = execSync('git log -1 --format=%ci', {
       encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore']
+      stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
 
     const branch = execSync('git rev-parse --abbrev-ref HEAD', {
       encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore']
+      stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
 
     return {
@@ -42,7 +42,7 @@ export function getBuildInfo(): BuildInfo {
       commitDate,
       branch,
       buildDate: new Date().toISOString(),
-      buildId: Date.now().toString()
+      buildId: Date.now().toString(),
     }
   } catch {
     return {
@@ -51,7 +51,7 @@ export function getBuildInfo(): BuildInfo {
       commitDate: 'unknown',
       branch: 'unknown',
       buildDate: new Date().toISOString(),
-      buildId: Date.now().toString()
+      buildId: Date.now().toString(),
     }
   }
 }
@@ -69,12 +69,12 @@ export function getReleaseNotes(): ReleaseNotes {
     const content = fs.readFileSync(releaseNotesPath, 'utf8')
     return {
       version,
-      content
+      content,
     }
   } catch {
     return {
       version,
-      content: ''
+      content: '',
     }
   }
 }

@@ -15,7 +15,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
   onComplete,
   onNextLibraries,
   onStartMigration,
-  initialWorkspaceDirectory
+  initialWorkspaceDirectory,
 }) => {
   const [workspaceDirectory, setWorkspaceDirectory] = useState<string>('')
   const [customWorkspaceDirectory, setCustomWorkspaceDirectory] = useState<string>('')
@@ -110,7 +110,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
       try {
         const result = await window.migrationAPI.copyWorkspace(
           initialWorkspaceDirectory,
-          customWorkspaceDirectory
+          customWorkspaceDirectory,
         )
 
         if (!result.success) {
@@ -183,7 +183,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
                 'flex items-start gap-3 p-4 rounded-lg cursor-pointer transition-colors border',
                 workspaceChoice === 'imported'
                   ? 'border-green-500/50 bg-green-500/5 dark:border-green-500/30'
-                  : 'border-border hover:bg-muted/50'
+                  : 'border-border hover:bg-muted/50',
               )}
             >
               <input
@@ -221,7 +221,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
                 'flex items-start gap-3 p-4 rounded-lg cursor-pointer transition-colors border',
                 workspaceChoice === 'custom'
                   ? 'border-purple-500/50 bg-purple-500/5 dark:border-purple-500/30'
-                  : 'border-border hover:bg-muted/50'
+                  : 'border-border hover:bg-muted/50',
               )}
             >
               <input
@@ -249,7 +249,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
                     className={cn(
                       'flex-1 px-3 py-2 text-sm rounded-md',
                       'bg-background border border-input',
-                      'text-foreground font-mono'
+                      'text-foreground font-mono',
                     )}
                     placeholder="Select a directory"
                   />
@@ -258,7 +258,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
                     className={cn(
                       'px-4 py-2 text-sm font-medium rounded-md',
                       'bg-purple-600 hover:bg-purple-500 active:bg-purple-400',
-                      'text-white transition-colors'
+                      'text-white transition-colors',
                     )}
                   >
                     Browse
@@ -294,7 +294,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
                   className={cn(
                     'flex-1 px-4 py-3 text-sm rounded-md',
                     'bg-background border border-input',
-                    'text-foreground font-mono'
+                    'text-foreground font-mono',
                   )}
                   placeholder="Select a directory"
                 />
@@ -303,7 +303,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
                   className={cn(
                     'px-6 py-3 text-sm font-medium rounded-md',
                     'bg-purple-600 hover:bg-purple-500 active:bg-purple-400',
-                    'text-white transition-colors'
+                    'text-white transition-colors',
                   )}
                 >
                   Browse
@@ -344,7 +344,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
           <div
             className={cn(
               'border rounded-lg p-4',
-              hasMigrated ? 'border-green-500/50 dark:border-green-500/30' : 'border-border'
+              hasMigrated ? 'border-green-500/50 dark:border-green-500/30' : 'border-border',
             )}
           >
             <div className="flex items-center justify-between">
@@ -372,7 +372,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
                   'border transition-colors',
                   hasMigrated
                     ? 'border-green-500/50 text-green-600 dark:text-green-400 hover:bg-green-500/10'
-                    : 'border-blue-500/50 text-blue-400 hover:bg-blue-500/10 active:bg-blue-500/20'
+                    : 'border-blue-500/50 text-blue-400 hover:bg-blue-500/10 active:bg-blue-500/20',
                 )}
               >
                 {hasMigrated ? 'Edit' : 'Import'}
@@ -399,7 +399,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
               'border border-purple-500/50 text-purple-400',
               'hover:bg-purple-500/10 active:bg-purple-500/20',
               'transition-colors',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
             Next: Libraries (Optional)
@@ -411,7 +411,7 @@ const WorkspaceSetup: React.FC<WorkspaceSetupProps> = ({
               'px-6 py-2.5 text-sm font-medium rounded-md',
               'bg-green-600 hover:bg-green-500 active:bg-green-400',
               'text-white transition-colors',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
             {isCopying ? (

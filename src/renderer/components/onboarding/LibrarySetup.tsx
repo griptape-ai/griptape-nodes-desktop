@@ -49,7 +49,7 @@ const LibrarySetup: React.FC<LibrarySetupProps> = ({ onComplete, onBack }) => {
                 className={cn(
                   'mt-0.5 w-4 h-4 rounded border-input',
                   'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
-                  'bg-background cursor-pointer'
+                  'bg-background cursor-pointer',
                 )}
               />
               <div className="flex-1 space-y-1">
@@ -70,7 +70,7 @@ const LibrarySetup: React.FC<LibrarySetupProps> = ({ onComplete, onBack }) => {
                 className={cn(
                   'mt-0.5 w-4 h-4 rounded border-input',
                   'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
-                  'bg-background cursor-pointer'
+                  'bg-background cursor-pointer',
                 )}
               />
               <div className="flex-1 space-y-1">
@@ -103,7 +103,7 @@ const LibrarySetup: React.FC<LibrarySetupProps> = ({ onComplete, onBack }) => {
               'border border-purple-500/50 text-purple-400',
               'hover:bg-purple-500/10 active:bg-purple-500/20',
               'transition-colors',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
             Back: Workspace
@@ -115,7 +115,7 @@ const LibrarySetup: React.FC<LibrarySetupProps> = ({ onComplete, onBack }) => {
               'px-6 py-2.5 text-sm font-medium rounded-md',
               'bg-green-600 hover:bg-green-500 active:bg-green-400',
               'text-white transition-colors',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
             {isCompleting ? 'Setting Up...' : 'Complete Setup'}

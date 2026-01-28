@@ -33,7 +33,7 @@ export function useUpdateBanner(): UpdateBannerState {
       try {
         const [dismissed, current] = await Promise.all([
           window.settingsAPI.getDismissedUpdateVersion(),
-          window.velopackApi.getVersion()
+          window.velopackApi.getVersion(),
         ])
         setDismissedVersion(dismissed)
         setCurrentVersion(current)
@@ -145,6 +145,6 @@ export function useUpdateBanner(): UpdateBannerState {
     isDownloading,
     downloadProgress,
     handleDismissUpdate,
-    clearDownloadError
+    clearDownloadError,
   }
 }

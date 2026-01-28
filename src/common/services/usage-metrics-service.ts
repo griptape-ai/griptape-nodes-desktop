@@ -27,22 +27,22 @@ export class UsageMetricsService {
   private async reportUsage(accessToken: string, deviceId: string): Promise<void> {
     const payload: UsageReportPayload = {
       type: 'nodes_desktop_app_launched',
-      resource_id: deviceId
+      resource_id: deviceId,
     }
 
     const response = await fetch('https://cloud.griptape.ai/api/usage/report/nodes', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`
+        Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(
-        `Usage report failed: ${response.status} ${response.statusText} - ${errorText}`
+        `Usage report failed: ${response.status} ${response.statusText} - ${errorText}`,
       )
     }
   }

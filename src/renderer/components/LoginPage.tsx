@@ -25,7 +25,7 @@ const LoginPage: React.FC = () => {
     isDownloading,
     downloadProgress,
     handleDismissUpdate,
-    clearDownloadError
+    clearDownloadError,
   } = useUpdateBanner()
 
   // Load saved credential storage preference and platform on mount
@@ -138,7 +138,7 @@ const LoginPage: React.FC = () => {
                   'p-6 rounded-md border',
                   loginInProgress
                     ? 'bg-green-900/20 border-green-700'
-                    : 'bg-sky-900/20 border-sky-700'
+                    : 'bg-sky-900/20 border-sky-700',
                 )}
               >
                 <h3 className="text-white font-medium mb-2 text-lg">
@@ -161,7 +161,7 @@ const LoginPage: React.FC = () => {
                     'text-white font-medium text-base',
                     'px-6 py-4 rounded-md',
                     'transition-colors',
-                    loginInProgress && 'opacity-50 cursor-not-allowed'
+                    loginInProgress && 'opacity-50 cursor-not-allowed',
                   )}
                 >
                   <LogIn className="w-5 h-5" />
@@ -176,7 +176,7 @@ const LoginPage: React.FC = () => {
                       'bg-red-700 hover:bg-red-500 active:bg-red-300',
                       'text-white font-medium text-base',
                       'px-6 py-4 rounded-md',
-                      'transition-colors'
+                      'transition-colors',
                     )}
                     title="Cancel authentication"
                   >

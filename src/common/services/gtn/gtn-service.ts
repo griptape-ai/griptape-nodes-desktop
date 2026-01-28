@@ -12,7 +12,7 @@ import {
   getEnginesJsonPath,
   getGtnConfigPath,
   getGtnExecutablePath,
-  getXdgDataHome
+  getXdgDataHome,
 } from '../../config/paths'
 import { logger } from '@/main/utils/logger'
 import { UvService } from '../uv/uv-service'
@@ -34,7 +34,7 @@ async function findFiles(dir: string, target: string): Promise<string[]> {
       if (e.isDirectory()) return findFiles(fullPath, target)
       if (e.isFile() && e.name === target) return path.resolve(fullPath)
       return []
-    })
+    }),
   )
   return results.flat()
 }
@@ -43,7 +43,7 @@ export function mergeNestedArray<T>({
   obj,
   path,
   items,
-  unique
+  unique,
 }: {
   obj: Record<string, any>
   path: string[]
@@ -54,7 +54,7 @@ export function mergeNestedArray<T>({
     .slice(0, -1)
     .reduce<any>(
       (a, k) => (a[k] && typeof a[k] === 'object' && !Array.isArray(a[k]) ? a[k] : (a[k] = {})),
-      obj
+      obj,
     )
   const key = path[path.length - 1],
     cur = parent[key],
@@ -89,11 +89,11 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     private pythonService: PythonService,
     private authService: HttpAuthService,
     private onboardingService: OnboardingService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
   ) {
     super()
     this.store = new Store({
-      name: 'gtn-workspace'
+      name: 'gtn-workspace',
     })
 
     // Listen for store changes
@@ -150,7 +150,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         if (this.engineService) {
           this.engineService.addLog(
             'stderr',
-            `GTN update failed: ${error}. Continuing with existing version.`
+            `GTN update failed: ${error}. Continuing with existing version.`,
           )
         }
       }
@@ -182,14 +182,14 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
           workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
           storageBackend: 'local',
           advancedLibrary: this.onboardingService.isAdvancedLibraryEnabled(),
-          cloudLibrary: this.onboardingService.isCloudLibraryEnabled()
+          cloudLibrary: this.onboardingService.isCloudLibraryEnabled(),
         })
       } catch (error) {
         logger.error('GTN initialization failed:', error)
         if (this.engineService) {
           this.engineService.addLog(
             'stderr',
-            `GTN initialization failed: ${getErrorMessage(error)}`
+            `GTN initialization failed: ${getErrorMessage(error)}`,
           )
           this.engineService.setError()
         }
@@ -303,10 +303,10 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         {
           id: engineId,
           name: engineName,
-          created_at: timestamp
-        }
+          created_at: timestamp,
+        },
       ],
-      default_engine_id: engineId
+      default_engine_id: engineId,
     }
 
     fs.mkdirSync(path.dirname(enginesJsonPath), { recursive: true })
@@ -346,7 +346,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     // Add library flags based on user preferences
     if (options.advancedLibrary !== undefined) {
       args.push(
-        options.advancedLibrary ? '--register-advanced-library' : '--no-register-advanced-library'
+        options.advancedLibrary ? '--register-advanced-library' : '--no-register-advanced-library',
       )
     }
 
@@ -354,7 +354,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       args.push(
         options.cloudLibrary
           ? '--register-griptape-cloud-library'
-          : '--no-register-griptape-cloud-library'
+          : '--no-register-griptape-cloud-library',
       )
     }
 
@@ -444,7 +444,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
       obj: json,
       path: ['app_events', 'on_app_initialization_complete', 'libraries_to_register'],
       items: libraryPaths,
-      unique: true
+      unique: true,
     })
     fs.mkdirSync(path.dirname(gtnConfigPath), { recursive: true })
     fs.writeFileSync(gtnConfigPath, JSON.stringify(json, null, 2), 'utf8')
@@ -557,7 +557,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         modifiedTime: stats.mtimeMs,
         thumbnail,
         name: metadata.name,
-        description: metadata.description
+        description: metadata.description,
       }
     } catch {
       return null
@@ -672,7 +672,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
   async runGtn(
     args: string[] = [],
-    options?: { forward_logs?: boolean; wait?: boolean }
+    options?: { forward_logs?: boolean; wait?: boolean },
   ): Promise<ChildProcess> {
     const wait = options?.wait || false
     const forward_logs = options?.forward_logs || true
@@ -758,7 +758,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         resolve({
           currentVersion: currentVersion || 'unknown',
           latestVersion,
-          updateAvailable
+          updateAvailable,
         })
       }, 30000)
 
@@ -774,7 +774,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
           latestVersion = updateMatch[2]
           updateAvailable = true
           logger.info(
-            `Engine update available: current v${currentVersion}, latest v${latestVersion}`
+            `Engine update available: current v${currentVersion}, latest v${latestVersion}`,
           )
 
           // Send "n" to stdin to decline the update and let the command complete
@@ -810,13 +810,13 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         }
 
         logger.info(
-          `Engine update check complete: current=${currentVersion}, latest=${latestVersion}, updateAvailable=${updateAvailable}`
+          `Engine update check complete: current=${currentVersion}, latest=${latestVersion}, updateAvailable=${updateAvailable}`,
         )
 
         resolve({
           currentVersion: currentVersion || 'unknown',
           latestVersion,
-          updateAvailable
+          updateAvailable,
         })
       })
 
@@ -865,7 +865,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     }
     const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
       env,
-      cwd
+      cwd,
     })
 
     await new Promise<void>((resolve, _reject) => {
@@ -881,7 +881,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
           if (this.engineService) {
             this.engineService.addLog(
               'stdout',
-              'Previous version uninstalled with warnings, continuing...'
+              'Previous version uninstalled with warnings, continuing...',
             )
           }
           resolve() // Continue even if uninstall fails
@@ -892,7 +892,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         if (this.engineService) {
           this.engineService.addLog(
             'stdout',
-            'Previous version not found or already uninstalled, proceeding...'
+            'Previous version not found or already uninstalled, proceeding...',
           )
         }
         resolve() // Continue even if uninstall fails
@@ -926,7 +926,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     logger.info('Uninstalling current GTN version (if exists)')
     const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
       env,
-      cwd
+      cwd,
     })
 
     await new Promise<void>((resolve) => {
@@ -983,7 +983,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         workspaceDirectory: this.workspaceDirectory || this.defaultWorkspaceDir,
         storageBackend: 'local',
         advancedLibrary: this.onboardingService.isAdvancedLibraryEnabled(),
-        cloudLibrary: this.onboardingService.isCloudLibraryEnabled()
+        cloudLibrary: this.onboardingService.isCloudLibraryEnabled(),
       })
     } catch (error) {
       logger.error('GTN initialization failed during reinstall:', error)

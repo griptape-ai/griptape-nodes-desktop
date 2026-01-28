@@ -10,7 +10,7 @@ import type {
   EngineLog,
   EngineUpdateInfo,
   SystemMetrics,
-  UpdateInfo as AppUpdateInfo
+  UpdateInfo as AppUpdateInfo,
 } from '@/types/global'
 
 interface VelopackBridgeApi {
@@ -40,14 +40,14 @@ const velopackApi: VelopackBridgeApi = {
   setChannel: (channel: string) => ipcRenderer.invoke('velopack:set-channel', channel),
   getAvailableChannels: () => ipcRenderer.invoke('velopack:get-available-channels'),
   getLogicalChannelName: (channel: string) =>
-    ipcRenderer.invoke('velopack:get-logical-channel-name', channel)
+    ipcRenderer.invoke('velopack:get-logical-channel-name', channel),
 }
 
 contextBridge.exposeInMainWorld('velopackApi', velopackApi)
 
 contextBridge.exposeInMainWorld('electron', {
   getPreloadPath: () => ipcRenderer.sendSync('get-preload-path'),
-  getWebviewPreloadPath: () => ipcRenderer.sendSync('get-webview-preload-path')
+  getWebviewPreloadPath: () => ipcRenderer.sendSync('get-webview-preload-path'),
 })
 
 // Expose APIs to renderer process
@@ -56,15 +56,15 @@ contextBridge.exposeInMainWorld('pythonAPI', {
   collectEnvironmentInfo: () => ipcRenderer.invoke('collect-environment-info'),
   refreshEnvironmentInfo: () => ipcRenderer.invoke('refresh-environment-info'),
   onEnvironmentInfoUpdated: (
-    callback: (event: IpcRendererEvent, info: EnvironmentInfo) => void
+    callback: (event: IpcRendererEvent, info: EnvironmentInfo) => void,
   ) => {
     ipcRenderer.on('environment-info:updated', callback)
   },
   removeEnvironmentInfoUpdated: (
-    callback: (event: IpcRendererEvent, info: EnvironmentInfo) => void
+    callback: (event: IpcRendererEvent, info: EnvironmentInfo) => void,
   ) => {
     ipcRenderer.removeListener('environment-info:updated', callback)
-  }
+  },
 })
 
 contextBridge.exposeInMainWorld('oauthAPI', {
@@ -76,7 +76,7 @@ contextBridge.exposeInMainWorld('oauthAPI', {
   willPromptForKeychain: () => ipcRenderer.invoke('auth:will-prompt-keychain'),
   hasExistingEncryptedStore: () => ipcRenderer.invoke('auth:has-existing-encrypted-store'),
   loadFromPersistentStore: () => ipcRenderer.invoke('auth:load-from-persistent-store'),
-  notifyTokensUpdated: () => ipcRenderer.invoke('auth:notify-tokens-updated')
+  notifyTokensUpdated: () => ipcRenderer.invoke('auth:notify-tokens-updated'),
 })
 
 contextBridge.exposeInMainWorld('engineAPI', {
@@ -108,7 +108,7 @@ contextBridge.exposeInMainWorld('engineAPI', {
   },
   removeLog: (callback: (event: IpcRendererEvent, log: EngineLog) => void) => {
     ipcRenderer.removeListener('engine:log', callback)
-  }
+  },
 })
 
 contextBridge.exposeInMainWorld('editorAPI', {
@@ -118,7 +118,7 @@ contextBridge.exposeInMainWorld('editorAPI', {
   },
   removeReloadWebview: (callback: () => void) => {
     ipcRenderer.removeListener('editor:do-reload-webview', callback)
-  }
+  },
 })
 
 contextBridge.exposeInMainWorld('griptapeAPI', {
@@ -144,7 +144,7 @@ contextBridge.exposeInMainWorld('griptapeAPI', {
   },
   removeWorkspaceChanged: (callback: (event: IpcRendererEvent, directory: string) => void) => {
     ipcRenderer.removeListener('workspace-changed', callback)
-  }
+  },
 })
 
 contextBridge.exposeInMainWorld('updateAPI', {
@@ -161,7 +161,7 @@ contextBridge.exposeInMainWorld('updateAPI', {
     ipcRenderer.on('update:download-complete', callback)
   },
   removeDownloadStarted: (
-    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo) => void
+    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo) => void,
   ) => {
     ipcRenderer.removeListener('update:download-started', callback)
   },
@@ -172,12 +172,12 @@ contextBridge.exposeInMainWorld('updateAPI', {
     ipcRenderer.removeListener('update:download-complete', callback)
   },
   onDownloadFailed: (
-    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo, errorMessage: string) => void
+    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo, errorMessage: string) => void,
   ) => {
     ipcRenderer.on('update:download-failed', callback)
   },
   removeDownloadFailed: (
-    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo, errorMessage: string) => void
+    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo, errorMessage: string) => void,
   ) => {
     ipcRenderer.removeListener('update:download-failed', callback)
   },
@@ -185,20 +185,20 @@ contextBridge.exposeInMainWorld('updateAPI', {
     ipcRenderer.on('update:available', callback)
   },
   removeUpdateAvailable: (
-    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo) => void
+    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo) => void,
   ) => {
     ipcRenderer.removeListener('update:available', callback)
   },
   onUpdateReadyToInstall: (
-    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo) => void
+    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo) => void,
   ) => {
     ipcRenderer.on('update:ready-to-install', callback)
   },
   removeUpdateReadyToInstall: (
-    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo) => void
+    callback: (event: IpcRendererEvent, updateInfo: AppUpdateInfo) => void,
   ) => {
     ipcRenderer.removeListener('update:ready-to-install', callback)
-  }
+  },
 })
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -214,7 +214,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   removeNavigateToSettings: (callback: () => void) => {
     ipcRenderer.removeListener('navigate-to-settings', callback)
-  }
+  },
 })
 
 contextBridge.exposeInMainWorld('migrationAPI', {
@@ -224,7 +224,7 @@ contextBridge.exposeInMainWorld('migrationAPI', {
   importConfig: (filePath: string) => ipcRenderer.invoke('migration:import-config', filePath),
   selectConfigFile: () => ipcRenderer.invoke('migration:select-config-file'),
   copyWorkspace: (sourceDir: string, destDir: string) =>
-    ipcRenderer.invoke('migration:copy-workspace', sourceDir, destDir)
+    ipcRenderer.invoke('migration:copy-workspace', sourceDir, destDir),
 })
 
 contextBridge.exposeInMainWorld('onboardingAPI', {
@@ -254,17 +254,17 @@ contextBridge.exposeInMainWorld('onboardingAPI', {
     ipcRenderer.invoke('onboarding:set-tutorial-completed', completed),
   getTutorialLastStep: () => ipcRenderer.invoke('onboarding:get-tutorial-last-step'),
   setTutorialLastStep: (step: number) =>
-    ipcRenderer.invoke('onboarding:set-tutorial-last-step', step)
+    ipcRenderer.invoke('onboarding:set-tutorial-last-step', step),
 })
 
 contextBridge.exposeInMainWorld('usageMetricsAPI', {
-  reportLaunch: () => ipcRenderer.invoke('usage-metrics:report-launch')
+  reportLaunch: () => ipcRenderer.invoke('usage-metrics:report-launch'),
 })
 
 contextBridge.exposeInMainWorld('deviceIdAPI', {
   getDeviceId: () => ipcRenderer.invoke('device-id:get'),
   getDeviceIdInfo: () => ipcRenderer.invoke('device-id:get-info'),
-  resetDeviceId: () => ipcRenderer.invoke('device-id:reset')
+  resetDeviceId: () => ipcRenderer.invoke('device-id:reset'),
 })
 
 contextBridge.exposeInMainWorld('settingsAPI', {
@@ -304,7 +304,7 @@ contextBridge.exposeInMainWorld('settingsAPI', {
     ipcRenderer.invoke('settings:set-show-release-notes', show),
   getEngineLogFileEnabled: () => ipcRenderer.invoke('settings:get-engine-log-file-enabled'),
   setEngineLogFileEnabled: (enabled: boolean) =>
-    ipcRenderer.invoke('settings:set-engine-log-file-enabled', enabled)
+    ipcRenderer.invoke('settings:set-engine-log-file-enabled', enabled),
 })
 
 contextBridge.exposeInMainWorld('engineUpdateAPI', {
@@ -334,7 +334,7 @@ contextBridge.exposeInMainWorld('engineUpdateAPI', {
   },
   removeUpdateFailed: (callback: (event: IpcRendererEvent, error: string) => void) => {
     ipcRenderer.removeListener('engine-update:failed', callback)
-  }
+  },
 })
 
 contextBridge.exposeInMainWorld('systemMonitorAPI', {
@@ -352,9 +352,9 @@ contextBridge.exposeInMainWorld('systemMonitorAPI', {
     // The listener should be stored and retrieved, but for now we match the existing behavior
     ipcRenderer.removeListener(
       'system-monitor:metrics-update',
-      callback as unknown as (event: IpcRendererEvent, ...args: unknown[]) => void
+      callback as unknown as (event: IpcRendererEvent, ...args: unknown[]) => void,
     )
-  }
+  },
 })
 
 // Release notes API for showing release notes after updates
@@ -362,15 +362,15 @@ contextBridge.exposeInMainWorld('releaseNotesAPI', {
   getPending: () => ipcRenderer.invoke('release-notes:get-pending'),
   dismiss: () => ipcRenderer.invoke('release-notes:dismiss'),
   onAvailable: (
-    callback: (event: IpcRendererEvent, info: { version: string; content: string }) => void
+    callback: (event: IpcRendererEvent, info: { version: string; content: string }) => void,
   ) => {
     ipcRenderer.on('release-notes:available', callback)
   },
   removeAvailable: (
-    callback: (event: IpcRendererEvent, info: { version: string; content: string }) => void
+    callback: (event: IpcRendererEvent, info: { version: string; content: string }) => void,
   ) => {
     ipcRenderer.removeListener('release-notes:available', callback)
-  }
+  },
 })
 
 // Menu API for custom Windows title bar
@@ -388,5 +388,5 @@ contextBridge.exposeInMainWorld('menuAPI', {
   minimize: () => ipcRenderer.invoke('menu:minimize'),
   maximize: () => ipcRenderer.invoke('menu:maximize'),
   isMaximized: () => ipcRenderer.invoke('menu:is-maximized'),
-  close: () => ipcRenderer.invoke('menu:close')
+  close: () => ipcRenderer.invoke('menu:close'),
 })

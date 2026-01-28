@@ -38,29 +38,29 @@ const colorClasses: Record<
     border: 'border-blue-200 dark:border-blue-800',
     text: 'text-blue-600 dark:text-blue-400',
     textMuted: 'text-blue-700 dark:text-blue-300',
-    hover: 'hover:bg-blue-100 dark:hover:bg-blue-800/50'
+    hover: 'hover:bg-blue-100 dark:hover:bg-blue-800/50',
   },
   purple: {
     bg: 'bg-purple-50 dark:bg-purple-900/20',
     border: 'border-purple-200 dark:border-purple-800',
     text: 'text-purple-600 dark:text-purple-400',
     textMuted: 'text-purple-700 dark:text-purple-300',
-    hover: 'hover:bg-purple-100 dark:hover:bg-purple-800/50'
+    hover: 'hover:bg-purple-100 dark:hover:bg-purple-800/50',
   },
   amber: {
     bg: 'bg-amber-50 dark:bg-amber-900/20',
     border: 'border-amber-200 dark:border-amber-800',
     text: 'text-amber-600 dark:text-amber-400',
     textMuted: 'text-amber-700 dark:text-amber-300',
-    hover: 'hover:bg-amber-100 dark:hover:bg-amber-800/50'
+    hover: 'hover:bg-amber-100 dark:hover:bg-amber-800/50',
   },
   red: {
     bg: 'bg-red-50 dark:bg-red-900/20',
     border: 'border-red-200 dark:border-red-800',
     text: 'text-red-600 dark:text-red-400',
     textMuted: 'text-red-700 dark:text-red-300',
-    hover: 'hover:bg-red-100 dark:hover:bg-red-800/50'
-  }
+    hover: 'hover:bg-red-100 dark:hover:bg-red-800/50',
+  },
 }
 
 export const BaseBanner: React.FC<BaseBannerProps> = ({
@@ -71,7 +71,7 @@ export const BaseBanner: React.FC<BaseBannerProps> = ({
   onDismiss,
   onNavigateToSettings,
   disabled = false,
-  showSettingsLink = false
+  showSettingsLink = false,
 }) => {
   const effectiveScheme = hasError ? 'red' : colorScheme
   const colors = colorClasses[effectiveScheme]
@@ -82,7 +82,7 @@ export const BaseBanner: React.FC<BaseBannerProps> = ({
         'flex items-center justify-between py-2 px-4',
         colors.bg,
         'border-b',
-        colors.border
+        colors.border,
       )}
     >
       <div className="flex items-center gap-2">{children}</div>
@@ -96,7 +96,7 @@ export const BaseBanner: React.FC<BaseBannerProps> = ({
             className={cn(
               'flex items-center gap-1 px-2 py-1 text-xs',
               colors.text,
-              'hover:underline transition-colors'
+              'hover:underline transition-colors',
             )}
           >
             <Settings className="w-3 h-3" />
@@ -111,7 +111,7 @@ export const BaseBanner: React.FC<BaseBannerProps> = ({
             'p-1 rounded-md transition-colors',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             colors.text,
-            colors.hover
+            colors.hover,
           )}
           aria-label="Dismiss"
         >
@@ -138,7 +138,7 @@ export const BannerButton: React.FC<{
       blue: 'bg-blue-600 hover:bg-blue-700',
       purple: 'bg-purple-600 hover:bg-purple-700',
       amber: 'bg-amber-600 hover:bg-amber-700',
-      red: 'bg-red-600 hover:bg-red-700'
+      red: 'bg-red-600 hover:bg-red-700',
     }
     return (
       <button
@@ -158,7 +158,7 @@ export const BannerButton: React.FC<{
       'border-purple-600 text-purple-600 dark:text-purple-400 dark:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30',
     amber:
       'border-amber-600 text-amber-600 dark:text-amber-400 dark:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30',
-    red: 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/30'
+    red: 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/30',
   }
   return (
     <button
