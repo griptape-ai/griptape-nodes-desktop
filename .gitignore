@@ -9,6 +9,7 @@ RELEASE_NOTES.md
 !scripts/dmg_template/.DS_Store
 .eslintcache
 .webpack
+coverage
 *.log*
 .idea/
 
