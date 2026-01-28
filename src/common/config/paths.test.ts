@@ -123,7 +123,12 @@ describe('paths', () => {
       const userDataDir = 'C:\\Users\\test\\AppData\\Roaming\\gtn'
       const result = getEnginesJsonPath(userDataDir)
       expect(result).toBe(
-        path.join('C:\\Users\\test\\AppData\\Local\\gtn', 'xdg_data_home', 'griptape_nodes', 'engines.json')
+        path.join(
+          'C:\\Users\\test\\AppData\\Local\\gtn',
+          'xdg_data_home',
+          'griptape_nodes',
+          'engines.json'
+        )
       )
     })
   })

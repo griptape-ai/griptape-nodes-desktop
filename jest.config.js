@@ -10,12 +10,7 @@ module.exports = {
   },
   setupFilesAfterEnv: ['<rootDir>/src/__mocks__/setup.ts'],
   clearMocks: true,
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.test.ts',
-    '!src/__mocks__/**',
-    '!src/**/*.d.ts'
-  ],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.test.ts', '!src/__mocks__/**', '!src/**/*.d.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'clover']
 }
