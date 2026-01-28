@@ -52,6 +52,20 @@ const config: ForgeConfig = {
     new AutoUnpackNativesPlugin({}),
     new WebpackPlugin({
       mainConfig,
+      devServer: {
+        client: {
+          overlay: {
+            // Filter out benign ResizeObserver errors from the error overlay
+            // See: https://github.com/WICG/resize-observer/issues/38
+            runtimeErrors: (error: Error) => {
+              if (error.message?.includes('ResizeObserver')) {
+                return false
+              }
+              return true
+            },
+          },
+        },
+      },
       renderer: {
         config: rendererConfig,
         entryPoints: [
