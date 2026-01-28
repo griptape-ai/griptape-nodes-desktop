@@ -11,7 +11,7 @@ const mockStore = {
   }),
   delete: jest.fn((key: string) => {
     delete mockStore.data[key]
-  })
+  }),
 }
 
 jest.mock('electron-store', () => {

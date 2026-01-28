@@ -87,7 +87,8 @@ export class FakeUpdateManager implements Pick<
       downloadTimeMs: config?.downloadTimeMs ?? getEnvNumber('FAKE_UPDATE_DOWNLOAD_TIME_MS', 2000),
       failCheck: config?.failCheck ?? getEnvBool('FAKE_UPDATE_FAIL_CHECK', false),
       failDownload: config?.failDownload ?? getEnvBool('FAKE_UPDATE_FAIL_DOWNLOAD', false),
-      packageId: config?.packageId ?? process.env.FAKE_UPDATE_PACKAGE_ID ?? 'griptape-nodes-desktop'
+      packageId:
+        config?.packageId ?? process.env.FAKE_UPDATE_PACKAGE_ID ?? 'griptape-nodes-desktop',
     }
 
     logger.info('FakeUpdateManager: Initialized with config:', {
@@ -96,7 +97,7 @@ export class FakeUpdateManager implements Pick<
       currentVersion: this.config.currentVersion,
       downloadTimeMs: this.config.downloadTimeMs,
       failCheck: this.config.failCheck,
-      failDownload: this.config.failDownload
+      failDownload: this.config.failDownload,
     })
   }
 
@@ -134,7 +135,7 @@ export class FakeUpdateManager implements Pick<
 
     const updateInfo: UpdateInfo = {
       TargetFullRelease: this.createFakeAsset(this.config.targetVersion, 'Full'),
-      IsDowngrade: false
+      IsDowngrade: false,
     }
 
     logger.info(`FakeUpdateManager: Update available - v${this.config.targetVersion}`)
@@ -177,7 +178,7 @@ export class FakeUpdateManager implements Pick<
     update: UpdateInfo,
     silent?: boolean,
     restart?: boolean,
-    restartArgs?: string[]
+    restartArgs?: string[],
   ): void {
     const version = update.TargetFullRelease.Version
 
@@ -185,12 +186,12 @@ export class FakeUpdateManager implements Pick<
       version,
       silent: silent ?? false,
       restart: restart ?? true,
-      restartArgs: restartArgs ?? []
+      restartArgs: restartArgs ?? [],
     })
 
     logger.warn(
       'FakeUpdateManager: In dev mode, update will not be applied. ' +
-        'App would restart with the new version in production.'
+        'App would restart with the new version in production.',
     )
   }
 
@@ -204,7 +205,7 @@ export class FakeUpdateManager implements Pick<
       SHA256: 'fake-sha256-' + version,
       Size: BigInt(50 * 1024 * 1024), // 50MB fake size
       NotesMarkdown: '',
-      NotesHtml: ''
+      NotesHtml: '',
     }
   }
 }
@@ -246,7 +247,7 @@ export class FakeEngineUpdateManager {
       currentVersion: config?.currentVersion ?? process.env.FAKE_ENGINE_CURRENT_VERSION ?? '0.1.0',
       latestVersion: config?.latestVersion ?? process.env.FAKE_ENGINE_LATEST_VERSION ?? '99.0.0',
       updateTimeMs: config?.updateTimeMs ?? getEnvNumber('FAKE_ENGINE_UPDATE_TIME_MS', 3000),
-      failUpdate: config?.failUpdate ?? getEnvBool('FAKE_ENGINE_UPDATE_FAIL', false)
+      failUpdate: config?.failUpdate ?? getEnvBool('FAKE_ENGINE_UPDATE_FAIL', false),
     }
 
     logger.info('FakeEngineUpdateManager: Initialized with config:', {
@@ -254,7 +255,7 @@ export class FakeEngineUpdateManager {
       currentVersion: this.config.currentVersion,
       latestVersion: this.config.latestVersion,
       updateTimeMs: this.config.updateTimeMs,
-      failUpdate: this.config.failUpdate
+      failUpdate: this.config.failUpdate,
     })
   }
 
@@ -291,18 +292,18 @@ export class FakeEngineUpdateManager {
       return {
         currentVersion: this.config.currentVersion,
         latestVersion: null,
-        updateAvailable: false
+        updateAvailable: false,
       }
     }
 
     logger.info(
-      `FakeEngineUpdateManager: Engine update available - v${this.config.currentVersion} -> v${this.config.latestVersion}`
+      `FakeEngineUpdateManager: Engine update available - v${this.config.currentVersion} -> v${this.config.latestVersion}`,
     )
 
     return {
       currentVersion: this.config.currentVersion,
       latestVersion: this.config.latestVersion,
-      updateAvailable: true
+      updateAvailable: true,
     }
   }
 

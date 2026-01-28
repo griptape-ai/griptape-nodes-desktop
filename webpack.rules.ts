@@ -7,15 +7,15 @@ export const rules: RuleSetRule[] = [
     use: {
       loader: 'ts-loader',
       options: {
-        transpileOnly: true
-      }
-    }
+        transpileOnly: true,
+      },
+    },
   },
   {
     test: /\.svg$/i,
     type: 'asset/resource',
     generator: {
-      filename: 'assets/[name].[contenthash][ext]'
-    }
-  }
+      filename: 'assets/[name].[contenthash][ext]',
+    },
+  },
 ]

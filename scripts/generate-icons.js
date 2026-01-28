@@ -82,7 +82,7 @@ async function generateMacIconSizes(sourcePath, iconsetDir) {
     { size: 256, name: 'icon_256x256.png' },
     { size: 512, name: 'icon_256x256@2x.png' },
     { size: 512, name: 'icon_512x512.png' },
-    { size: 1024, name: 'icon_512x512@2x.png' }
+    { size: 1024, name: 'icon_512x512@2x.png' },
   ]
 
   for (const { size, name } of sizes) {

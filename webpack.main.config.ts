@@ -13,7 +13,7 @@ export const mainConfig: Configuration = {
         // We're specifying native_modules in the test because the asset relocator loader generates a
         // "fake" .node file which is really a cjs file.
         test: /native_modules[/\\].+\.node$/,
-        use: 'node-loader'
+        use: 'node-loader',
       },
       {
         test: /[/\\]node_modules[/\\].+\.(m?js|node)$/,
@@ -21,16 +21,16 @@ export const mainConfig: Configuration = {
         use: {
           loader: '@vercel/webpack-asset-relocator-loader',
           options: {
-            outputAssetBase: 'native_modules'
-          }
-        }
+            outputAssetBase: 'native_modules',
+          },
+        },
       },
-      ...rules
-    ]
+      ...rules,
+    ],
   },
   plugins,
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'],
-    plugins: [new TsconfigPathsPlugin()]
-  }
+    plugins: [new TsconfigPathsPlugin()],
+  },
 }

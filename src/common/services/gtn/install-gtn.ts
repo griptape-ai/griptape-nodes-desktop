@@ -35,12 +35,12 @@ async function uninstallGtn(userDataDir: string, uvExecutablePath: string): Prom
 
   const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
     env: getEnv(userDataDir),
-    cwd: getCwd(userDataDir)
+    cwd: getCwd(userDataDir),
   })
 
   try {
     await attachOutputForwarder(uninstallProcess, {
-      logPrefix: 'UNINSTALL_GTN'
+      logPrefix: 'UNINSTALL_GTN',
     })
     logger.info('Successfully uninstalled corrupted GTN environment')
   } catch (error) {
@@ -54,7 +54,7 @@ export async function installGtn(
   userDataDir: string,
   uvExecutablePath: string,
   channel: 'stable' | 'nightly' = 'stable',
-  engineService?: any
+  engineService?: any,
 ): Promise<void> {
   if (!fs.existsSync(uvExecutablePath)) {
     throw new Error(`UV executable not found at: ${uvExecutablePath}`)
@@ -76,7 +76,7 @@ export async function installGtn(
       '--reinstall',
       '--force',
       '--python',
-      '3.12'
+      '3.12',
     ]
     logger.info('Installing GTN from nightly channel (GitHub latest)')
   } else {
@@ -86,7 +86,7 @@ export async function installGtn(
 
   const installProcess = spawn(uvExecutablePath, installArgs, {
     env: getEnv(userDataDir),
-    cwd: getCwd(userDataDir)
+    cwd: getCwd(userDataDir),
   })
 
   // Forward logs to engine service if available
@@ -111,6 +111,6 @@ export async function installGtn(
   }
 
   await attachOutputForwarder(installProcess, {
-    logPrefix: 'INSTALL_GTN'
+    logPrefix: 'INSTALL_GTN',
   })
 }

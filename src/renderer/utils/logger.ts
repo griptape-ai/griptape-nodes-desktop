@@ -13,5 +13,5 @@ export const logger: Logger = {
     } else {
       log.error('Fatal:', err)
     }
-  }
+  },
 }

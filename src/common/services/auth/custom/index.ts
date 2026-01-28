@@ -37,7 +37,7 @@ export class CustomAuthService {
     return {
       apiKey,
       tokens,
-      user
+      user,
     }
   }
 

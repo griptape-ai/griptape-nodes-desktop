@@ -132,6 +132,6 @@ export function useEngineUpdateBanner(): EngineUpdateBannerState {
     shouldShowBanner,
     handleDismiss,
     handleUpdate,
-    clearError
+    clearError,
   }
 }

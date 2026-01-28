@@ -12,7 +12,7 @@ export class DeviceIdService {
 
   constructor() {
     this.store = new Store<DeviceIdSchema>({
-      name: 'device-info'
+      name: 'device-info',
     })
   }
 
@@ -67,7 +67,7 @@ export class DeviceIdService {
 
     return {
       deviceId,
-      generatedAt
+      generatedAt,
     }
   }
 

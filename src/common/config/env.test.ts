@@ -6,7 +6,7 @@ jest.mock('./paths', () => ({
   getUvToolDir: jest.fn((dir: string) => `${dir}/uv-tools`),
   getUvToolBinDir: jest.fn((dir: string) => `${dir}/uv-tools/bin`),
   getXdgConfigHome: jest.fn((dir: string) => `${dir}/xdg_config_home`),
-  getXdgDataHome: jest.fn((dir: string) => `${dir}/xdg_data_home`)
+  getXdgDataHome: jest.fn((dir: string) => `${dir}/xdg_data_home`),
 }))
 
 describe('getEnv', () => {

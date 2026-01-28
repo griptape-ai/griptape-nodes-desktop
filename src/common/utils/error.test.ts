@@ -52,7 +52,7 @@ describe('getErrorMessage', () => {
     const obj = {
       toString() {
         return 'Custom error message'
-      }
+      },
     }
     expect(getErrorMessage(obj)).toBe('Custom error message')
   })

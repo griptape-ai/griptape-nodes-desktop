@@ -5,7 +5,7 @@ import React, {
   useEffect,
   ReactNode,
   useMemo,
-  useCallback
+  useCallback,
 } from 'react'
 import type { EngineStatus, EngineLog, IpcEvent } from '@/types/global'
 import { getErrorMessage } from '@/common/utils/error'
@@ -91,8 +91,8 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
             (existingLog) =>
               existingLog.message === log.message &&
               Math.abs(
-                new Date(existingLog.timestamp).getTime() - new Date(log.timestamp).getTime()
-              ) < 100
+                new Date(existingLog.timestamp).getTime() - new Date(log.timestamp).getTime(),
+              ) < 100,
           )
           if (!exists) {
             const newLogs = [...prev, log]
@@ -172,14 +172,14 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
         console.error('Failed to reinstall engine:', result.error)
         setOperationMessage({
           type: 'error',
-          text: `Failed to reinstall engine: ${result.error}`
+          text: `Failed to reinstall engine: ${result.error}`,
         })
       }
     } catch (error) {
       console.error('Error reinstalling engine:', error)
       setOperationMessage({
         type: 'error',
-        text: `Error reinstalling engine: ${getErrorMessage(error)}`
+        text: `Error reinstalling engine: ${getErrorMessage(error)}`,
       })
     } finally {
       setIsLoading(false)
@@ -223,7 +223,7 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
       restartEngine,
       reinstallEngine,
       clearLogs,
-      refreshStatus
+      refreshStatus,
     }),
     [
       status,
@@ -237,8 +237,8 @@ export const EngineProvider: React.FC<EngineProviderProps> = ({ children }) => {
       reinstallEngine,
       clearLogs,
       refreshStatus,
-      clearOperationMessage
-    ]
+      clearOperationMessage,
+    ],
   )
 
   return <EngineContext.Provider value={contextValue}>{children}</EngineContext.Provider>

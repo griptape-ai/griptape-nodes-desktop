@@ -15,7 +15,7 @@ export class PersistentStore<T extends Record<string, any>> extends Store<T> {
     this.encrypted = encrypted
     this.emitter = new EventEmitter()
     this.electronStore = new ElectronStore<T>({
-      name: storeName
+      name: storeName,
     })
 
     // Set up change listeners
@@ -121,7 +121,7 @@ export class PersistentStore<T extends Record<string, any>> extends Store<T> {
     } catch (error) {
       logger.error('PersistentStore: Encryption failed:', error)
       throw new Error(
-        `Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       )
     }
   }
@@ -136,7 +136,7 @@ export class PersistentStore<T extends Record<string, any>> extends Store<T> {
     } catch (error) {
       logger.error('PersistentStore: Decryption failed:', error)
       throw new Error(
-        `Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       )
     }
   }

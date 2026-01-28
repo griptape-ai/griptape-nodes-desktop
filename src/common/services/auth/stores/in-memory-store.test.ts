@@ -8,8 +8,8 @@ jest.mock('./persistent-store', () => ({
     get: jest.fn(),
     has: jest.fn(),
     clear: jest.fn(),
-    getAll: jest.fn()
-  }))
+    getAll: jest.fn(),
+  })),
 }))
 
 interface TestData {
@@ -141,7 +141,7 @@ describe('InMemoryStore', () => {
 
       expect(all).toEqual({
         name: 'John',
-        age: 30
+        age: 30,
       })
     })
 

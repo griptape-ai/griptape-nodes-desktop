@@ -64,6 +64,6 @@ export function useReleaseNotes(isAuthenticated: boolean): ReleaseNotesState {
   return {
     releaseNotes,
     isVisible,
-    handleDismiss
+    handleDismiss,
   }
 }

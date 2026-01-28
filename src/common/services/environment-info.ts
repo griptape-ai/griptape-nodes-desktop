@@ -63,7 +63,7 @@ export class EnvironmentInfoService {
       branch: string
       buildDate: string
       buildId: string
-    }
+    },
   ): Promise<EnvironmentInfo> {
     const errors: string[] = []
     const collectedAt = new Date().toISOString()
@@ -121,7 +121,7 @@ export class EnvironmentInfoService {
       platform: process.platform,
       arch: process.arch,
       nodeVersion: process.versions.node,
-      electronVersion: process.versions.electron || 'Unknown'
+      electronVersion: process.versions.electron || 'Unknown',
     }
 
     const envInfo: EnvironmentInfo = {
@@ -129,21 +129,21 @@ export class EnvironmentInfoService {
       python: {
         version: pythonVersion,
         executable: pythonExecutable,
-        installedPackages
+        installedPackages,
       },
       griptapeNodes: {
         path: gtnPath,
         version: gtnVersion,
-        installed: gtnInstalled
+        installed: gtnInstalled,
       },
       uv: {
         version: uvVersion,
         toolDir: uvToolDir,
-        pythonInstallDir
+        pythonInstallDir,
       },
       system: systemInfo,
       collectedAt,
-      errors
+      errors,
     }
 
     // Save the collected information

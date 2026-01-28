@@ -8,7 +8,7 @@ function mockPlatform(platform: string) {
   Object.defineProperty(process, 'platform', {
     value: platform,
     writable: true,
-    configurable: true
+    configurable: true,
   })
 }
 
@@ -22,7 +22,7 @@ function restorePlatform() {
 // Mock fs module to avoid filesystem operations in getCwd
 jest.mock('fs', () => ({
   mkdirSync: jest.fn(),
-  existsSync: jest.fn()
+  existsSync: jest.fn(),
 }))
 
 // Import after mocking
@@ -38,7 +38,7 @@ import {
   getPythonInstallDir,
   getGtnExecutablePath,
   getEnvironmentInfoPath,
-  getCwd
+  getCwd,
 } from './paths'
 
 describe('paths', () => {
@@ -101,7 +101,7 @@ describe('paths', () => {
       const userDataDir = '/Users/test/Library/Application Support/gtn'
       const result = getGtnConfigPath(userDataDir)
       expect(result).toBe(
-        path.join(userDataDir, 'xdg_config_home', 'griptape_nodes', 'griptape_nodes_config.json')
+        path.join(userDataDir, 'xdg_config_home', 'griptape_nodes', 'griptape_nodes_config.json'),
       )
     })
   })
@@ -127,8 +127,8 @@ describe('paths', () => {
           'C:\\Users\\test\\AppData\\Local\\gtn',
           'xdg_data_home',
           'griptape_nodes',
-          'engines.json'
-        )
+          'engines.json',
+        ),
       )
     })
   })

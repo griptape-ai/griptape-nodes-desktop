@@ -9,7 +9,7 @@ import {
   Check,
   Trash2,
   Settings,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react'
 import { useEngine } from '../contexts/EngineContext'
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
@@ -37,8 +37,8 @@ const ansiConverter = new Convert({
     12: '#3b82f6',
     13: '#a855f7',
     14: '#06b6d4',
-    15: '#f3f4f6'
-  }
+    15: '#f3f4f6',
+  },
 })
 
 // Format timestamp for log display
@@ -48,7 +48,7 @@ const formatTimestamp = (timestamp: Date) => {
     hour12: false,
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   })
 }
 
@@ -92,10 +92,10 @@ const LogRow = memo(({ log }: LogRowProps) => {
 
           linkPlaceholders.push({
             placeholder,
-            html: `<a href="javascript:void(0)" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer" title="${url}">${displayText}</a>`
+            html: `<a href="javascript:void(0)" data-external-url="${url}" class="text-blue-500 hover:text-blue-400 underline cursor-pointer" title="${url}">${displayText}</a>`,
           })
           return placeholder
-        }
+        },
       )
 
       // Clean up any orphaned backslashes that might appear after link placeholders
@@ -105,7 +105,7 @@ const LogRow = memo(({ log }: LogRowProps) => {
 
       // Replace multiple spaces with non-breaking spaces to preserve formatting
       const messageWithPreservedSpaces = cleanMessage.replace(/ {2,}/g, (match) =>
-        '\u00A0'.repeat(match.length)
+        '\u00A0'.repeat(match.length),
       )
 
       // Convert ANSI to HTML
@@ -123,7 +123,7 @@ const LogRow = memo(({ log }: LogRowProps) => {
     } catch {
       // Fallback: preserve spaces even without ANSI processing
       const messageWithPreservedSpaces = log.message.replace(/ {2,}/g, (match) =>
-        '\u00A0'.repeat(match.length)
+        '\u00A0'.repeat(match.length),
       )
       return { __html: messageWithPreservedSpaces }
     }
@@ -416,7 +416,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
               className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full absolute"
               style={{
                 width: '40%',
-                animation: 'indeterminate 1.5s ease-in-out infinite'
+                animation: 'indeterminate 1.5s ease-in-out infinite',
               }}
             />
           </div>
@@ -461,7 +461,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
               className="terminal-scrollbar h-full w-full overflow-y-auto"
               style={{
                 backgroundColor: 'rgb(17 24 39)',
-                color: '#e5e7eb'
+                color: '#e5e7eb',
               }}
             >
               {logs.map((log, index) => (

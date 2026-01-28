@@ -7,7 +7,7 @@ import {
   FolderOpen,
   X,
   FileUp,
-  Check
+  Check,
 } from 'lucide-react'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -45,7 +45,7 @@ const Settings: React.FC = () => {
     setIsUpgradePending,
     operationMessage,
     setOperationMessage,
-    reinstallEngine
+    reinstallEngine,
   } = useEngine()
   const { theme, setTheme } = useTheme()
   const [environmentInfo, setEnvironmentInfo] = useState<any>(null)
@@ -241,7 +241,7 @@ const Settings: React.FC = () => {
     isUpgradePending,
     handleRefreshEnvironmentInfo,
     setIsUpgradePending,
-    setOperationMessage
+    setOperationMessage,
   ])
 
   const loadEngineChannel = async () => {
@@ -434,7 +434,7 @@ const Settings: React.FC = () => {
     try {
       const [advanced, cloud] = await Promise.all([
         window.onboardingAPI.isAdvancedLibraryEnabled(),
-        window.onboardingAPI.isCloudLibraryEnabled()
+        window.onboardingAPI.isCloudLibraryEnabled(),
       ])
       setAdvancedLibrary(advanced)
       setCloudLibrary(cloud)
@@ -507,14 +507,14 @@ const Settings: React.FC = () => {
     setIsApplyingChanges(true)
     setOperationMessage({
       type: 'info',
-      text: 'Applying changes and reconfiguring engine...'
+      text: 'Applying changes and reconfiguring engine...',
     })
 
     try {
       await window.griptapeAPI.reconfigureEngine({
         workspaceDirectory: pendingWorkspaceDir,
         advancedLibrary: pendingAdvancedLibrary,
-        cloudLibrary: pendingCloudLibrary
+        cloudLibrary: pendingCloudLibrary,
       })
 
       // Update current state to match pending
@@ -528,7 +528,7 @@ const Settings: React.FC = () => {
 
       setOperationMessage({
         type: 'success',
-        text: 'Settings applied successfully! Engine restarting...'
+        text: 'Settings applied successfully! Engine restarting...',
       })
 
       // Clear success message after 5 seconds
@@ -537,7 +537,7 @@ const Settings: React.FC = () => {
       console.error('Failed to apply settings:', err)
       setOperationMessage({
         type: 'error',
-        text: 'Failed to apply settings. Please try again.'
+        text: 'Failed to apply settings. Please try again.',
       })
     } finally {
       setIsApplyingChanges(false)
@@ -550,7 +550,7 @@ const Settings: React.FC = () => {
         window.velopackApi.getVersion(),
         window.velopackApi.getChannel(),
         window.velopackApi.getAvailableChannels(),
-        window.updateAPI.isSupported()
+        window.updateAPI.isSupported(),
       ])
 
       const [versionResult, channelResult, channelsResult, supportedResult] = results
@@ -593,7 +593,7 @@ const Settings: React.FC = () => {
               console.error(`Failed to get logical name for channel ${channel}:`, err)
               displayNames.set(channel, channel)
             }
-          })
+          }),
         )
         setChannelDisplayNames(displayNames)
       } else {
@@ -632,7 +632,7 @@ const Settings: React.FC = () => {
     setOperationMessage(null)
     setOperationMessage({
       type: 'info',
-      text: `Switching to ${newChannel} channel...`
+      text: `Switching to ${newChannel} channel...`,
     })
 
     try {
@@ -641,12 +641,12 @@ const Settings: React.FC = () => {
         setEngineChannel(newChannel)
         setOperationMessage({
           type: 'info',
-          text: `Successfully switched to ${newChannel} channel! Engine is restarting...`
+          text: `Successfully switched to ${newChannel} channel! Engine is restarting...`,
         })
       } else {
         setOperationMessage({
           type: 'error',
-          text: `Failed to switch channel: ${result?.error || 'Unknown error'}`
+          text: `Failed to switch channel: ${result?.error || 'Unknown error'}`,
         })
         setIsUpgradePending(false)
       }
@@ -654,7 +654,7 @@ const Settings: React.FC = () => {
       console.error('Failed to switch engine channel:', err)
       setOperationMessage({
         type: 'error',
-        text: `Failed to switch channel: ${err instanceof Error ? err.message : 'Unknown error'}`
+        text: `Failed to switch channel: ${err instanceof Error ? err.message : 'Unknown error'}`,
       })
       setIsUpgradePending(false)
     } finally {
@@ -688,13 +688,13 @@ const Settings: React.FC = () => {
       if (wasRunning) {
         setOperationMessage({
           type: 'info',
-          text: 'Stopping engine...'
+          text: 'Stopping engine...',
         })
         const stopResult = await window.engineAPI.stop()
         if (!stopResult || !stopResult.success) {
           setOperationMessage({
             type: 'error',
-            text: `Failed to stop engine: ${stopResult?.error || 'Unknown error'}`
+            text: `Failed to stop engine: ${stopResult?.error || 'Unknown error'}`,
           })
           setUpgradingEngine(false)
           setIsUpgradePending(false)
@@ -707,7 +707,7 @@ const Settings: React.FC = () => {
       // Upgrade engine
       setOperationMessage({
         type: 'info',
-        text: 'Upgrading engine...'
+        text: 'Upgrading engine...',
       })
       const result = await window.griptapeAPI.upgrade()
       if (result && result.success) {
@@ -716,21 +716,21 @@ const Settings: React.FC = () => {
           type: 'info',
           text: wasRunning
             ? 'Engine upgraded successfully! Restarting engine...'
-            : 'Engine upgraded successfully! Starting engine...'
+            : 'Engine upgraded successfully! Starting engine...',
         })
         await new Promise((resolve) => setTimeout(resolve, 1000))
         const startResult = await window.engineAPI.start()
         if (!startResult || !startResult.success) {
           setOperationMessage({
             type: 'error',
-            text: `Engine upgraded but failed to ${wasRunning ? 'restart' : 'start'}: ${startResult?.error || 'Unknown error'}`
+            text: `Engine upgraded but failed to ${wasRunning ? 'restart' : 'start'}: ${startResult?.error || 'Unknown error'}`,
           })
           setIsUpgradePending(false)
         }
       } else {
         setOperationMessage({
           type: 'error',
-          text: `Upgrade failed: ${result?.error || 'Unknown error'}`
+          text: `Upgrade failed: ${result?.error || 'Unknown error'}`,
         })
         setIsUpgradePending(false)
       }
@@ -738,7 +738,7 @@ const Settings: React.FC = () => {
       console.error('Failed to upgrade engine:', err)
       setOperationMessage({
         type: 'error',
-        text: 'Failed to upgrade engine'
+        text: 'Failed to upgrade engine',
       })
       setIsUpgradePending(false)
     } finally {
@@ -775,13 +775,13 @@ const Settings: React.FC = () => {
         setHasUnsavedChanges(true)
       }
     },
-    [loadLibrarySettings]
+    [loadLibrarySettings],
   )
 
   const themeOptions = [
     { value: 'light', label: 'Light', icon: Sun },
     { value: 'dark', label: 'Dark', icon: Moon },
-    { value: 'system', label: 'System', icon: Monitor }
+    { value: 'system', label: 'System', icon: Monitor },
   ] as const
 
   return (
@@ -797,7 +797,7 @@ const Settings: React.FC = () => {
               notification.type === 'error' &&
                 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-500',
               notification.type === 'info' &&
-                'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500'
+                'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500',
             )}
           >
             <span className="text-sm font-medium">{notification.text}</span>
@@ -869,7 +869,7 @@ const Settings: React.FC = () => {
                         'flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all',
                         theme === option.value
                           ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-muted-foreground/50'
+                          : 'border-border hover:border-muted-foreground/50',
                       )}
                     >
                       <Icon className="w-6 h-6" />
@@ -953,7 +953,7 @@ const Settings: React.FC = () => {
                   className={cn(
                     'flex-1 px-3 py-2 text-sm rounded-md',
                     'bg-background border border-input',
-                    'font-mono'
+                    'font-mono',
                   )}
                   placeholder={
                     loadingWorkspace
@@ -968,7 +968,7 @@ const Settings: React.FC = () => {
                     'px-4 py-2 text-sm rounded-md',
                     'bg-primary text-primary-foreground',
                     'hover:bg-primary/90 transition-colors',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
                   Browse
@@ -984,7 +984,7 @@ const Settings: React.FC = () => {
                     'flex items-center gap-2 px-4 py-2 text-sm rounded-md',
                     'border border-border text-muted-foreground',
                     'hover:bg-muted/50 transition-colors',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
                   <FileUp className="w-4 h-4" />
@@ -1025,7 +1025,7 @@ const Settings: React.FC = () => {
                           'mt-0.5 w-4 h-4 rounded border-input',
                           'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
                           'bg-background cursor-pointer',
-                          'disabled:opacity-50 disabled:cursor-not-allowed'
+                          'disabled:opacity-50 disabled:cursor-not-allowed',
                         )}
                       />
                       <div className="flex-1 space-y-1">
@@ -1048,7 +1048,7 @@ const Settings: React.FC = () => {
                           'mt-0.5 w-4 h-4 rounded border-input',
                           'text-purple-600 focus:ring-purple-500 focus:ring-offset-0',
                           'bg-background cursor-pointer',
-                          'disabled:opacity-50 disabled:cursor-not-allowed'
+                          'disabled:opacity-50 disabled:cursor-not-allowed',
                         )}
                       />
                       <div className="flex-1 space-y-1">
@@ -1079,7 +1079,7 @@ const Settings: React.FC = () => {
                   'w-full px-4 py-3 text-sm font-medium rounded-md',
                   'bg-green-600 hover:bg-green-500 active:bg-green-400',
                   'text-white transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
                 {isApplyingChanges ? 'Applying Changes...' : 'Apply Changes'}
@@ -1109,7 +1109,7 @@ const Settings: React.FC = () => {
                   className={cn(
                     'flex-1 px-3 py-2 text-sm rounded-md',
                     'bg-background border border-input',
-                    'font-mono'
+                    'font-mono',
                   )}
                 />
                 <button
@@ -1117,7 +1117,7 @@ const Settings: React.FC = () => {
                   className={cn(
                     'px-4 py-2 text-sm rounded-md',
                     'bg-secondary text-secondary-foreground',
-                    'hover:bg-secondary/80 transition-colors'
+                    'hover:bg-secondary/80 transition-colors',
                   )}
                 >
                   {showApiKey ? 'Hide' : 'Show'}
@@ -1127,7 +1127,7 @@ const Settings: React.FC = () => {
                   className={cn(
                     'px-4 py-2 text-sm rounded-md',
                     'bg-primary text-primary-foreground',
-                    'hover:bg-primary/90 transition-colors'
+                    'hover:bg-primary/90 transition-colors',
                   )}
                 >
                   Copy
@@ -1155,7 +1155,7 @@ const Settings: React.FC = () => {
                   'w-full px-3 py-2 text-sm rounded-md',
                   'bg-background border border-input',
                   'focus:outline-none focus:ring-2 focus:ring-ring',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
                 <option value="stable">Stable (PyPI releases)</option>
@@ -1175,7 +1175,7 @@ const Settings: React.FC = () => {
                   'w-full px-3 py-2 text-sm rounded-md',
                   'bg-background border border-input',
                   'focus:outline-none focus:ring-2 focus:ring-ring',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
                 <option value="auto-update">Auto-Update</option>
@@ -1199,7 +1199,7 @@ const Settings: React.FC = () => {
                   'px-4 py-2 text-sm rounded-md',
                   'bg-primary text-primary-foreground',
                   'hover:bg-primary/90 transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
                 {upgradingEngine ? 'Upgrading...' : 'Update Engine'}
@@ -1216,7 +1216,7 @@ const Settings: React.FC = () => {
                   operationMessage.type === 'error' &&
                     'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-500',
                   operationMessage.type === 'info' &&
-                    'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500'
+                    'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-500',
                 )}
               >
                 <p className="text-sm font-medium">{operationMessage.text}</p>
@@ -1239,7 +1239,7 @@ const Settings: React.FC = () => {
                 <ChevronDown
                   className={cn(
                     'w-4 h-4 transition-transform',
-                    showAdvancedOptions && 'transform rotate-180'
+                    showAdvancedOptions && 'transform rotate-180',
                   )}
                 />
               </button>
@@ -1267,7 +1267,7 @@ const Settings: React.FC = () => {
                             className={cn(
                               'flex-1 px-3 py-2 text-sm rounded-md',
                               'bg-background border border-blue-300 dark:border-blue-700',
-                              'font-mono text-xs'
+                              'font-mono text-xs',
                             )}
                           />
                           <button
@@ -1275,7 +1275,7 @@ const Settings: React.FC = () => {
                             className={cn(
                               'p-2 text-sm rounded-md',
                               'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-                              'hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors'
+                              'hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors',
                             )}
                             title="Clear local engine path"
                           >
@@ -1292,7 +1292,7 @@ const Settings: React.FC = () => {
                         className={cn(
                           'flex items-center gap-1.5 px-4 py-2 text-sm rounded-md',
                           'bg-blue-500 text-white',
-                          'hover:bg-blue-600 transition-colors'
+                          'hover:bg-blue-600 transition-colors',
                         )}
                       >
                         <FolderOpen className="w-4 h-4" />
@@ -1318,7 +1318,7 @@ const Settings: React.FC = () => {
                         'flex items-center gap-1.5 px-4 py-2 text-sm rounded-md',
                         'bg-orange-500 text-white',
                         'hover:bg-orange-600 transition-colors',
-                        'disabled:opacity-50 disabled:cursor-not-allowed'
+                        'disabled:opacity-50 disabled:cursor-not-allowed',
                       )}
                     >
                       <RefreshCw className="w-4 h-4" />
@@ -1345,7 +1345,7 @@ const Settings: React.FC = () => {
                 className={cn(
                   'w-full px-3 py-2 text-sm rounded-md',
                   'bg-background border border-input',
-                  'focus:outline-none focus:ring-2 focus:ring-ring'
+                  'focus:outline-none focus:ring-2 focus:ring-ring',
                 )}
               >
                 <option value="stable">Stable</option>
@@ -1384,7 +1384,7 @@ const Settings: React.FC = () => {
                 <p
                   className={cn(
                     'text-sm',
-                    versionError ? 'text-destructive' : 'text-muted-foreground'
+                    versionError ? 'text-destructive' : 'text-muted-foreground',
                   )}
                 >
                   {versionError ? 'Failed to load version' : currentVersion || 'Loading...'}
@@ -1397,7 +1397,7 @@ const Settings: React.FC = () => {
                   'px-4 py-2 text-sm rounded-md',
                   'bg-primary text-primary-foreground',
                   'hover:bg-primary/90 transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
                 {checkingForUpdates ? 'Checking...' : 'Check for Updates'}
@@ -1416,7 +1416,7 @@ const Settings: React.FC = () => {
                     'w-full px-3 py-2 text-sm rounded-md',
                     'bg-background border border-input',
                     'focus:outline-none focus:ring-2 focus:ring-ring',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
                   <option value="auto-update">Auto-Update</option>
@@ -1443,7 +1443,7 @@ const Settings: React.FC = () => {
                   'bg-background border',
                   channelError || channelsError ? 'border-destructive' : 'border-input',
                   'focus:outline-none focus:ring-2 focus:ring-primary',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
                 {availableChannels.length > 0 ? (
@@ -1478,7 +1478,7 @@ const Settings: React.FC = () => {
                 'px-4 py-2 text-sm rounded-md',
                 'bg-primary text-primary-foreground',
                 'hover:bg-primary/90 transition-colors',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
+                'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
             >
               {refreshing ? 'Refreshing...' : 'Refresh'}
@@ -1561,7 +1561,7 @@ const Settings: React.FC = () => {
                         'font-medium',
                         environmentInfo.griptapeNodes.installed
                           ? 'text-green-600'
-                          : 'text-yellow-600'
+                          : 'text-yellow-600',
                       )}
                     >
                       {environmentInfo.griptapeNodes.installed ? 'Installed' : 'Not Installed'}

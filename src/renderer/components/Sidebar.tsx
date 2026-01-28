@@ -8,7 +8,7 @@ import {
   ChevronsRight,
   LogOut,
   Code,
-  Layers
+  Layers,
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -34,7 +34,7 @@ export function Sidebar({
   onPageChange,
   hideHeader = false,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
 }: SidebarProps) {
   const { user, logout } = useAuth()
   const { status } = useEngine()
@@ -76,7 +76,7 @@ export function Sidebar({
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'engine', label: 'Engine', icon: Layers, showStatus: true },
-    { id: 'editor', label: 'Editor', icon: Code }
+    { id: 'editor', label: 'Editor', icon: Code },
   ]
 
   return (
@@ -84,7 +84,7 @@ export function Sidebar({
       className={cn(
         'flex flex-col h-full bg-sidebar text-sidebar-foreground border-r border-border transition-all duration-300',
         isCollapsed ? 'w-16' : 'w-64',
-        className
+        className,
       )}
     >
       {/* Logo Section - only show if not hidden */}
@@ -118,7 +118,7 @@ export function Sidebar({
                   'w-full flex items-center gap-3 rounded-md transition-colors relative',
                   isCollapsed ? 'px-2 py-2 justify-center' : 'px-3 py-2',
                   'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  selectedPage === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  selectedPage === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground',
                 )}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
@@ -243,7 +243,7 @@ export function Sidebar({
               ref={profileMenuRef}
               className={cn(
                 'absolute bottom-full mb-2 bg-popover border border-border rounded-md shadow-lg p-1 z-50',
-                isCollapsed ? 'left-0' : 'left-0 right-0'
+                isCollapsed ? 'left-0' : 'left-0 right-0',
               )}
             >
               <button

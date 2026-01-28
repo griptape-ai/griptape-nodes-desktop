@@ -6,7 +6,7 @@ import type { ChildProcess } from 'child_process'
 // Create a mock readable stream that works with readline
 function createMockReadable(): Readable {
   return new Readable({
-    read() {}
+    read() {},
   })
 }
 
@@ -105,7 +105,7 @@ describe('attachOutputForwarder', () => {
 
     const promise = attachOutputForwarder(mockChild, {
       logPrefix: 'TEST',
-      errorPrefix: 'CUSTOM_ERR'
+      errorPrefix: 'CUSTOM_ERR',
     })
 
     mockChild.emit('close', 0)

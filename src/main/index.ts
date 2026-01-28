@@ -17,7 +17,7 @@ import {
   shell,
   net,
   clipboard,
-  webContents
+  webContents,
 } from 'electron'
 import { getPythonVersion } from '../common/config/versions'
 import { getErrorMessage } from '../common/utils/error'
@@ -95,7 +95,7 @@ if (!app.isDefaultProtocolClient(OAUTH_SCHEME)) {
 }
 if (!isPackaged() && process.env.AUTH_SCHEME === 'custom') {
   throw new Error(
-    'Custom URL scheme authentication requires packaging. Custom URL schemes do not work in development mode on macOS and Windows. Please use AUTH_SCHEME=http for development or package the application.'
+    'Custom URL scheme authentication requires packaging. Custom URL schemes do not work in development mode on macOS and Windows. Please use AUTH_SCHEME=http for development or package the application.',
   )
 }
 
@@ -118,7 +118,7 @@ const gtnService = new GtnService(
   pythonService,
   authService,
   onboardingService,
-  settingsService
+  settingsService,
 )
 const engineService = new EngineService(userDataPath, gtnService, settingsService)
 const engineLogFileService = new EngineLogFileService(app.getPath('logs'), settingsService)
@@ -130,7 +130,7 @@ const migrationService = new MigrationService(userDataPath)
  */
 function buildEditContextMenu(
   params: Electron.ContextMenuParams,
-  webContents: Electron.WebContents
+  webContents: Electron.WebContents,
 ): Electron.MenuItemConstructorOptions[] {
   const menuItems: Electron.MenuItemConstructorOptions[] = []
 
@@ -140,13 +140,13 @@ function buildEditContextMenu(
       for (const suggestion of params.dictionarySuggestions) {
         menuItems.push({
           label: suggestion,
-          click: () => webContents.replaceMisspelling(suggestion)
+          click: () => webContents.replaceMisspelling(suggestion),
         })
       }
     } else {
       menuItems.push({
         label: 'No spelling suggestions',
-        enabled: false
+        enabled: false,
       })
     }
     menuItems.push({ type: 'separator' })
@@ -161,7 +161,7 @@ function buildEditContextMenu(
     { role: 'copy' },
     { role: 'paste' },
     { type: 'separator' },
-    { role: 'selectAll' }
+    { role: 'selectAll' },
   )
 
   return menuItems
@@ -187,16 +187,16 @@ const createWindow = () => {
       titleBarOverlay: {
         color: '#09090b',
         symbolColor: '#ffffff',
-        height: 36
-      }
+        height: 36,
+      },
     }),
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       nodeIntegration: true,
       webviewTag: true,
       // contextIsolation: true,
-      partition: 'main' // Non-persistent partition - no keychain prompt
-    }
+      partition: 'main', // Non-persistent partition - no keychain prompt
+    },
   })
 
   // and load the index.html of the app.
@@ -254,7 +254,7 @@ const createWindow = () => {
       message: 'Are you sure you want to quit?',
       detail: 'The engine will be stopped and any unsaved work will be lost.',
       checkboxLabel: "Don't ask me again",
-      checkboxChecked: false
+      checkboxChecked: false,
     })
 
     // If checkbox was checked, save the preference
@@ -339,7 +339,7 @@ app.on('ready', async () => {
           'mediaKeySystem',
           'fullscreen',
           'clipboard-sanitized-write',
-          'clipboard-read'
+          'clipboard-read',
         ]
 
         if (allowedPermissions.includes(permission)) {
@@ -350,7 +350,7 @@ app.on('ready', async () => {
 
           if (isGriptapeOrigin) {
             logger.info(
-              `Auto-granting ${permission} permission for trusted Griptape origin: ${url}`
+              `Auto-granting ${permission} permission for trusted Griptape origin: ${url}`,
             )
             callback(true)
           } else {
@@ -370,7 +370,7 @@ app.on('ready', async () => {
           'mediaKeySystem',
           'fullscreen',
           'clipboard-sanitized-write',
-          'clipboard-read'
+          'clipboard-read',
         ]
 
         if (allowedPermissions.includes(permission)) {
@@ -417,8 +417,8 @@ app.on('ready', async () => {
                   defaultPath: defaultFilename,
                   filters: [
                     { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] },
-                    { name: 'All Files', extensions: ['*'] }
-                  ]
+                    { name: 'All Files', extensions: ['*'] },
+                  ],
                 })
 
                 if (canceled || !filePath) {
@@ -459,21 +459,21 @@ app.on('ready', async () => {
                 logger.error('Error in Save Image As handler:', err)
                 dialog.showErrorBox('Error', `An error occurred: ${err}`)
               }
-            }
+            },
           })
 
           menuItems.push({
             label: 'Copy Image',
             click: () => {
               contents.copyImageAt(params.x, params.y)
-            }
+            },
           })
 
           menuItems.push({
             label: 'Copy Image Address',
             click: () => {
               clipboard.writeText(params.srcURL)
-            }
+            },
           })
         }
 
@@ -487,7 +487,7 @@ app.on('ready', async () => {
           label: 'Reload',
           click: () => {
             contents.reload()
-          }
+          },
         })
 
         // Add inspect element in development mode
@@ -497,7 +497,7 @@ app.on('ready', async () => {
             label: 'Inspect Element',
             click: () => {
               contents.inspectElement(params.x, params.y)
-            }
+            },
           })
         }
 
@@ -522,9 +522,9 @@ app.on('ready', async () => {
         {
           pythonService,
           uvService,
-          gtnService
+          gtnService,
         },
-        __BUILD_INFO__
+        __BUILD_INFO__,
       )
       logger.info('Initial environment info collection completed')
     } catch (error) {
@@ -603,9 +603,9 @@ async function performEngineUpdate(): Promise<{ success: boolean; error?: string
         {
           pythonService,
           uvService,
-          gtnService
+          gtnService,
         },
-        __BUILD_INFO__
+        __BUILD_INFO__,
       )
       logger.info('EngineUpdateService: Environment info refreshed after update')
       broadcastToRenderer('environment-info:updated', envInfo)
@@ -657,7 +657,7 @@ async function checkForAppUpdates(isStartup: boolean = true) {
     }
 
     logger.info(
-      `UpdateService: Update available at startup: ${updateInfo.TargetFullRelease?.Version}`
+      `UpdateService: Update available at startup: ${updateInfo.TargetFullRelease?.Version}`,
     )
 
     // Check for env variable override, otherwise use settings
@@ -673,13 +673,13 @@ async function checkForAppUpdates(isStartup: boolean = true) {
         ? (envBehavior as UpdateBehavior)
         : 'prompt'
       logger.info(
-        `UpdateService: Update behavior override from FAKE_UPDATE_BEHAVIOR: ${updateBehavior}`
+        `UpdateService: Update behavior override from FAKE_UPDATE_BEHAVIOR: ${updateBehavior}`,
       )
     } else if (legacyEnvOverride !== undefined) {
       // Legacy env var: map boolean to behavior
       updateBehavior = legacyEnvOverride.toLowerCase() === 'true' ? 'auto-update' : 'prompt'
       logger.info(
-        `UpdateService: Update behavior override from FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: ${updateBehavior}`
+        `UpdateService: Update behavior override from FAKE_ENABLE_AUTO_DOWNLOAD_UPDATE: ${updateBehavior}`,
       )
     } else {
       updateBehavior = settingsService.getUpdateBehavior()
@@ -756,7 +756,7 @@ async function checkForReleaseNotes() {
     'ReleaseNotesCheck: currentVersion:',
     currentVersion,
     'lastSeenVersion:',
-    lastSeenVersion
+    lastSeenVersion,
   )
 
   // If same version, nothing to show
@@ -791,7 +791,7 @@ async function checkForReleaseNotes() {
   logger.info('ReleaseNotesCheck: Version changed, showing release notes modal')
   pendingReleaseNotes = {
     version: currentVersion,
-    content: releaseNotes.content
+    content: releaseNotes.content,
   }
 
   broadcastToRenderer('release-notes:available', pendingReleaseNotes)
@@ -818,7 +818,7 @@ async function checkForEngineUpdates(isStartup: boolean = true) {
     }
 
     logger.info(
-      `EngineUpdateService: Checking for engine updates (${isStartup ? 'startup' : 'periodic'})...`
+      `EngineUpdateService: Checking for engine updates (${isStartup ? 'startup' : 'periodic'})...`,
     )
 
     const result = await gtnService.checkForEngineUpdate()
@@ -833,14 +833,14 @@ async function checkForEngineUpdates(isStartup: boolean = true) {
       const dismissedVersion = settingsService.getDismissedEngineUpdateVersion()
       if (result.latestVersion === dismissedVersion) {
         logger.info(
-          `EngineUpdateService: Engine update v${result.latestVersion} was previously dismissed`
+          `EngineUpdateService: Engine update v${result.latestVersion} was previously dismissed`,
         )
         return
       }
     }
 
     logger.info(
-      `EngineUpdateService: Engine update available: v${result.currentVersion} -> v${result.latestVersion}`
+      `EngineUpdateService: Engine update available: v${result.currentVersion} -> v${result.latestVersion}`,
     )
 
     // Store pending update info so banner can display version
@@ -876,7 +876,7 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
       dialog.showMessageBox(browserWindow, {
         type: 'info',
         message: 'Updates not available',
-        detail: 'Updates are not available in development mode.'
+        detail: 'Updates are not available in development mode.',
       })
     }
     return
@@ -892,7 +892,7 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
         dialog.showMessageBox(browserWindow, {
           type: 'info',
           message: "You're up to date",
-          detail: `Version ${updateService.getCurrentVersion()}`
+          detail: `Version ${updateService.getCurrentVersion()}`,
         })
       }
       return
@@ -908,8 +908,8 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
         defaultId: 0,
         title: 'Application Update Available',
         message: `Version ${updateInfo.TargetFullRelease.Version} is available`,
-        detail: 'Would you like to download and install it now?'
-      }
+        detail: 'Would you like to download and install it now?',
+      },
     )
 
     if (response === 0) {
@@ -921,7 +921,7 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
       dialog.showMessageBox(browserWindow, {
         type: 'error',
         message: 'Update Check Failed',
-        detail: `Failed to check for updates: ${error instanceof Error ? error.message : 'Unknown error'}`
+        detail: `Failed to check for updates: ${error instanceof Error ? error.message : 'Unknown error'}`,
       })
     }
   }
@@ -929,7 +929,7 @@ const checkForUpdatesWithDialog = async (browserWindow?: BrowserWindow) => {
 
 const downloadAndInstallUpdateWithDialog = async (
   updateInfo: any,
-  browserWindow?: BrowserWindow
+  browserWindow?: BrowserWindow,
 ) => {
   const updateManager = updateService.getUpdateManager()
 
@@ -963,8 +963,8 @@ const downloadAndInstallUpdateWithDialog = async (
       defaultId: 0,
       title: 'Update Downloaded',
       message: 'The update has been downloaded.',
-      detail: 'The application will restart to apply the update.'
-    }
+      detail: 'The application will restart to apply the update.',
+    },
   )
 
   if (response === 0) {
@@ -979,12 +979,12 @@ const createMenu = (getCurrentPage: () => string) => {
     click: async () => {
       const focusedWindow = BrowserWindow.getFocusedWindow()
       await checkForUpdatesWithDialog(focusedWindow || undefined)
-    }
+    },
   }
 
   const aboutMenuItem = {
     label: `About ${app.getName()}`,
-    click: async () => await showAboutDialog()
+    click: async () => await showAboutDialog(),
   }
 
   const appSettingsItem = {
@@ -994,7 +994,7 @@ const createMenu = (getCurrentPage: () => string) => {
       if (focusedWindow) {
         focusedWindow.webContents.send('navigate-to-settings')
       }
-    }
+    },
   }
 
   // Build template based on platform
@@ -1015,8 +1015,8 @@ const createMenu = (getCurrentPage: () => string) => {
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit' }
-      ]
+        { role: 'quit' },
+      ],
     })
   }
 
@@ -1024,7 +1024,7 @@ const createMenu = (getCurrentPage: () => string) => {
   if (process.platform !== 'darwin') {
     template.push({
       label: 'File',
-      submenu: [appSettingsItem]
+      submenu: [appSettingsItem],
     })
   }
 
@@ -1039,8 +1039,8 @@ const createMenu = (getCurrentPage: () => string) => {
       { role: 'copy' },
       { role: 'paste' },
       { type: 'separator' },
-      { role: 'selectAll' }
-    ]
+      { role: 'selectAll' },
+    ],
   })
 
   // View menu (all platforms)
@@ -1061,7 +1061,7 @@ const createMenu = (getCurrentPage: () => string) => {
             // Reload the entire app for other pages
             focusedWindow.reload()
           }
-        }
+        },
       },
       { role: 'forceReload' },
       { role: 'toggleDevTools' },
@@ -1070,8 +1070,8 @@ const createMenu = (getCurrentPage: () => string) => {
       { role: 'zoomIn' },
       { role: 'zoomOut' },
       { type: 'separator' },
-      { role: 'togglefullscreen' }
-    ]
+      { role: 'togglefullscreen' },
+    ],
   })
 
   // Window menu (all platforms)
@@ -1082,15 +1082,15 @@ const createMenu = (getCurrentPage: () => string) => {
       { role: 'close' },
       ...(process.platform === 'darwin'
         ? [{ type: 'separator' as const }, { role: 'front' as const }]
-        : [])
-    ]
+        : []),
+    ],
   })
 
   // Windows/Linux: Add Help menu with About and Check for Updates
   if (process.platform !== 'darwin') {
     template.push({
       label: 'Help',
-      submenu: [aboutMenuItem, { type: 'separator' }, checkForUpdatesItem]
+      submenu: [aboutMenuItem, { type: 'separator' }, checkForUpdatesItem],
     })
   }
 
@@ -1108,9 +1108,9 @@ const createMenu = (getCurrentPage: () => string) => {
             if (focusedWindow) {
               focusedWindow.reload()
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     })
   }
 
@@ -1136,7 +1136,7 @@ const showAboutDialog = async () => {
     `Electron: ${process.versions.electron}`,
     `Chrome: ${process.versions.chrome}`,
     `Node.js: ${process.versions.node}`,
-    ''
+    '',
   ]
 
   // Python information
@@ -1149,7 +1149,7 @@ const showAboutDialog = async () => {
     `Python: ${pythonVersion}`,
     `Python Executable: ${pythonExecutable}`,
     `Python Packages: ${pythonPackagesCount} installed`,
-    ''
+    '',
   )
 
   // UV information
@@ -1161,7 +1161,7 @@ const showAboutDialog = async () => {
     `UV: ${uvVersion}`,
     `UV Tool Directory: ${uvToolDir}`,
     `UV Python Install Directory: ${uvPythonInstallDir}`,
-    ''
+    '',
   )
 
   // Griptape Nodes information
@@ -1173,7 +1173,7 @@ const showAboutDialog = async () => {
     `Griptape Nodes: ${gtnVersion}`,
     `GTN Path: ${gtnPath}`,
     `GTN Installed: ${gtnInstalled}`,
-    ''
+    '',
   )
 
   // Collection metadata
@@ -1195,7 +1195,7 @@ const showAboutDialog = async () => {
     title: `About ${app.getName()}`,
     message: app.getName(),
     detail: detailText.join('\n'),
-    buttons: ['OK']
+    buttons: ['OK'],
   })
 }
 
@@ -1386,18 +1386,18 @@ const setupIPC = () => {
       if (envInfo) {
         return {
           success: true,
-          data: envInfo
+          data: envInfo,
         }
       } else {
         return {
           success: false,
-          error: ENV_INFO_NOT_COLLECTED
+          error: ENV_INFO_NOT_COLLECTED,
         }
       }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1409,20 +1409,20 @@ const setupIPC = () => {
         {
           pythonService,
           uvService,
-          gtnService
+          gtnService,
         },
-        __BUILD_INFO__
+        __BUILD_INFO__,
       )
 
       return {
         success: true,
-        data: envInfo
+        data: envInfo,
       }
     } catch (error) {
       logger.error('Failed to collect environment info:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1434,20 +1434,20 @@ const setupIPC = () => {
         {
           pythonService,
           uvService,
-          gtnService
+          gtnService,
         },
-        __BUILD_INFO__
+        __BUILD_INFO__,
       )
 
       return {
         success: true,
-        data: envInfo
+        data: envInfo,
       }
     } catch (error) {
       logger.error('Failed to refresh environment info:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1474,20 +1474,20 @@ const setupIPC = () => {
         // Token is expired or has no expiration time - return credentials anyway
         // so the renderer can attempt to refresh using the refresh_token
         logger.warn(
-          'auth:check - Token is expired or missing expiration time, returning credentials for refresh attempt'
+          'auth:check - Token is expired or missing expiration time, returning credentials for refresh attempt',
         )
         return {
           isAuthenticated: true,
-          ...credentials
+          ...credentials,
         }
       }
       return {
         isAuthenticated: true,
-        ...credentials
+        ...credentials,
       }
     }
     return {
-      isAuthenticated: false
+      isAuthenticated: false,
     }
   })
 
@@ -1502,7 +1502,7 @@ const setupIPC = () => {
       hasTokens: !!credentials?.tokens,
       hasUser: !!credentials?.user,
       hasApiKey: !!credentials?.apiKey,
-      expiresAt: credentials?.expiresAt
+      expiresAt: credentials?.expiresAt,
     })
 
     if (credentials && credentials.tokens) {
@@ -1514,23 +1514,23 @@ const setupIPC = () => {
 
       if (isExpired) {
         logger.info(
-          '[auth:check-sync] Token is expired but returning it anyway for webview refresh'
+          '[auth:check-sync] Token is expired but returning it anyway for webview refresh',
         )
       } else {
         logger.info(
-          `[auth:check-sync] Token is valid, expires in ${credentials.expiresAt - currentTime} seconds`
+          `[auth:check-sync] Token is valid, expires in ${credentials.expiresAt - currentTime} seconds`,
         )
       }
 
       logger.info('[auth:check-sync] ✅ Returning authenticated credentials to webview preload')
       event.returnValue = {
         isAuthenticated: true,
-        ...credentials
+        ...credentials,
       }
     } else {
       logger.warn('[auth:check-sync] ❌ No credentials available, returning not authenticated')
       event.returnValue = {
-        isAuthenticated: false
+        isAuthenticated: false,
       }
     }
   })
@@ -1577,7 +1577,7 @@ const setupIPC = () => {
       }
 
       logger.info('[Webview Auth] Returning user info to editor:', {
-        email: credentials.user.email
+        email: credentials.user.email,
       })
       event.returnValue = { user: credentials.user }
     } catch (err) {
@@ -1620,7 +1620,7 @@ const setupIPC = () => {
     const result = await authService.attemptTokenRefresh()
     logger.info('[auth:refresh-token] Refresh result:', {
       success: result.success,
-      error: result.error
+      error: result.error,
     })
     return result
   })
@@ -1643,7 +1643,7 @@ const setupIPC = () => {
         contents.send('auth:tokens-updated', {
           tokens: credentials.tokens,
           expiresAt: credentials.expiresAt,
-          apiKey: credentials.apiKey
+          apiKey: credentials.apiKey,
         })
       })
     }
@@ -1707,7 +1707,7 @@ const setupIPC = () => {
       logger.error('Failed to start engine:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1720,7 +1720,7 @@ const setupIPC = () => {
       logger.error('Failed to stop engine:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1733,7 +1733,7 @@ const setupIPC = () => {
       logger.error('Failed to restart engine:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1746,7 +1746,7 @@ const setupIPC = () => {
       logger.error('Failed to reinstall engine:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1784,7 +1784,7 @@ const setupIPC = () => {
         engineService.addLog('stderr', errorMsg)
         return {
           success: false,
-          error: errorMsg
+          error: errorMsg,
         }
       }
 
@@ -1794,7 +1794,7 @@ const setupIPC = () => {
       // Execute the command
       const child = await gtnService.runGtn(args, {
         forward_logs: false, // We'll handle output manually
-        wait: false
+        wait: false,
       })
 
       // Track this as the current command process
@@ -1868,7 +1868,7 @@ const setupIPC = () => {
   ipcMain.handle('gtn:select-directory', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory'],
-      title: 'Select Workspace Directory'
+      title: 'Select Workspace Directory',
     })
 
     if (!result.canceled && result.filePaths.length > 0) {
@@ -1892,7 +1892,7 @@ const setupIPC = () => {
         workspaceDirectory: string
         advancedLibrary: boolean
         cloudLibrary: boolean
-      }
+      },
     ) => {
       logger.info('Reconfiguring engine with new workspace/library preferences')
 
@@ -1911,14 +1911,14 @@ const setupIPC = () => {
         workspaceDirectory: config.workspaceDirectory,
         storageBackend: 'local',
         advancedLibrary: config.advancedLibrary,
-        cloudLibrary: config.cloudLibrary
+        cloudLibrary: config.cloudLibrary,
       })
 
       // Restart engine
       await engineService.startEngine()
 
       logger.info('Engine reconfiguration complete')
-    }
+    },
   )
 
   ipcMain.handle('gtn:upgrade', async () => {
@@ -1929,7 +1929,7 @@ const setupIPC = () => {
       logger.error('Failed to upgrade GTN:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1950,7 +1950,7 @@ const setupIPC = () => {
       logger.error('Failed to force reinstall GTN:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1964,7 +1964,7 @@ const setupIPC = () => {
       logger.error('Failed to get GTN version:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -1979,7 +1979,7 @@ const setupIPC = () => {
       logger.error('Failed to check for engine update:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -2034,9 +2034,9 @@ const setupIPC = () => {
           {
             pythonService,
             uvService,
-            gtnService
+            gtnService,
           },
-          __BUILD_INFO__
+          __BUILD_INFO__,
         )
         logger.info('Channel switch: Environment info refreshed')
         broadcastToRenderer('environment-info:updated', envInfo)
@@ -2054,7 +2054,7 @@ const setupIPC = () => {
       settingsService.setChannelSwitchInProgress(false)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -2090,7 +2090,7 @@ const setupIPC = () => {
       logger.error('Failed to set local engine path:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -2103,7 +2103,7 @@ const setupIPC = () => {
 
     const result = await dialog.showOpenDialog(focusedWindow, {
       properties: ['openDirectory'],
-      title: 'Select Local Griptape Nodes Repository'
+      title: 'Select Local Griptape Nodes Repository',
     })
 
     if (result.canceled || result.filePaths.length === 0) {
@@ -2184,7 +2184,7 @@ const setupIPC = () => {
       if (!safeStorage.isEncryptionAvailable()) {
         return {
           success: false,
-          error: 'Encryption not available on this platform'
+          error: 'Encryption not available on this platform',
         }
       }
 
@@ -2196,7 +2196,7 @@ const setupIPC = () => {
       if (decrypted !== testString) {
         return {
           success: false,
-          error: 'Encryption verification failed'
+          error: 'Encryption verification failed',
         }
       }
 
@@ -2209,7 +2209,7 @@ const setupIPC = () => {
       logger.error('Failed to enable credential storage:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Keychain access denied'
+        error: error instanceof Error ? error.message : 'Keychain access denied',
       }
     }
   })
@@ -2282,7 +2282,7 @@ const setupIPC = () => {
       if (!safeStorage.isEncryptionAvailable()) {
         return {
           success: false,
-          error: 'Encryption not available on this platform'
+          error: 'Encryption not available on this platform',
         }
       }
 
@@ -2296,7 +2296,7 @@ const setupIPC = () => {
       if (decrypted !== testString) {
         return {
           success: false,
-          error: 'Encryption test failed: decrypted value does not match'
+          error: 'Encryption test failed: decrypted value does not match',
         }
       }
 
@@ -2305,7 +2305,7 @@ const setupIPC = () => {
       logger.error('Encryption test failed:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown encryption error'
+        error: error instanceof Error ? error.message : 'Unknown encryption error',
       }
     }
   })
@@ -2373,8 +2373,8 @@ const setupIPC = () => {
       title: 'Select Griptape Nodes Config File',
       filters: [
         { name: 'JSON Files', extensions: ['json'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
+        { name: 'All Files', extensions: ['*'] },
+      ],
     })
     if (!result.canceled && result.filePaths.length > 0) {
       return result.filePaths[0]
@@ -2397,7 +2397,7 @@ const setupIPC = () => {
       logger.error('Failed to report launch usage:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -2410,7 +2410,7 @@ const setupIPC = () => {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -2488,7 +2488,7 @@ const setupIPC = () => {
       logger.error('Failed to set engine log file enabled:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })
@@ -2514,8 +2514,8 @@ const setupIPC = () => {
         defaultPath: defaultFilename,
         filters: [
           { name: 'Log Files', extensions: ['log', 'txt'] },
-          { name: 'All Files', extensions: ['*'] }
-        ]
+          { name: 'All Files', extensions: ['*'] },
+        ],
       })
 
       if (canceled || !filePath) {
@@ -2537,10 +2537,10 @@ const setupIPC = () => {
         logger.error('Failed to export logs:', error)
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         }
       }
-    }
+    },
   )
 
   ipcMain.handle('engine:get-log-date-range', async () => {
@@ -2564,7 +2564,7 @@ const setupIPC = () => {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
   })

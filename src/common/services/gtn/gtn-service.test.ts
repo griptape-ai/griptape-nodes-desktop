@@ -8,15 +8,15 @@ describe('mergeNestedArray', () => {
       obj,
       path: ['level1', 'level2', 'items'],
       items: ['a', 'b'],
-      unique: false
+      unique: false,
     })
 
     expect(obj).toEqual({
       level1: {
         level2: {
-          items: ['a', 'b']
-        }
-      }
+          items: ['a', 'b'],
+        },
+      },
     })
   })
 
@@ -24,16 +24,16 @@ describe('mergeNestedArray', () => {
     const obj = {
       level1: {
         level2: {
-          items: ['existing']
-        }
-      }
+          items: ['existing'],
+        },
+      },
     }
 
     mergeNestedArray({
       obj,
       path: ['level1', 'level2', 'items'],
       items: ['new1', 'new2'],
-      unique: false
+      unique: false,
     })
 
     expect(obj.level1.level2.items).toEqual(['existing', 'new1', 'new2'])
@@ -42,15 +42,15 @@ describe('mergeNestedArray', () => {
   it('should deduplicate items when unique is true', () => {
     const obj = {
       level1: {
-        items: ['a', 'b']
-      }
+        items: ['a', 'b'],
+      },
     }
 
     mergeNestedArray({
       obj,
       path: ['level1', 'items'],
       items: ['b', 'c', 'a'],
-      unique: true
+      unique: true,
     })
 
     expect(obj.level1.items).toEqual(['a', 'b', 'c'])
@@ -58,14 +58,14 @@ describe('mergeNestedArray', () => {
 
   it('should not deduplicate when unique is false', () => {
     const obj = {
-      items: ['a', 'b']
+      items: ['a', 'b'],
     }
 
     mergeNestedArray({
       obj,
       path: ['items'],
       items: ['b', 'c'],
-      unique: false
+      unique: false,
     })
 
     expect(obj.items).toEqual(['a', 'b', 'b', 'c'])
@@ -78,7 +78,7 @@ describe('mergeNestedArray', () => {
       obj,
       path: ['a', 'b', 'c', 'd', 'e'],
       items: [1, 2, 3],
-      unique: false
+      unique: false,
     })
 
     expect(obj).toEqual({
@@ -86,26 +86,26 @@ describe('mergeNestedArray', () => {
         b: {
           c: {
             d: {
-              e: [1, 2, 3]
-            }
-          }
-        }
-      }
+              e: [1, 2, 3],
+            },
+          },
+        },
+      },
     })
   })
 
   it('should convert non-array existing value to array', () => {
     const obj = {
       config: {
-        value: 'single'
-      }
+        value: 'single',
+      },
     }
 
     mergeNestedArray({
       obj,
       path: ['config', 'value'],
       items: ['new'],
-      unique: false
+      unique: false,
     })
 
     expect(obj.config.value).toEqual(['single', 'new'])
@@ -118,7 +118,7 @@ describe('mergeNestedArray', () => {
       obj,
       path: ['items'],
       items: ['a', 'b'],
-      unique: false
+      unique: false,
     })
 
     expect(obj).toEqual({ items: ['a', 'b'] })
@@ -130,16 +130,16 @@ describe('mergeNestedArray', () => {
         otherProp: 'preserved',
         level2: {
           anotherProp: 123,
-          items: ['existing']
-        }
-      }
+          items: ['existing'],
+        },
+      },
     }
 
     mergeNestedArray({
       obj,
       path: ['level1', 'level2', 'items'],
       items: ['new'],
-      unique: false
+      unique: false,
     })
 
     expect(obj).toEqual({
@@ -147,22 +147,22 @@ describe('mergeNestedArray', () => {
         otherProp: 'preserved',
         level2: {
           anotherProp: 123,
-          items: ['existing', 'new']
-        }
-      }
+          items: ['existing', 'new'],
+        },
+      },
     })
   })
 
   it('should handle empty items array', () => {
     const obj = {
-      items: ['a', 'b']
+      items: ['a', 'b'],
     }
 
     mergeNestedArray({
       obj,
       path: ['items'],
       items: [],
-      unique: false
+      unique: false,
     })
 
     expect(obj.items).toEqual(['a', 'b'])
@@ -170,14 +170,14 @@ describe('mergeNestedArray', () => {
 
   it('should create array from undefined value', () => {
     const obj = {
-      level1: {}
+      level1: {},
     }
 
     mergeNestedArray({
       obj,
       path: ['level1', 'items'],
       items: ['a'],
-      unique: false
+      unique: false,
     })
 
     expect(obj.level1).toEqual({ items: ['a'] })

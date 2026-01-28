@@ -55,14 +55,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             sub: 'dev-user',
             name: 'Development User',
             email: 'dev@griptape.ai',
-            email_verified: true
+            email_verified: true,
           }
 
           const mockTokens = {
             access_token: devApiKey,
             id_token: 'dev-id-token',
             token_type: 'Bearer',
-            expires_in: 86400
+            expires_in: 86400,
           }
 
           const mockExpiresAt = Math.floor(Date.now() / 1000) + 86400
@@ -228,14 +228,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           sub: 'dev-user',
           name: 'Development User',
           email: 'dev@griptape.ai',
-          email_verified: true
+          email_verified: true,
         }
 
         const mockTokens = {
           access_token: devApiKey,
           id_token: 'dev-id-token',
           token_type: 'Bearer',
-          expires_in: 86400
+          expires_in: 86400,
         }
 
         const mockExpiresAt = Math.floor(Date.now() / 1000) + 86400
@@ -290,7 +290,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     tokens,
     apiKey,
     login,
-    logout
+    logout,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

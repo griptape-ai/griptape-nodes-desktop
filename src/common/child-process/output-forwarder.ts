@@ -9,7 +9,7 @@ export interface OutputForwarderOptions {
 
 export function attachOutputForwarder(
   child: ChildProcess,
-  options: OutputForwarderOptions
+  options: OutputForwarderOptions,
 ): Promise<void> {
   const { logPrefix, errorPrefix = `${logPrefix}_STDERR` } = options
 

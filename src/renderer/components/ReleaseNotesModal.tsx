@@ -10,7 +10,7 @@ interface ReleaseNotesModalProps {
 
 export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
   releaseNotes,
-  onDismiss
+  onDismiss,
 }) => {
   const [dontShowAgain, setDontShowAgain] = useState(false)
 
@@ -77,7 +77,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
               // Styled paragraphs
               p: ({ children }) => <p className="text-muted-foreground mb-2">{children}</p>,
               // Styled bold
-              strong: ({ children }) => <strong className="font-semibold">{children}</strong>
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
             }}
           >
             {releaseNotes.content}

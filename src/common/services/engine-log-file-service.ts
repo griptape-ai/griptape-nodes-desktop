@@ -15,7 +15,7 @@ export class EngineLogFileService extends EventEmitter {
 
   constructor(
     logsBasePath: string,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
   ) {
     super()
     this.logDir = path.join(logsBasePath, 'engine')
@@ -218,12 +218,12 @@ export class EngineLogFileService extends EventEmitter {
     }
 
     const daysDiff = Math.ceil(
-      (newestDate.getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24)
+      (newestDate.getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24),
     )
     return {
       oldestDate: oldestDate.toISOString().split('T')[0],
       newestDate: newestDate.toISOString().split('T')[0],
-      availableDays: Math.max(1, daysDiff + 1)
+      availableDays: Math.max(1, daysDiff + 1),
     }
   }
 

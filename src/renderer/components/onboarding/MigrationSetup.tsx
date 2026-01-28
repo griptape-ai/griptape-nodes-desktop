@@ -178,7 +178,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
                       'border',
                       selectedPath === config.path
                         ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-border hover:bg-muted/50'
+                        : 'border-border hover:bg-muted/50',
                     )}
                   >
                     <input
@@ -235,7 +235,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
                 className={cn(
                   'px-4 py-2 text-sm font-medium rounded-md',
                   'border border-border text-muted-foreground',
-                  'hover:bg-muted/50 transition-colors'
+                  'hover:bg-muted/50 transition-colors',
                 )}
               >
                 Browse for another...
@@ -259,7 +259,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
                   className={cn(
                     'flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium rounded-md',
                     'border border-border text-foreground',
-                    'hover:bg-muted/50 transition-colors'
+                    'hover:bg-muted/50 transition-colors',
                   )}
                 >
                   <FolderOpen className="w-4 h-4" />
@@ -270,7 +270,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
                   className={cn(
                     'flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium rounded-md',
                     'border border-border text-foreground',
-                    'hover:bg-muted/50 transition-colors'
+                    'hover:bg-muted/50 transition-colors',
                   )}
                 >
                   <FileSearch className="w-4 h-4" />
@@ -294,7 +294,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
                   className={cn(
                     'flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium rounded-md',
                     'border border-border text-foreground',
-                    'hover:bg-muted/50 transition-colors'
+                    'hover:bg-muted/50 transition-colors',
                   )}
                 >
                   Try again
@@ -304,7 +304,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
                   className={cn(
                     'flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium rounded-md',
                     'border border-border text-foreground',
-                    'hover:bg-muted/50 transition-colors'
+                    'hover:bg-muted/50 transition-colors',
                   )}
                 >
                   <FolderOpen className="w-4 h-4" />
@@ -324,7 +324,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
               'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md',
               'text-muted-foreground hover:text-foreground',
               'transition-colors',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -339,7 +339,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
                 className={cn(
                   'px-6 py-2.5 text-sm font-medium rounded-md',
                   'border border-border text-muted-foreground',
-                  'hover:bg-muted/50 transition-colors'
+                  'hover:bg-muted/50 transition-colors',
                 )}
               >
                 Skip Migration
@@ -352,7 +352,7 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
                 className={cn(
                   'px-6 py-2.5 text-sm font-medium rounded-md',
                   'bg-blue-600 hover:bg-blue-500 active:bg-blue-400',
-                  'text-white transition-colors'
+                  'text-white transition-colors',
                 )}
               >
                 Continue

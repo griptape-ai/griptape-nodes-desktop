@@ -20,7 +20,7 @@ export function Header({
   className,
   selectedPage,
   onPageChange,
-  showSystemMonitor = false
+  showSystemMonitor = false,
 }: HeaderProps) {
   const { user, logout } = useAuth()
   const { status } = useEngine()
@@ -70,7 +70,7 @@ export function Header({
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'engine', label: 'Engine', icon: Layers, showStatus: true },
-    { id: 'editor', label: 'Editor', icon: Code }
+    { id: 'editor', label: 'Editor', icon: Code },
   ]
 
   return (
@@ -78,7 +78,7 @@ export function Header({
       className={cn(
         'bg-card px-6 py-2 flex items-center gap-4 border-b border-border',
         isMac && 'pl-24 draggable',
-        className
+        className,
       )}
     >
       {/* App Logo - hidden on Windows (shown in title bar) */}
@@ -99,7 +99,7 @@ export function Header({
               className={cn(
                 'flex items-center gap-2 px-4 py-1.5 rounded-md transition-colors',
                 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                selectedPage === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground'
+                selectedPage === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground',
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />

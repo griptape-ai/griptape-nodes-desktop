@@ -20,5 +20,5 @@ export const logger: Logger = {
       log.error('Fatal:', err)
     }
     // Hook: send to Sentry or another crash reporter
-  }
+  },
 }

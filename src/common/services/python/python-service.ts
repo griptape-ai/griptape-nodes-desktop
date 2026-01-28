@@ -19,7 +19,7 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
 
   constructor(
     private userDataDir: string,
-    private uvService: UvService
+    private uvService: UvService,
   ) {
     super()
   }
@@ -96,7 +96,7 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
   async getInstalledPackages(): Promise<string[]> {
     try {
       const child = await this.spawnPython(
-        'import subprocess; import json; result = subprocess.run(["pip", "list", "--format=json"], capture_output=True, text=True); print(result.stdout)'
+        'import subprocess; import json; result = subprocess.run(["pip", "list", "--format=json"], capture_output=True, text=True); print(result.stdout)',
       )
       const stdout = await collectStdout(child)
       const packages = JSON.parse(stdout.trim())

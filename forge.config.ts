@@ -23,8 +23,8 @@ const config: ForgeConfig = {
         NSCameraUsageDescription:
           'Griptape Nodes uses your camera for video-based AI workflows and visual input processing.',
         NSMicrophoneUsageDescription:
-          'Griptape Nodes uses your microphone for audio-based AI workflows and voice input processing.'
-      }
+          'Griptape Nodes uses your microphone for audio-based AI workflows and voice input processing.',
+      },
     }),
     // protocols: [
     //   {
@@ -37,14 +37,14 @@ const config: ForgeConfig = {
       osxSign: {
         identity: process.env.APPLE_IDENTITY,
         entitlements: 'entitlements.entitlements',
-        'hardened-runtime': true // Required for Developer ID Application certificates
-      } as any
+        'hardened-runtime': true, // Required for Developer ID Application certificates
+      } as any,
       // osxNotarize: {
       //   appleId: process.env.APPLE_ID as string,
       //   appleIdPassword: process.env.APPLE_PASSWORD as string,
       //   teamId: process.env.APPLE_TEAM_ID as string,
       // },
-    })
+    }),
   },
   rebuildConfig: {},
   makers: [new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
@@ -60,17 +60,17 @@ const config: ForgeConfig = {
             html: './index.html',
             js: './src/renderer/index.tsx',
             preload: {
-              js: './src/preload/index.ts'
-            }
+              js: './src/preload/index.ts',
+            },
           },
           {
             name: 'webview_preload',
             preload: {
-              js: './src/preload/webview-preload.ts'
-            }
-          }
-        ]
-      }
+              js: './src/preload/webview-preload.ts',
+            },
+          },
+        ],
+      },
     }),
     // Fuses are used to enable/disable various Electron functionality
     // at package time, before code signing the application
@@ -87,9 +87,9 @@ const config: ForgeConfig = {
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true
-    })
-  ]
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    }),
+  ],
 }
 
 export default config

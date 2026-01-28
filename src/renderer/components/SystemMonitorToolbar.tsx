@@ -7,7 +7,7 @@ import {
   getUsageBarColor,
   getUsageTextColor,
   clampPercentage,
-  calculateAverageGpuUsage
+  calculateAverageGpuUsage,
 } from '../utils/system-monitor'
 
 interface SystemMonitorToolbarProps {
@@ -237,13 +237,13 @@ export function SystemMonitorToolbar({ show }: SystemMonitorToolbarProps) {
                     <div
                       className={`h-full transition-all duration-300 ${getUsageBarColor(metrics.memory.percentage)}`}
                       style={{
-                        width: `${clampPercentage((metrics.memory.breakdown.used / metrics.memory.breakdown.total) * 100)}%`
+                        width: `${clampPercentage((metrics.memory.breakdown.used / metrics.memory.breakdown.total) * 100)}%`,
                       }}
                     />
                     <div
                       className="h-full transition-all duration-300 bg-blue-500/60"
                       style={{
-                        width: `${clampPercentage((metrics.memory.breakdown.cached / metrics.memory.breakdown.total) * 100)}%`
+                        width: `${clampPercentage((metrics.memory.breakdown.cached / metrics.memory.breakdown.total) * 100)}%`,
                       }}
                     />
                   </div>

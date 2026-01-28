@@ -12,9 +12,9 @@ export async function installGtn(userDataDir: string): Promise<void> {
 
   const installProcess = spawn(uvExecutablePath, ['tool', 'install', '--quiet', 'griptape-nodes'], {
     cwd: getCwd(userDataDir),
-    env: getEnv(userDataDir)
+    env: getEnv(userDataDir),
   })
   await attachOutputForwarder(installProcess, {
-    logPrefix: 'INSTALL_GTN'
+    logPrefix: 'INSTALL_GTN',
   })
 }

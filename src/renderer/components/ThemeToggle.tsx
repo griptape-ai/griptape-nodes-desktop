@@ -19,7 +19,7 @@ export function ThemeToggle() {
       className={cn(
         'w-9 h-9 p-0 flex items-center justify-center',
         'hover:bg-accent hover:text-accent-foreground',
-        'rounded-md transition-colors'
+        'rounded-md transition-colors',
       )}
       aria-label="Toggle theme"
     >
