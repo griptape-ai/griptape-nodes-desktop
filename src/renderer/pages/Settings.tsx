@@ -429,7 +429,7 @@ const Settings: React.FC = () => {
     }
   }
 
-  const loadLibrarySettings = async () => {
+  const loadLibrarySettings = useCallback(async () => {
     setLoadingLibrarySettings(true)
     try {
       const [advanced, cloud] = await Promise.all([
@@ -445,7 +445,7 @@ const Settings: React.FC = () => {
     } finally {
       setLoadingLibrarySettings(false)
     }
-  }
+  }, [])
 
   const copyApiKey = () => {
     if (apiKey) {

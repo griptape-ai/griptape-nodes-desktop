@@ -365,4 +365,4 @@ const MigrationSetup: React.FC<MigrationSetupProps> = ({ onComplete, onBack }) =
   )
 }
 
-export default MigrationSetup
+export default React.memo(MigrationSetup)
