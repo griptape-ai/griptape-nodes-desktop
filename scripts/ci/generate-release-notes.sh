@@ -48,6 +48,7 @@ cat RELEASE_NOTES_RAW.md
 
 # Preprocess release notes for user-friendly display in the app:
 # - Strip GitHub attribution from list items (e.g., "by @user in https://...")
+# - Strip conventional commit prefixes (e.g., "fix:", "feat(scope):")
 # - Remove "Full Changelog" lines
 # - Remove HTML comments
 awk '
@@ -56,6 +57,8 @@ awk '
   /^\* / {
     gsub(/ by @[a-zA-Z0-9_-]+ in https:\/\/[^ ]+$/, "")
     gsub(/ by @[a-zA-Z0-9_-]+ in #[0-9]+$/, "")
+    # Strip conventional commit prefixes (fix:, feat:, chore:, etc.) with optional scope
+    gsub(/^\* (fix|feat|chore|docs|style|refactor|perf|test|build|ci|revert)(\([^)]*\))?: /, "* ")
   }
   { print }
 ' RELEASE_NOTES_RAW.md > RELEASE_NOTES.md
