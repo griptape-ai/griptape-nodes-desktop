@@ -23,8 +23,8 @@ const LibrarySetup: React.FC<LibrarySetupProps> = ({ onComplete, onBack }) => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col items-center justify-center min-h-full py-12">
-      <div className="w-full space-y-8">
+    <div className="max-w-3xl w-full">
+      <div className="w-full space-y-6">
         {/* Title */}
         <div className="text-center space-y-3">
           <div className="flex justify-center mb-4">

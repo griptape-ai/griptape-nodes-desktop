@@ -98,24 +98,22 @@ const LoginPage: React.FC = () => {
         className={cn('h-10 w-full flex-shrink-0 draggable', platform === 'darwin' && 'pl-20')}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Update Available Banner */}
-        {(shouldShowUpdateBanner || downloadError) && (
-          <div className={platform === 'darwin' ? 'pl-20' : ''}>
-            <UpdateBanner
-              version={updateVersion}
-              currentVersion={currentVersion}
-              isReadyToInstall={isUpdateReadyToInstall}
-              updateInfo={updateInfo}
-              onDismiss={handleDismissUpdate}
-              externalError={downloadError}
-              onClearExternalError={clearDownloadError}
-              isDownloading={isDownloading}
-              downloadProgress={downloadProgress}
-            />
-          </div>
-        )}
+      {/* Update Available Banner */}
+      {(shouldShowUpdateBanner || downloadError) && (
+        <UpdateBanner
+          version={updateVersion}
+          currentVersion={currentVersion}
+          isReadyToInstall={isUpdateReadyToInstall}
+          updateInfo={updateInfo}
+          onDismiss={handleDismissUpdate}
+          externalError={downloadError}
+          onClearExternalError={clearDownloadError}
+          isDownloading={isDownloading}
+          downloadProgress={downloadProgress}
+        />
+      )}
 
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Content area */}
         <div className="flex-1 overflow-y-auto px-8 py-12 flex flex-col items-center">
           <div className="w-full max-w-3xl flex flex-col items-center flex-1 justify-center">

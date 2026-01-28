@@ -217,6 +217,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }
 })
 
+contextBridge.exposeInMainWorld('migrationAPI', {
+  checkDefaultLocations: () => ipcRenderer.invoke('migration:check-default-locations'),
+  scanHomeDirectory: () => ipcRenderer.invoke('migration:scan-home-directory'),
+  validateConfig: (filePath: string) => ipcRenderer.invoke('migration:validate-config', filePath),
+  importConfig: (filePath: string) => ipcRenderer.invoke('migration:import-config', filePath),
+  selectConfigFile: () => ipcRenderer.invoke('migration:select-config-file'),
+  copyWorkspace: (sourceDir: string, destDir: string) =>
+    ipcRenderer.invoke('migration:copy-workspace', sourceDir, destDir)
+})
+
 contextBridge.exposeInMainWorld('onboardingAPI', {
   isOnboardingComplete: () => ipcRenderer.invoke('onboarding:is-complete'),
   isCredentialStorageEnabled: () => ipcRenderer.invoke('onboarding:is-credential-storage-enabled'),
