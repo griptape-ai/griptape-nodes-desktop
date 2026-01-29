@@ -8,8 +8,10 @@ import { logger } from '@/main/utils/logger'
 export class EngineLogFileService extends EventEmitter {
   private isEnabled: boolean = false
   private writeStream: fs.WriteStream | null = null
+  private sessionWriteStream: fs.WriteStream | null = null
   private logDir: string
   private currentLogPath: string
+  private sessionLogPath: string
   private maxFileSize: number = 10 * 1024 * 1024 // 10MB
   private maxFiles: number = 4
 
@@ -20,6 +22,7 @@ export class EngineLogFileService extends EventEmitter {
     super()
     this.logDir = path.join(logsBasePath, 'engine')
     this.currentLogPath = path.join(this.logDir, 'engine.log')
+    this.sessionLogPath = path.join(this.logDir, 'session.log')
   }
 
   async start(): Promise<void> {
@@ -51,24 +54,40 @@ export class EngineLogFileService extends EventEmitter {
   }
 
   async writeLog(log: EngineLog): Promise<void> {
-    if (!this.isEnabled || !this.writeStream) return
+    if (!this.isEnabled) return
 
     await this.rotateIfNeeded()
 
     const entry = this.formatLogEntry(log)
-    this.writeStream.write(entry + '\n')
+
+    // Write to rotating log file
+    if (this.writeStream) {
+      this.writeStream.write(entry + '\n')
+    }
+
+    // Write to session log file
+    if (this.sessionWriteStream) {
+      this.sessionWriteStream.write(entry + '\n')
+    }
   }
 
   private async openLogFile(): Promise<void> {
     try {
       await fs.promises.mkdir(this.logDir, { recursive: true })
-      this.writeStream = fs.createWriteStream(this.currentLogPath, { flags: 'a' })
 
+      // Open rotating log file (append mode)
+      this.writeStream = fs.createWriteStream(this.currentLogPath, { flags: 'a' })
       this.writeStream.on('error', (err) => {
-        logger.error('EngineLogFileService: Write error:', err)
+        logger.error('EngineLogFileService: Write error (rotating):', err)
+      })
+
+      // Open session log file (overwrite mode - clears on each session)
+      this.sessionWriteStream = fs.createWriteStream(this.sessionLogPath, { flags: 'w' })
+      this.sessionWriteStream.on('error', (err) => {
+        logger.error('EngineLogFileService: Write error (session):', err)
       })
     } catch (err) {
-      logger.error('EngineLogFileService: Failed to open log file:', err)
+      logger.error('EngineLogFileService: Failed to open log files:', err)
     }
   }
 
@@ -78,6 +97,12 @@ export class EngineLogFileService extends EventEmitter {
         this.writeStream!.end(() => resolve())
       })
       this.writeStream = null
+    }
+    if (this.sessionWriteStream) {
+      await new Promise<void>((resolve) => {
+        this.sessionWriteStream!.end(() => resolve())
+      })
+      this.sessionWriteStream = null
     }
   }
 
@@ -260,6 +285,22 @@ export class EngineLogFileService extends EventEmitter {
 
     await fs.promises.writeFile(targetPath, combined, 'utf-8')
     logger.info(`EngineLogFileService: Exported ${days} day(s) of logs to:`, targetPath)
+  }
+
+  /**
+   * Export logs from the current session
+   * @param targetPath - Where to save the exported logs
+   */
+  async exportSessionLogs(targetPath: string): Promise<void> {
+    try {
+      const content = await fs.promises.readFile(this.sessionLogPath, 'utf-8')
+      await fs.promises.writeFile(targetPath, content, 'utf-8')
+      logger.info('EngineLogFileService: Exported session logs to:', targetPath)
+    } catch (err) {
+      // If session log doesn't exist, write empty file
+      await fs.promises.writeFile(targetPath, '', 'utf-8')
+      logger.info('EngineLogFileService: No session logs to export')
+    }
   }
 
   private extractTimestamp(line: string): Date | null {

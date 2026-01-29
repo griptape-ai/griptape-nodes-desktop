@@ -2544,13 +2544,13 @@ const setupIPC = () => {
 
       const defaultFilename =
         exportType === 'session'
-          ? `engine-logs-session-${timestamp}.log`
-          : `engine-logs-${days}days-${timestamp}.log`
+          ? `engine-logs-session-${timestamp}.txt`
+          : `engine-logs-${days}days-${timestamp}.txt`
 
       const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
         defaultPath: defaultFilename,
         filters: [
-          { name: 'Log Files', extensions: ['log', 'txt'] },
+          { name: 'Log Files', extensions: ['txt', 'log'] },
           { name: 'All Files', extensions: ['*'] },
         ],
       })
@@ -2561,10 +2561,8 @@ const setupIPC = () => {
 
       try {
         if (exportType === 'session') {
-          // Export current session (in-memory logs)
-          const logs = engineService.getLogs()
-          const content = engineLogFileService.formatLogsForExport(logs)
-          await fs.promises.writeFile(filePath, content, 'utf-8')
+          // Export current session from session log file
+          await engineLogFileService.exportSessionLogs(filePath)
         } else {
           // Export logs from files filtered by days
           await engineLogFileService.exportLogsForDays(filePath, days)
