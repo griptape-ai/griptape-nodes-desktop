@@ -56,6 +56,7 @@ Release notes are automatically generated from commit messages and displayed to 
 2. **Release Notes section** in the PR template becomes the description shown to users
 
 Example PR:
+
 ```
 Title: feat: Add dark mode support
 
@@ -65,6 +66,7 @@ light, dark, and system themes in Settings > Appearance.
 ```
 
 Becomes:
+
 ```
 ## ✨ Features
 
