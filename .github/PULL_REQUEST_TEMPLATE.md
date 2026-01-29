@@ -1,23 +1,17 @@
 ## Summary
 
-<!-- Brief description of what this PR does -->
+<!-- Technical description of changes for reviewers -->
+
+## Release Notes
+
+<!-- Write user-facing description here. (Don't remove this comment) -->
+
+<!-- Write detailed release notes above. (Don't remove this comment) -->
 
 ---
 
-### Release Notes Checklist
+### PR Checklist
 
-- [ ] **If this is a user-facing change** (`fix:`, `feat:`, `perf:`), I have ensured the commit title and body are written clearly for end users. Before merging, I will review and edit the squash commit message to be suitable for release notes.
-
-> **User-facing commit messages should:**
->
-> - Use plain language (avoid technical jargon where possible)
-> - Describe the benefit or fix from the user's perspective
-> - Include relevant context in the body if needed
->
-> **Example:**
->
-> ```
-> Title: feat: Add dark mode support
-> Body:  The application now supports dark mode. You can toggle between
->        light, dark, and system themes in Settings > Appearance.
-> ```
+- [ ] **If this is a user-facing change** (`fix:`, `feat:`, `perf:`), I understand that:
+  - The Pull Request Title will be shown to end-users as a heading for a change in the release notes (conventional commit prefix removed).
+  - Anything in the Release Notes section will be shown to end-users in the body. I have filled it out appropriately.

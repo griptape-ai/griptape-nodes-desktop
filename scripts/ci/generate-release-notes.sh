@@ -2,6 +2,10 @@
 # Generates release notes for the app using git commit history
 # Usage: generate-release-notes.sh
 # Outputs: RELEASE_NOTES.md (user-friendly notes with commit bodies)
+#
+# Extracts the "## Release Notes" section from commit bodies (if present).
+# This section is populated from the PR template and contains user-facing content.
+# Content between "## Release Notes" and "<!-- Write detailed release notes above." is extracted.
 
 set -e
 
@@ -24,8 +28,8 @@ echo "Git range: $GIT_RANGE"
 
 # Generate user-friendly release notes from git log
 # - Only includes user-facing commits (feat, fix, perf)
-# - Includes commit body (extended description) indented under title
-# - Strips conventional commit prefixes
+# - Extracts only the "## Release Notes" section from commit body
+# - Strips markdown comments and conventional commit prefixes
 git log $GIT_RANGE --pretty=format:"COMMIT_START%n%s%n%b%nCOMMIT_END" | awk '
   /^COMMIT_START$/ { in_commit=1; title=""; body=""; next }
   /^COMMIT_END$/ {
@@ -33,15 +37,53 @@ git log $GIT_RANGE --pretty=format:"COMMIT_START%n%s%n%b%nCOMMIT_END" | awk '
     if (title ~ /^(feat|fix|perf)(\([^)]*\))?:/) {
       # Strip conventional commit prefix (feat:, fix:, perf:) with optional scope
       gsub(/^(feat|fix|perf)(\([^)]*\))?: /, "", title)
+
+      # Extract only the "## Release Notes" section from the body
+      release_notes = ""
+      in_release_section = 0
+      in_comment = 0
+      n = split(body, lines, "\n")
+      for (i = 1; i <= n; i++) {
+        line = lines[i]
+
+        # Start capturing at "## Release Notes"
+        if (line ~ /^## Release Notes/) {
+          in_release_section = 1
+          continue
+        }
+
+        # Stop at end delimiter or next section
+        if (in_release_section) {
+          if (line ~ /<!-- Write detailed release notes above\./ || line ~ /^## / || line ~ /^---/) {
+            in_release_section = 0
+            continue
+          }
+        }
+
+        # Handle markdown comments (can be multi-line)
+        if (in_release_section) {
+          # Skip lines that are entirely a comment
+          if (line ~ /^<!--.*-->$/) continue
+
+          # Track multi-line comment state
+          if (line ~ /<!--/) in_comment = 1
+          if (line ~ /-->/) { in_comment = 0; continue }
+          if (in_comment) continue
+
+          release_notes = (release_notes == "" ? line : release_notes "\n" line)
+        }
+      }
+
       print "* " title
-      # Print body if non-empty, with each line indented
-      if (body != "") {
-        n = split(body, lines, "\n")
+
+      # Print release notes section if non-empty
+      if (release_notes != "") {
+        n = split(release_notes, rn_lines, "\n")
         has_content = 0
         for (i = 1; i <= n; i++) {
           # Skip empty lines and lines that are just whitespace
-          if (lines[i] !~ /^[[:space:]]*$/) {
-            print "  " lines[i]
+          if (rn_lines[i] !~ /^[[:space:]]*$/) {
+            print "  " rn_lines[i]
             has_content = 1
           }
         }
