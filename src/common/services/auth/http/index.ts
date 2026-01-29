@@ -1,6 +1,7 @@
 import { logger } from '@/main/utils/logger'
 import { BrowserWindow, app, shell } from 'electron'
 import express from 'express'
+import * as crypto from 'crypto'
 import * as fs from 'fs'
 import { Server } from 'http'
 import { EventEmitter } from 'node:events'
@@ -11,6 +12,9 @@ import { PersistentStore } from '../stores/persistent-store'
 
 const PORT = 5172
 const REDIRECT_URI = `http://localhost:${PORT}/`
+
+// Minimum time between login attempts (in milliseconds)
+const LOGIN_COOLDOWN_MS = 5000
 
 interface AuthData {
   apiKey?: string
@@ -31,6 +35,10 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
   private store: Store<AuthData>
   // Mutex to prevent concurrent token refresh attempts (prevents "reused refresh token" errors)
   private refreshPromise: Promise<{ success: boolean; tokens?: any; error?: string }> | null = null
+  // PKCE code verifier for current auth flow
+  private codeVerifier: string | null = null
+  // Track last login attempt time for debouncing
+  private lastLoginAttempt: number = 0
 
   constructor() {
     super()
@@ -244,14 +252,8 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       this.server = app
         .listen(PORT, async () => {
           logger.info(`Auth server listening on http://localhost:${PORT}`)
-
-          // Attempt silent login with stored credentials after server is ready
-          try {
-            await this.attemptSilentLogin()
-          } catch (error) {
-            logger.error('Error during silent login attempt:', error)
-          }
-
+          // Note: Silent login is handled by the renderer's AuthContext on mount
+          // to avoid duplicate auth checks and potential rate limiting
           resolve()
         })
         .on('error', reject)
@@ -474,7 +476,35 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     return this.refreshPromise
   }
 
+  // Generate a cryptographically random code verifier for PKCE
+  private generateCodeVerifier(): string {
+    // Generate 32 random bytes and encode as base64url (43 characters)
+    const buffer = crypto.randomBytes(32)
+    return buffer.toString('base64url')
+  }
+
+  // Generate code challenge from verifier using SHA-256
+  private generateCodeChallenge(verifier: string): string {
+    const hash = crypto.createHash('sha256').update(verifier).digest()
+    return hash.toString('base64url')
+  }
+
   async login(): Promise<{ success: boolean; tokens?: any; user?: any; apiKey?: string }> {
+    // Check for login cooldown to prevent rate limiting
+    const now = Date.now()
+    const timeSinceLastAttempt = now - this.lastLoginAttempt
+    if (timeSinceLastAttempt < LOGIN_COOLDOWN_MS && this.lastLoginAttempt > 0) {
+      const waitTime = Math.ceil((LOGIN_COOLDOWN_MS - timeSinceLastAttempt) / 1000)
+      logger.warn(`Login attempted too quickly. Please wait ${waitTime} seconds.`)
+      return {
+        success: false,
+        tokens: undefined,
+        user: undefined,
+        apiKey: undefined,
+      }
+    }
+    this.lastLoginAttempt = now
+
     // Try silent login first
     const silentLoginSuccessful = await this.attemptSilentLogin()
     if (silentLoginSuccessful) {
@@ -495,6 +525,10 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
       this.authResolve = resolve
       this.authReject = reject
 
+      // Generate PKCE code verifier and challenge
+      this.codeVerifier = this.generateCodeVerifier()
+      const codeChallenge = this.generateCodeChallenge(this.codeVerifier)
+
       const state = Math.random().toString(36).substring(7)
       const authUrl =
         `https://auth.cloud.griptape.ai/authorize?` +
@@ -503,13 +537,16 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
         `audience=${encodeURIComponent('https://cloud.griptape.ai/api')}&` +
         `state=${state}&` +
-        `scope=openid%20profile%20email%20offline_access`
+        `scope=openid%20profile%20email%20offline_access&` +
+        `code_challenge=${codeChallenge}&` +
+        `code_challenge_method=S256`
 
-      logger.info('Opening authentication URL in system browser')
+      logger.info('Opening authentication URL in system browser (with PKCE)')
 
       // Open the auth URL in the user's default browser
       shell.openExternal(authUrl).catch((error) => {
         logger.error('Failed to open browser:', error)
+        this.codeVerifier = null
         this.authReject?.(new Error('Failed to open browser for authentication'))
         this.authResolve = null
         this.authReject = null
@@ -520,6 +557,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         () => {
           if (this.authResolve) {
             logger.warn('Authentication timeout - no callback received')
+            this.codeVerifier = null
             this.authReject?.(new Error('Authentication timeout'))
             this.authResolve = null
             this.authReject = null
@@ -532,6 +570,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
 
   cancelLogin(): void {
     logger.info('Cancelling authentication')
+    this.codeVerifier = null
     if (this.authResolve) {
       this.authReject?.(new Error('Authentication cancelled'))
       this.authResolve = null
@@ -543,8 +582,16 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     try {
       logger.debug('Handling auth code exchange')
 
-      // Exchange code for tokens
-      const tokens = await this.exchangeCodeForTokens(code)
+      // Get and clear the code verifier (must be done before any async operations)
+      const codeVerifier = this.codeVerifier
+      this.codeVerifier = null
+
+      if (!codeVerifier) {
+        throw new Error('Missing PKCE code verifier - auth flow may have been interrupted')
+      }
+
+      // Exchange code for tokens (with PKCE verifier)
+      const tokens = await this.exchangeCodeForTokens(code, codeVerifier)
       logger.debug('Tokens received')
 
       // Calculate expiration timestamp
@@ -585,7 +632,10 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
     }
   }
 
-  private async exchangeCodeForTokens(code: string): Promise<{
+  private async exchangeCodeForTokens(
+    code: string,
+    codeVerifier: string,
+  ): Promise<{
     access_token: string
     id_token: string
     token_type: string
@@ -603,6 +653,7 @@ export class HttpAuthService extends EventEmitter<HttpAuthServiceEvents> {
         code,
         redirect_uri: REDIRECT_URI,
         audience: 'https://cloud.griptape.ai/api',
+        code_verifier: codeVerifier,
       }),
     })
 
