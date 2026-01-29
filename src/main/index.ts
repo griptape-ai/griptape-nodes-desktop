@@ -27,7 +27,7 @@ import { EngineService } from '../common/services/gtn/engine-service'
 import { EnvironmentInfoService } from '../common/services/environment-info'
 import { GtnService } from '../common/services/gtn/gtn-service'
 import { UvService } from '../common/services/uv/uv-service'
-import { logger } from '@/main/utils/logger'
+import { logger, setAppLogFileService } from '@/main/utils/logger'
 import { isPackaged } from '@/main/utils/is-packaged'
 import { PythonService } from '../common/services/python/python-service'
 import { UpdateService } from '../common/services/update/update-service'
@@ -38,6 +38,7 @@ import { DeviceIdService } from '../common/services/device-id-service'
 import { SystemMonitorService } from '../common/services/system-monitor-service'
 import { SettingsService } from '../common/services/settings-service'
 import { EngineLogFileService } from '../common/services/engine-log-file-service'
+import { AppLogFileService } from '../common/services/app-log-file-service'
 import { MigrationService } from '../common/services/migration/migration-service'
 import type { UpdateBehavior } from '@/types/global'
 
@@ -122,6 +123,7 @@ const gtnService = new GtnService(
 )
 const engineService = new EngineService(userDataPath, gtnService, settingsService)
 const engineLogFileService = new EngineLogFileService(app.getPath('logs'), settingsService)
+const appLogFileService = new AppLogFileService(app.getPath('logs'))
 const updateService = new UpdateService(isPackaged())
 const migrationService = new MigrationService(userDataPath)
 
@@ -300,6 +302,8 @@ app.on('ready', async () => {
   gtnService.start()
   engineService.start()
   engineLogFileService.start()
+  appLogFileService.start()
+  setAppLogFileService(appLogFileService)
 
   engineService.on('engine:status-changed', (status) => {
     BrowserWindow.getAllWindows().forEach((window) => {
@@ -330,6 +334,14 @@ app.on('ready', async () => {
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() === 'webview') {
       logger.info('[Webview] New webview created, setting up handlers')
+
+      // Capture webview console messages and write to app log file
+      contents.on('console-message', (_event, level, message) => {
+        // Map Electron's numeric levels to our log levels
+        // 0 = debug/log, 1 = warn, 2 = error
+        const logLevel = level === 2 ? 'error' : level === 1 ? 'warn' : 'info'
+        appLogFileService.logWebview(logLevel, message)
+      })
 
       // Configure window.open to open in system browser
       contents.setWindowOpenHandler(({ url }) => {
