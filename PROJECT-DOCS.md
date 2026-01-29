@@ -987,24 +987,24 @@ Release notes are automatically generated from commit messages and filtered base
 
 **User-facing prefixes (included in release notes):**
 
-| Prefix | Description |
-|--------|-------------|
-| `feat:` | New features visible to users |
-| `fix:` | Bug fixes that affect user experience |
+| Prefix  | Description                                |
+| ------- | ------------------------------------------ |
+| `feat:` | New features visible to users              |
+| `fix:`  | Bug fixes that affect user experience      |
 | `perf:` | Performance improvements users will notice |
 
 **Internal prefixes (filtered from release notes):**
 
-| Prefix | Description |
-|--------|-------------|
-| `chore:` | Maintenance tasks (dependency updates, etc.) |
-| `ci:` | CI/CD pipeline changes |
-| `test:` | Test additions or modifications |
-| `build:` | Build system changes |
-| `docs:` | Documentation updates |
-| `refactor:` | Code refactoring without behavior changes |
-| `style:` | Code style/formatting changes |
-| `revert:` | Reverted commits |
+| Prefix      | Description                                  |
+| ----------- | -------------------------------------------- |
+| `chore:`    | Maintenance tasks (dependency updates, etc.) |
+| `ci:`       | CI/CD pipeline changes                       |
+| `test:`     | Test additions or modifications              |
+| `build:`    | Build system changes                         |
+| `docs:`     | Documentation updates                        |
+| `refactor:` | Code refactoring without behavior changes    |
+| `style:`    | Code style/formatting changes                |
+| `revert:`   | Reverted commits                             |
 
 **Examples:**
 
