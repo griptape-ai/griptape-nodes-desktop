@@ -25,6 +25,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "validate": "npm run typecheck && npm run lint && npm run format",
     "generate-icons": "node scripts/generate-icons.js",
     "test": "jest",
     "test:coverage": "jest --coverage"

@@ -18,3 +18,6 @@ coverage
 
 # Development userData and document directories
 /_*/
+
+# Claude local settings
+.claude/settings.local.json
