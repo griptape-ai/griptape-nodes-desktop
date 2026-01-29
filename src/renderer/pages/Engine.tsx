@@ -199,42 +199,25 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
       container.addEventListener('click', handleLinkClick)
       return () => container.removeEventListener('click', handleLinkClick)
     }
-  }, [logs])
+  }, [])
 
   // Auto-scroll to bottom when new logs arrive if user was at bottom
   useEffect(() => {
-    // Detect if new logs were added
+    // Detect if new logs were added (also true on mount if logs exist)
     const logsAdded = logs.length > prevLogCountRef.current
     prevLogCountRef.current = logs.length
 
-    if (listRef.current && logs.length > 0) {
-      // Always scroll to bottom on initial load or when new logs are added and we're at bottom
-      if (logsAdded && wasAtBottomRef.current) {
-        // Double RAF to ensure div has re-rendered with new items
+    if (logs.length > 0 && logsAdded && wasAtBottomRef.current) {
+      // Double RAF to ensure div has re-rendered with new items
+      requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (listRef.current) {
-              listRef.current.scrollTop = listRef.current.scrollHeight
-            }
-          })
+          if (listRef.current) {
+            listRef.current.scrollTop = listRef.current.scrollHeight
+          }
         })
-      }
+      })
     }
-  }, [logs.length]) // Only re-run when count changes
-
-  // Force scroll to bottom on mount after div is ready
-  useEffect(() => {
-    wasAtBottomRef.current = true
-    const timer = setInterval(() => {
-      if (listRef.current && logs.length > 0) {
-        listRef.current.scrollTop = listRef.current.scrollHeight
-        clearInterval(timer)
-      }
-    }, 100)
-
-    return () => clearInterval(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [logs.length])
 
   // Load log file enabled setting
   useEffect(() => {
@@ -258,6 +241,16 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
       wasAtBottomRef.current = isAtBottom
     }
   }, [])
+
+  const lastErrorMessage = useMemo(() => {
+    const lastError = [...logs]
+      .reverse()
+      .find((log) => log.type === 'stderr' && log.message.trim())
+    if (lastError) {
+      return stripAnsiCodes(lastError.message)
+    }
+    return 'An error occurred during engine initialization.'
+  }, [logs])
 
   const copyLogsToClipboard = useCallback(async () => {
     try {
@@ -427,16 +420,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
         <div className="flex-shrink-0 mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">Error</p>
           <p className="text-sm text-red-800 dark:text-red-200 mb-2 whitespace-pre-wrap break-words font-mono">
-            {(() => {
-              // Find the most recent stderr log entry
-              const lastError = [...logs]
-                .reverse()
-                .find((log) => log.type === 'stderr' && log.message.trim())
-              if (lastError) {
-                return stripAnsiCodes(lastError.message)
-              }
-              return 'An error occurred during engine initialization.'
-            })()}
+            {lastErrorMessage}
           </p>
           <p className="text-xs text-red-700 dark:text-red-300">
             Check the logs below for details.
@@ -465,7 +449,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
               }}
             >
               {logs.map((log, index) => (
-                <LogRow key={`${new Date(log.timestamp).getTime()}-${index}`} log={log} />
+                <LogRow key={`${log.timestamp.getTime()}-${index}`} log={log} />
               ))}
             </div>
           )}
@@ -600,9 +584,9 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                     className="mt-1 w-4 h-4 text-primary focus:ring-primary"
                   />
                   <div className="flex-1">
-                    <span className="text-sm font-medium">Current Session</span>
+                    <span className="text-sm font-medium">Current Engine Session</span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Export logs from the current session
+                      Export logs since the engine was last started
                     </p>
                   </div>
                 </label>

@@ -81,13 +81,41 @@ export class EngineLogFileService extends EventEmitter {
         logger.error('EngineLogFileService: Write error (rotating):', err)
       })
 
-      // Open session log file (overwrite mode - clears on each session)
-      this.sessionWriteStream = fs.createWriteStream(this.sessionLogPath, { flags: 'w' })
+      // Open session log file (append mode - cleared via startNewSession when engine starts)
+      this.sessionWriteStream = fs.createWriteStream(this.sessionLogPath, { flags: 'a' })
       this.sessionWriteStream.on('error', (err) => {
         logger.error('EngineLogFileService: Write error (session):', err)
       })
     } catch (err) {
       logger.error('EngineLogFileService: Failed to open log files:', err)
+    }
+  }
+
+  /**
+   * Start a new engine session - clears the session log file.
+   * Should be called when the engine starts.
+   */
+  async startNewSession(): Promise<void> {
+    if (!this.isEnabled) return
+
+    // Close existing session stream and null the reference to prevent writes during transition
+    if (this.sessionWriteStream) {
+      const oldStream = this.sessionWriteStream
+      this.sessionWriteStream = null
+      await new Promise<void>((resolve) => {
+        oldStream.end(() => resolve())
+      })
+    }
+
+    // Reopen session log in overwrite mode to clear it
+    try {
+      this.sessionWriteStream = fs.createWriteStream(this.sessionLogPath, { flags: 'w' })
+      this.sessionWriteStream.on('error', (err) => {
+        logger.error('EngineLogFileService: Write error (session):', err)
+      })
+      logger.info('EngineLogFileService: Started new engine session')
+    } catch (err) {
+      logger.error('EngineLogFileService: Failed to start new session:', err)
     }
   }
 
@@ -296,7 +324,7 @@ export class EngineLogFileService extends EventEmitter {
       const content = await fs.promises.readFile(this.sessionLogPath, 'utf-8')
       await fs.promises.writeFile(targetPath, content, 'utf-8')
       logger.info('EngineLogFileService: Exported session logs to:', targetPath)
-    } catch (err) {
+    } catch {
       // If session log doesn't exist, write empty file
       await fs.promises.writeFile(targetPath, '', 'utf-8')
       logger.info('EngineLogFileService: No session logs to export')

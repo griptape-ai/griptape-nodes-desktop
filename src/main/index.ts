@@ -305,6 +305,11 @@ app.on('ready', async () => {
     BrowserWindow.getAllWindows().forEach((window) => {
       window.webContents.send('engine:status-changed', status)
     })
+
+    // Start new session log when engine starts
+    if (status === 'running') {
+      engineLogFileService.startNewSession()
+    }
   })
 
   engineService.on('engine:log', (log) => {
