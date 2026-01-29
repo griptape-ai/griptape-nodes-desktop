@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useEngine } from '../contexts/EngineContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { cn } from '../utils/utils'
-import { ENV_INFO_NOT_COLLECTED } from '@/common/config/constants'
+import { ENV_INFO_NOT_COLLECTED, DEFAULT_LOG_RETENTION } from '@/common/config/constants'
 import type { UpdateBehavior, IpcEvent, EnvironmentInfo } from '@/types/global'
 import MigrationSetup from '../components/onboarding/MigrationSetup'
 
@@ -71,6 +71,10 @@ const Settings: React.FC = () => {
   const [confirmOnClose, setConfirmOnClose] = useState(true)
   const [showReleaseNotes, setShowReleaseNotes] = useState(true)
   const [engineLogFileEnabled, setEngineLogFileEnabled] = useState(false)
+  const [logRetentionValue, setLogRetentionValue] = useState(DEFAULT_LOG_RETENTION.value)
+  const [logRetentionUnit, setLogRetentionUnit] = useState<
+    'days' | 'months' | 'years' | 'indefinite'
+  >(DEFAULT_LOG_RETENTION.unit)
   const [engineChannel, setEngineChannel] = useState<'stable' | 'nightly'>('stable')
   const [switchingChannel, setSwitchingChannel] = useState(false)
   const [showReinstallDialog, setShowReinstallDialog] = useState(false)
@@ -159,6 +163,7 @@ const Settings: React.FC = () => {
     loadConfirmOnCloseSetting()
     loadShowReleaseNotesSetting()
     loadEngineLogFileSetting()
+    loadLogRetentionSetting()
     loadEngineChannel()
     loadEditorChannel()
     loadUpdateBehaviorSetting()
@@ -211,7 +216,8 @@ const Settings: React.FC = () => {
       window.removeEventListener('scroll-to-logging', handleScrollToLogging)
       window.removeEventListener('scroll-to-workspace', handleScrollToWorkspace)
     }
-  }, [loadEnvironmentInfo])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Mount-only effect to load initial settings
+  }, [])
 
   // Auto-refresh environment info when engine starts after upgrade/channel switch
   useEffect(() => {
@@ -373,6 +379,29 @@ const Settings: React.FC = () => {
       setEngineLogFileEnabled(enabled)
     } catch (err) {
       console.error('Failed to load engine log file setting:', err)
+    }
+  }
+
+  const loadLogRetentionSetting = async () => {
+    try {
+      const retention = await window.settingsAPI.getLogRetention()
+      setLogRetentionValue(retention.value)
+      setLogRetentionUnit(retention.unit)
+    } catch (err) {
+      console.error('Failed to load log retention setting:', err)
+    }
+  }
+
+  const handleLogRetentionChange = async (
+    value: number,
+    unit: 'days' | 'months' | 'years' | 'indefinite',
+  ) => {
+    setLogRetentionValue(value)
+    setLogRetentionUnit(unit)
+    try {
+      await window.settingsAPI.setLogRetention({ value, unit })
+    } catch (err) {
+      console.error('Failed to save log retention setting:', err)
     }
   }
 
@@ -928,6 +957,75 @@ const Settings: React.FC = () => {
                 </p>
               </div>
             </label>
+
+            {/* Log Retention Setting */}
+            <div
+              className={`pt-4 border-t border-border ${!engineLogFileEnabled ? 'opacity-50' : ''}`}
+            >
+              <div className="mb-3">
+                <span className="text-sm font-medium">Log Retention</span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  How long to keep log files before automatically deleting them.
+                </p>
+              </div>
+              <div className="space-y-3">
+                {logRetentionUnit !== 'indefinite' && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={
+                        logRetentionUnit === 'days' ? 365 : logRetentionUnit === 'months' ? 24 : 10
+                      }
+                      value={logRetentionValue}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1
+                        handleLogRetentionChange(val, logRetentionUnit)
+                      }}
+                      disabled={!engineLogFileEnabled}
+                      className="w-20 px-3 py-1.5 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed"
+                    />
+                    <select
+                      value={logRetentionUnit}
+                      onChange={(e) => {
+                        const unit = e.target.value as 'days' | 'months' | 'years'
+                        handleLogRetentionChange(
+                          logRetentionValue || DEFAULT_LOG_RETENTION.value,
+                          unit,
+                        )
+                      }}
+                      disabled={!engineLogFileEnabled}
+                      className="px-3 py-1.5 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed"
+                    >
+                      <option value="days">Days</option>
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </select>
+                  </div>
+                )}
+                <label
+                  className={`flex items-center gap-2 ${engineLogFileEnabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={logRetentionUnit === 'indefinite'}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        handleLogRetentionChange(0, 'indefinite')
+                      } else {
+                        handleLogRetentionChange(
+                          DEFAULT_LOG_RETENTION.value,
+                          DEFAULT_LOG_RETENTION.unit,
+                        )
+                      }
+                    }}
+                    disabled={!engineLogFileEnabled}
+                    className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary disabled:cursor-not-allowed"
+                  />
+                  <span className="text-sm text-muted-foreground">Don&apos;t delete log files</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 

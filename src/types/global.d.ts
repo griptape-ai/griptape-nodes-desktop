@@ -316,17 +316,17 @@ declare global {
       restart: () => Promise<{ success: boolean; error?: string }>
       reinstall: () => Promise<{ success: boolean; error?: string }>
       runCommand: (command: string) => Promise<{ success: boolean; error?: string }>
-      exportLogs: (options?: { type: 'session' | 'days'; days?: number }) => Promise<{
+      exportLogs: (options?: {
+        type: 'session' | 'range'
+        startTime?: string
+        endTime?: string
+      }) => Promise<{
         success: boolean
         path?: string
         canceled?: boolean
         error?: string
       }>
-      getLogDateRange: () => Promise<{
-        oldestDate: string
-        newestDate: string
-        availableDays: number
-      } | null>
+      getOldestLogDate: () => Promise<string | null>
       getLogFilePath: () => Promise<string>
       onStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void
       removeStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void
@@ -477,6 +477,14 @@ declare global {
       setShowReleaseNotes: (show: boolean) => Promise<{ success: boolean }>
       getEngineLogFileEnabled: () => Promise<boolean>
       setEngineLogFileEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
+      getLogRetention: () => Promise<{
+        value: number
+        unit: 'days' | 'months' | 'years' | 'indefinite'
+      }>
+      setLogRetention: (retention: {
+        value: number
+        unit: 'days' | 'months' | 'years' | 'indefinite'
+      }) => Promise<{ success: boolean }>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{

@@ -305,6 +305,11 @@ app.on('ready', async () => {
     BrowserWindow.getAllWindows().forEach((window) => {
       window.webContents.send('engine:status-changed', status)
     })
+
+    // Start new session log when engine starts
+    if (status === 'running') {
+      engineLogFileService.startNewSession()
+    }
   })
 
   engineService.on('engine:log', (log) => {
@@ -2170,6 +2175,23 @@ const setupIPC = () => {
     return { success: true }
   })
 
+  ipcMain.handle('settings:get-log-retention', () => {
+    return settingsService.getLogRetention()
+  })
+
+  ipcMain.handle(
+    'settings:set-log-retention',
+    async (
+      _event,
+      retention: { value: number; unit: 'days' | 'months' | 'years' | 'indefinite' },
+    ) => {
+      settingsService.setLogRetention(retention)
+      // Run cleanup with new retention settings
+      await engineLogFileService.cleanupOldLogs()
+      return { success: true }
+    },
+  )
+
   // Update service handlers
   ipcMain.handle('update:check', async () => {
     const focusedWindow = BrowserWindow.getFocusedWindow()
@@ -2532,7 +2554,16 @@ const setupIPC = () => {
 
   ipcMain.handle(
     'engine:export-logs',
-    async (_, options?: { type: 'session' | 'days'; days?: number }) => {
+    async (
+      _,
+      options?: {
+        type: 'session' | 'days' | 'range' | 'since'
+        days?: number
+        startTime?: string
+        endTime?: string
+        sinceTime?: string
+      },
+    ) => {
       const mainWindow = BrowserWindow.getAllWindows()[0]
       if (!mainWindow) {
         return { success: false, error: 'No window available' }
@@ -2540,17 +2571,23 @@ const setupIPC = () => {
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const exportType = options?.type || 'session'
-      const days = options?.days || 1
 
-      const defaultFilename =
-        exportType === 'session'
-          ? `engine-logs-session-${timestamp}.log`
-          : `engine-logs-${days}days-${timestamp}.log`
+      let defaultFilename: string
+      switch (exportType) {
+        case 'session':
+          defaultFilename = `engine-logs-session-${timestamp}.txt`
+          break
+        case 'range':
+          defaultFilename = `engine-logs-range-${timestamp}.txt`
+          break
+        default:
+          defaultFilename = `engine-logs-${timestamp}.txt`
+      }
 
       const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
         defaultPath: defaultFilename,
         filters: [
-          { name: 'Log Files', extensions: ['log', 'txt'] },
+          { name: 'Log Files', extensions: ['txt', 'log'] },
           { name: 'All Files', extensions: ['*'] },
         ],
       })
@@ -2560,14 +2597,20 @@ const setupIPC = () => {
       }
 
       try {
-        if (exportType === 'session') {
-          // Export current session (in-memory logs)
-          const logs = engineService.getLogs()
-          const content = engineLogFileService.formatLogsForExport(logs)
-          await fs.promises.writeFile(filePath, content, 'utf-8')
-        } else {
-          // Export logs from files filtered by days
-          await engineLogFileService.exportLogsForDays(filePath, days)
+        switch (exportType) {
+          case 'session':
+            await engineLogFileService.exportSessionLogs(filePath)
+            break
+          case 'range':
+            if (!options?.startTime || !options?.endTime) {
+              return { success: false, error: 'Start and end time are required for range export' }
+            }
+            await engineLogFileService.exportLogsForRange(
+              filePath,
+              options.startTime,
+              options.endTime,
+            )
+            break
         }
         return { success: true, path: filePath }
       } catch (error) {
@@ -2580,11 +2623,11 @@ const setupIPC = () => {
     },
   )
 
-  ipcMain.handle('engine:get-log-date-range', async () => {
+  ipcMain.handle('engine:get-oldest-log-date', async () => {
     try {
-      return await engineLogFileService.getLogDateRange()
+      return await engineLogFileService.getOldestLogDate()
     } catch (error) {
-      logger.error('Failed to get log date range:', error)
+      logger.error('Failed to get oldest log date:', error)
       return null
     }
   })

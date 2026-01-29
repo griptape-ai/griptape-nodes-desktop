@@ -8,8 +8,10 @@ import { logger } from '@/main/utils/logger'
 export class EngineLogFileService extends EventEmitter {
   private isEnabled: boolean = false
   private writeStream: fs.WriteStream | null = null
+  private sessionWriteStream: fs.WriteStream | null = null
   private logDir: string
   private currentLogPath: string
+  private sessionLogPath: string
   private maxFileSize: number = 10 * 1024 * 1024 // 10MB
   private maxFiles: number = 4
 
@@ -20,6 +22,7 @@ export class EngineLogFileService extends EventEmitter {
     super()
     this.logDir = path.join(logsBasePath, 'engine')
     this.currentLogPath = path.join(this.logDir, 'engine.log')
+    this.sessionLogPath = path.join(this.logDir, 'session.log')
   }
 
   async start(): Promise<void> {
@@ -27,6 +30,8 @@ export class EngineLogFileService extends EventEmitter {
     if (this.isEnabled) {
       await this.openLogFile()
     }
+    // Clean up old logs based on retention setting
+    await this.cleanupOldLogs()
     logger.info('EngineLogFileService: Started, enabled:', this.isEnabled)
   }
 
@@ -51,24 +56,68 @@ export class EngineLogFileService extends EventEmitter {
   }
 
   async writeLog(log: EngineLog): Promise<void> {
-    if (!this.isEnabled || !this.writeStream) return
+    if (!this.isEnabled) return
 
     await this.rotateIfNeeded()
 
     const entry = this.formatLogEntry(log)
-    this.writeStream.write(entry + '\n')
+
+    // Write to rotating log file
+    if (this.writeStream) {
+      this.writeStream.write(entry + '\n')
+    }
+
+    // Write to session log file
+    if (this.sessionWriteStream) {
+      this.sessionWriteStream.write(entry + '\n')
+    }
   }
 
   private async openLogFile(): Promise<void> {
     try {
       await fs.promises.mkdir(this.logDir, { recursive: true })
-      this.writeStream = fs.createWriteStream(this.currentLogPath, { flags: 'a' })
 
+      // Open rotating log file (append mode)
+      this.writeStream = fs.createWriteStream(this.currentLogPath, { flags: 'a' })
       this.writeStream.on('error', (err) => {
-        logger.error('EngineLogFileService: Write error:', err)
+        logger.error('EngineLogFileService: Write error (rotating):', err)
+      })
+
+      // Open session log file (append mode - cleared via startNewSession when engine starts)
+      this.sessionWriteStream = fs.createWriteStream(this.sessionLogPath, { flags: 'a' })
+      this.sessionWriteStream.on('error', (err) => {
+        logger.error('EngineLogFileService: Write error (session):', err)
       })
     } catch (err) {
-      logger.error('EngineLogFileService: Failed to open log file:', err)
+      logger.error('EngineLogFileService: Failed to open log files:', err)
+    }
+  }
+
+  /**
+   * Start a new engine session - clears the session log file.
+   * Should be called when the engine starts.
+   */
+  async startNewSession(): Promise<void> {
+    if (!this.isEnabled) return
+
+    // Close existing session stream and null the reference to prevent writes during transition
+    if (this.sessionWriteStream) {
+      const oldStream = this.sessionWriteStream
+      this.sessionWriteStream = null
+      await new Promise<void>((resolve) => {
+        oldStream.end(() => resolve())
+      })
+    }
+
+    // Reopen session log in overwrite mode to clear it
+    try {
+      this.sessionWriteStream = fs.createWriteStream(this.sessionLogPath, { flags: 'w' })
+      this.sessionWriteStream.on('error', (err) => {
+        logger.error('EngineLogFileService: Write error (session):', err)
+      })
+      logger.info('EngineLogFileService: Started new engine session')
+    } catch (err) {
+      logger.error('EngineLogFileService: Failed to start new session:', err)
     }
   }
 
@@ -78,6 +127,12 @@ export class EngineLogFileService extends EventEmitter {
         this.writeStream!.end(() => resolve())
       })
       this.writeStream = null
+    }
+    if (this.sessionWriteStream) {
+      await new Promise<void>((resolve) => {
+        this.sessionWriteStream!.end(() => resolve())
+      })
+      this.sessionWriteStream = null
     }
   }
 
@@ -161,35 +216,12 @@ export class EngineLogFileService extends EventEmitter {
     }
   }
 
-  async exportLogs(targetPath: string): Promise<void> {
-    let combined = ''
-
-    // Read in order (oldest first)
-    for (const file of this.getLogFileNames()) {
-      const filePath = path.join(this.logDir, file)
-      try {
-        const content = await fs.promises.readFile(filePath, 'utf-8')
-        combined += content
-      } catch {
-        // File doesn't exist, skip
-      }
-    }
-
-    await fs.promises.writeFile(targetPath, combined, 'utf-8')
-    logger.info('EngineLogFileService: Exported logs to:', targetPath)
-  }
-
   /**
-   * Get the date range of available logs
-   * Returns { oldestDate, newestDate, availableDays } or null if no logs
+   * Get the oldest log date available
+   * Returns date string (YYYY-MM-DD) or null if no logs
    */
-  async getLogDateRange(): Promise<{
-    oldestDate: string
-    newestDate: string
-    availableDays: number
-  } | null> {
+  async getOldestLogDate(): Promise<string | null> {
     let oldestDate: Date | null = null
-    let newestDate: Date | null = null
 
     for (const file of this.getLogFileNames()) {
       const filePath = path.join(this.logDir, file)
@@ -203,9 +235,6 @@ export class EngineLogFileService extends EventEmitter {
             if (!oldestDate || timestamp < oldestDate) {
               oldestDate = timestamp
             }
-            if (!newestDate || timestamp > newestDate) {
-              newestDate = timestamp
-            }
           }
         }
       } catch {
@@ -213,29 +242,38 @@ export class EngineLogFileService extends EventEmitter {
       }
     }
 
-    if (!oldestDate || !newestDate) {
+    if (!oldestDate) {
       return null
     }
 
-    const daysDiff = Math.ceil(
-      (newestDate.getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24),
-    )
-    return {
-      oldestDate: oldestDate.toISOString().split('T')[0],
-      newestDate: newestDate.toISOString().split('T')[0],
-      availableDays: Math.max(1, daysDiff + 1),
+    return oldestDate.toISOString().split('T')[0]
+  }
+
+  /**
+   * Export logs from the current session
+   * @param targetPath - Where to save the exported logs
+   */
+  async exportSessionLogs(targetPath: string): Promise<void> {
+    try {
+      const content = await fs.promises.readFile(this.sessionLogPath, 'utf-8')
+      await fs.promises.writeFile(targetPath, content, 'utf-8')
+      logger.info('EngineLogFileService: Exported session logs to:', targetPath)
+    } catch {
+      // If session log doesn't exist, write empty file
+      await fs.promises.writeFile(targetPath, '', 'utf-8')
+      logger.info('EngineLogFileService: No session logs to export')
     }
   }
 
   /**
-   * Export logs filtered by number of days
+   * Export logs between two timestamps
    * @param targetPath - Where to save the exported logs
-   * @param days - Number of days to include (from today going back)
+   * @param startTime - Start of the range (ISO string)
+   * @param endTime - End of the range (ISO string)
    */
-  async exportLogsForDays(targetPath: string, days: number): Promise<void> {
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - days)
-    cutoffDate.setHours(0, 0, 0, 0)
+  async exportLogsForRange(targetPath: string, startTime: string, endTime: string): Promise<void> {
+    const startDate = new Date(startTime)
+    const endDate = new Date(endTime)
 
     let combined = ''
 
@@ -249,7 +287,7 @@ export class EngineLogFileService extends EventEmitter {
         for (const line of lines) {
           if (!line.trim()) continue
           const timestamp = this.extractTimestamp(line)
-          if (timestamp && timestamp >= cutoffDate) {
+          if (timestamp && timestamp >= startDate && timestamp <= endDate) {
             combined += line + '\n'
           }
         }
@@ -259,7 +297,10 @@ export class EngineLogFileService extends EventEmitter {
     }
 
     await fs.promises.writeFile(targetPath, combined, 'utf-8')
-    logger.info(`EngineLogFileService: Exported ${days} day(s) of logs to:`, targetPath)
+    logger.info(
+      `EngineLogFileService: Exported logs from ${startTime} to ${endTime} to:`,
+      targetPath,
+    )
   }
 
   private extractTimestamp(line: string): Date | null {
@@ -306,5 +347,57 @@ export class EngineLogFileService extends EventEmitter {
 
   async destroy(): Promise<void> {
     await this.closeLogFile()
+  }
+
+  /**
+   * Clean up log files older than the retention period.
+   * This removes entire log files that are completely outside the retention window.
+   */
+  async cleanupOldLogs(): Promise<void> {
+    const cutoffDate = this.settingsService.getLogRetentionCutoffDate()
+    if (!cutoffDate) {
+      // Indefinite retention, no cleanup needed
+      return
+    }
+
+    try {
+      const files = await fs.promises.readdir(this.logDir)
+      const logFiles = files.filter(
+        (f) => f.startsWith('engine.') && f.endsWith('.log') && f !== 'session.log',
+      )
+
+      for (const file of logFiles) {
+        const filePath = path.join(this.logDir, file)
+        try {
+          const stats = await fs.promises.stat(filePath)
+          // If file was last modified before cutoff, check if all entries are old
+          if (stats.mtime < cutoffDate) {
+            // Read file and check newest entry
+            const content = await fs.promises.readFile(filePath, 'utf-8')
+            const lines = content.split('\n').filter((line) => line.trim())
+            if (lines.length === 0) {
+              // Empty file, delete it
+              await fs.promises.unlink(filePath)
+              logger.info(`EngineLogFileService: Deleted empty log file: ${file}`)
+              continue
+            }
+
+            // Check the newest entry (last line)
+            const lastLine = lines[lines.length - 1]
+            const newestTimestamp = this.extractTimestamp(lastLine)
+            if (newestTimestamp && newestTimestamp < cutoffDate) {
+              // All entries in this file are older than cutoff
+              await fs.promises.unlink(filePath)
+              logger.info(`EngineLogFileService: Deleted old log file: ${file}`)
+            }
+          }
+        } catch (err) {
+          // Skip files that can't be read
+          logger.warn(`EngineLogFileService: Could not process log file ${file}:`, err)
+        }
+      }
+    } catch (err) {
+      logger.error('EngineLogFileService: Failed to cleanup old logs:', err)
+    }
   }
 }

@@ -158,13 +158,12 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   const [isExecuting, setIsExecuting] = useState(false)
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false)
-  const [exportType, setExportType] = useState<'session' | 'days'>('session')
-  const [exportDays, setExportDays] = useState(1)
-  const [logDateRange, setLogDateRange] = useState<{
-    oldestDate: string
-    newestDate: string
-    availableDays: number
-  } | null>(null)
+  const [exportType, setExportType] = useState<'session' | 'range'>('session')
+  const [oldestLogDate, setOldestLogDate] = useState<string | null>(null)
+  // Timestamp export state
+  const [exportStartTime, setExportStartTime] = useState('')
+  const [exportEndTime, setExportEndTime] = useState('')
+  const [exportToNow, setExportToNow] = useState(true)
   // Log controls collapsed state
   const [logControlsCollapsed, setLogControlsCollapsed] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
@@ -199,42 +198,25 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
       container.addEventListener('click', handleLinkClick)
       return () => container.removeEventListener('click', handleLinkClick)
     }
-  }, [logs])
+  }, [])
 
   // Auto-scroll to bottom when new logs arrive if user was at bottom
   useEffect(() => {
-    // Detect if new logs were added
+    // Detect if new logs were added (also true on mount if logs exist)
     const logsAdded = logs.length > prevLogCountRef.current
     prevLogCountRef.current = logs.length
 
-    if (listRef.current && logs.length > 0) {
-      // Always scroll to bottom on initial load or when new logs are added and we're at bottom
-      if (logsAdded && wasAtBottomRef.current) {
-        // Double RAF to ensure div has re-rendered with new items
+    if (logs.length > 0 && logsAdded && wasAtBottomRef.current) {
+      // Double RAF to ensure div has re-rendered with new items
+      requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (listRef.current) {
-              listRef.current.scrollTop = listRef.current.scrollHeight
-            }
-          })
+          if (listRef.current) {
+            listRef.current.scrollTop = listRef.current.scrollHeight
+          }
         })
-      }
+      })
     }
-  }, [logs.length]) // Only re-run when count changes
-
-  // Force scroll to bottom on mount after div is ready
-  useEffect(() => {
-    wasAtBottomRef.current = true
-    const timer = setInterval(() => {
-      if (listRef.current && logs.length > 0) {
-        listRef.current.scrollTop = listRef.current.scrollHeight
-        clearInterval(timer)
-      }
-    }, 100)
-
-    return () => clearInterval(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [logs.length])
 
   // Load log file enabled setting
   useEffect(() => {
@@ -249,6 +231,19 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     loadLogFileSetting()
   }, [])
 
+  // Close export modal on Escape key
+  useEffect(() => {
+    if (!showExportModal) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowExportModal(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showExportModal])
+
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget
     if (target) {
@@ -258,6 +253,14 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
       wasAtBottomRef.current = isAtBottom
     }
   }, [])
+
+  const lastErrorMessage = useMemo(() => {
+    const lastError = [...logs].reverse().find((log) => log.type === 'stderr' && log.message.trim())
+    if (lastError) {
+      return stripAnsiCodes(lastError.message)
+    }
+    return 'An error occurred during engine initialization.'
+  }, [logs])
 
   const copyLogsToClipboard = useCallback(async () => {
     try {
@@ -276,16 +279,28 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   }, [logs])
 
   const handleOpenExportModal = useCallback(async () => {
-    // Fetch log date range when opening modal
+    // Fetch oldest log date when opening modal (for time range min date)
     try {
-      const dateRange = await window.engineAPI.getLogDateRange()
-      setLogDateRange(dateRange)
-      if (dateRange) {
-        setExportDays(Math.min(dateRange.availableDays, 7)) // Default to 7 days or max available
-      }
+      const oldest = await window.engineAPI.getOldestLogDate()
+      setOldestLogDate(oldest)
     } catch (error) {
-      console.error('Failed to get log date range:', error)
+      console.error('Failed to get oldest log date:', error)
     }
+    // Initialize timestamp fields with sensible defaults
+    const now = new Date()
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
+    // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+    const formatForInput = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${minutes}`
+    }
+    setExportStartTime(formatForInput(oneHourAgo))
+    setExportEndTime(formatForInput(now))
+    setExportToNow(true)
     setShowExportModal(true)
   }, [])
 
@@ -293,10 +308,23 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     setIsExporting(true)
     setShowExportModal(false)
     try {
-      const options =
-        exportType === 'session'
-          ? { type: 'session' as const }
-          : { type: 'days' as const, days: exportDays }
+      let options: {
+        type: 'session' | 'range'
+        startTime?: string
+        endTime?: string
+      }
+      switch (exportType) {
+        case 'session':
+          options = { type: 'session' }
+          break
+        case 'range':
+          options = {
+            type: 'range',
+            startTime: new Date(exportStartTime).toISOString(),
+            endTime: exportToNow ? new Date().toISOString() : new Date(exportEndTime).toISOString(),
+          }
+          break
+      }
       const result = await window.engineAPI.exportLogs(options)
       if (!result.success && result.error) {
         console.error('Failed to export logs:', result.error)
@@ -306,7 +334,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     } finally {
       setIsExporting(false)
     }
-  }, [exportType, exportDays])
+  }, [exportType, exportStartTime, exportEndTime, exportToNow])
 
   const handleExecuteCommand = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -427,16 +455,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
         <div className="flex-shrink-0 mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">Error</p>
           <p className="text-sm text-red-800 dark:text-red-200 mb-2 whitespace-pre-wrap break-words font-mono">
-            {(() => {
-              // Find the most recent stderr log entry
-              const lastError = [...logs]
-                .reverse()
-                .find((log) => log.type === 'stderr' && log.message.trim())
-              if (lastError) {
-                return stripAnsiCodes(lastError.message)
-              }
-              return 'An error occurred during engine initialization.'
-            })()}
+            {lastErrorMessage}
           </p>
           <p className="text-xs text-red-700 dark:text-red-300">
             Check the logs below for details.
@@ -465,7 +484,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
               }}
             >
               {logs.map((log, index) => (
-                <LogRow key={`${new Date(log.timestamp).getTime()}-${index}`} log={log} />
+                <LogRow key={`${log.timestamp.getTime()}-${index}`} log={log} />
               ))}
             </div>
           )}
@@ -583,8 +602,14 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
 
       {/* Export Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowExportModal(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4">Export Logs</h3>
 
             <div className="space-y-4">
@@ -600,9 +625,9 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                     className="mt-1 w-4 h-4 text-primary focus:ring-primary"
                   />
                   <div className="flex-1">
-                    <span className="text-sm font-medium">Current Session</span>
+                    <span className="text-sm font-medium">Current Engine Session</span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Export logs from the current session
+                      Export logs since the engine was last started
                     </p>
                   </div>
                 </label>
@@ -611,45 +636,69 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                   <input
                     type="radio"
                     name="exportType"
-                    value="days"
-                    checked={exportType === 'days'}
-                    onChange={() => setExportType('days')}
-                    disabled={!logDateRange}
+                    value="range"
+                    checked={exportType === 'range'}
+                    onChange={() => setExportType('range')}
+                    disabled={!oldestLogDate}
                     className="mt-1 w-4 h-4 text-primary focus:ring-primary disabled:opacity-50"
                   />
                   <div className="flex-1">
                     <span
-                      className={`text-sm font-medium ${!logDateRange ? 'text-muted-foreground' : ''}`}
+                      className={`text-sm font-medium ${!oldestLogDate ? 'text-muted-foreground' : ''}`}
                     >
-                      From Log Files
+                      Time Range
                     </span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {logDateRange
-                        ? `Export logs from the past ${exportDays} day${exportDays > 1 ? 's' : ''}`
-                        : 'No saved log files available'}
+                      Export logs between specific timestamps
                     </p>
                   </div>
                 </label>
               </div>
 
-              {/* Days Slider - only shown when "days" is selected and logs are available */}
-              {exportType === 'days' && logDateRange && logDateRange.availableDays > 1 && (
-                <div className="pl-7 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Days to export:</span>
-                    <span className="font-medium">{exportDays}</span>
+              {/* Time Range - only shown when "range" is selected */}
+              {exportType === 'range' && oldestLogDate && (
+                <div className="pl-7 space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm text-muted-foreground">From</label>
+                    <input
+                      type="datetime-local"
+                      value={exportStartTime}
+                      onChange={(e) => setExportStartTime(e.target.value)}
+                      min={`${oldestLogDate}T00:00`}
+                      max={new Date().toISOString().slice(0, 16)}
+                      className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground [&::-webkit-datetime-edit-fields-wrapper]:text-foreground [&::-webkit-datetime-edit]:text-foreground [&::-webkit-datetime-edit-month-field]:text-foreground [&::-webkit-datetime-edit-day-field]:text-foreground [&::-webkit-datetime-edit-year-field]:text-foreground [&::-webkit-datetime-edit-hour-field]:text-foreground [&::-webkit-datetime-edit-minute-field]:text-foreground"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min={1}
-                    max={logDateRange.availableDays}
-                    value={exportDays}
-                    onChange={(e) => setExportDays(parseInt(e.target.value))}
-                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>1 day</span>
-                    <span>{logDateRange.availableDays} days</span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm text-muted-foreground">To</label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={exportToNow}
+                          onChange={(e) => setExportToNow(e.target.checked)}
+                          className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary"
+                        />
+                        <span className="text-xs text-muted-foreground">Now</span>
+                      </label>
+                    </div>
+                    {exportToNow ? (
+                      <div
+                        className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => setExportToNow(false)}
+                      >
+                        Current time
+                      </div>
+                    ) : (
+                      <input
+                        type="datetime-local"
+                        value={exportEndTime}
+                        onChange={(e) => setExportEndTime(e.target.value)}
+                        min={exportStartTime}
+                        max={new Date().toISOString().slice(0, 16)}
+                        className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground [&::-webkit-datetime-edit-fields-wrapper]:text-foreground [&::-webkit-datetime-edit]:text-foreground [&::-webkit-datetime-edit-month-field]:text-foreground [&::-webkit-datetime-edit-day-field]:text-foreground [&::-webkit-datetime-edit-year-field]:text-foreground [&::-webkit-datetime-edit-hour-field]:text-foreground [&::-webkit-datetime-edit-minute-field]:text-foreground"
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -665,7 +714,10 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
               </button>
               <button
                 onClick={handleExportLogs}
-                disabled={exportType === 'days' && !logDateRange}
+                disabled={
+                  exportType === 'range' &&
+                  (!oldestLogDate || !exportStartTime || (!exportToNow && !exportEndTime))
+                }
                 className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Export
