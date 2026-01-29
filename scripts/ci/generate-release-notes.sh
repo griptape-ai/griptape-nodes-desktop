@@ -22,16 +22,25 @@ set -e
 
 VERSION=$(jq -r .version package.json)
 
+# Fetch tags and unshallow if needed (CI uses shallow clones)
+echo "Fetching tags..."
+git fetch --tags --force 2>/dev/null || true
+if [ -f "$(git rev-parse --git-dir)/shallow" ]; then
+  echo "Unshallowing repository..."
+  git fetch --unshallow 2>/dev/null || true
+fi
+
 # Determine the previous tag for generating notes
 PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
 
 echo "Current version: v${VERSION}"
 echo "Previous tag: ${PREV_TAG:-none}"
 
-# Build git log range
-if [ -n "$PREV_TAG" ]; then
+# Build git log range - verify tag exists before using it
+if [ -n "$PREV_TAG" ] && git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
   GIT_RANGE="${PREV_TAG}..HEAD"
 else
+  echo "Warning: Previous tag not found or not accessible, using HEAD only"
   GIT_RANGE="HEAD"
 fi
 
