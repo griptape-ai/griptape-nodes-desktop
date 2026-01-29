@@ -243,9 +243,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   }, [])
 
   const lastErrorMessage = useMemo(() => {
-    const lastError = [...logs]
-      .reverse()
-      .find((log) => log.type === 'stderr' && log.message.trim())
+    const lastError = [...logs].reverse().find((log) => log.type === 'stderr' && log.message.trim())
     if (lastError) {
       return stripAnsiCodes(lastError.message)
     }
