@@ -14,14 +14,15 @@ export interface AppLog {
 }
 
 export class AppLogFileService extends EventEmitter {
+  private static readonly MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
+  private static readonly MAX_ROTATED_FILES = 4
+
   private isEnabled: boolean = false
   private writeStream: fs.WriteStream | null = null
   private sessionWriteStream: fs.WriteStream | null = null
   private logDir: string
   private currentLogPath: string
   private sessionLogPath: string
-  private maxFileSize: number = 10 * 1024 * 1024 // 10MB
-  private maxFiles: number = 4
   private isStarted: boolean = false
 
   constructor(
@@ -85,6 +86,8 @@ export class AppLogFileService extends EventEmitter {
   }
 
   async writeLog(log: AppLog): Promise<void> {
+    // Allow writes during startup (before isStarted=true) to log service initialization.
+    // After startup, respect the isEnabled flag.
     if (!this.isEnabled && this.isStarted) return
 
     await this.rotateIfNeeded()
@@ -178,17 +181,17 @@ export class AppLogFileService extends EventEmitter {
         return
       }
 
-      if (stats.size < this.maxFileSize) return
+      if (stats.size < AppLogFileService.MAX_FILE_SIZE_BYTES) return
 
       // Close current file
       await this.closeLogFile()
 
       // Rotate files: delete oldest, shift others
-      for (let i = this.maxFiles - 1; i >= 1; i--) {
+      for (let i = AppLogFileService.MAX_ROTATED_FILES - 1; i >= 1; i--) {
         const oldPath = path.join(this.logDir, `app.${i}.log`)
         const newPath = path.join(this.logDir, `app.${i + 1}.log`)
         try {
-          if (i === this.maxFiles - 1) {
+          if (i === AppLogFileService.MAX_ROTATED_FILES - 1) {
             await fs.promises.unlink(oldPath).catch(() => {})
           } else {
             await fs.promises.rename(oldPath, newPath).catch(() => {})
@@ -321,88 +324,6 @@ export class AppLogFileService extends EventEmitter {
     await fs.promises.writeFile(targetPath, combined, 'utf-8')
   }
 
-  /**
-   * Get the date range of available logs
-   * Returns { oldestDate, newestDate, availableDays } or null if no logs
-   */
-  async getLogDateRange(): Promise<{
-    oldestDate: string
-    newestDate: string
-    availableDays: number
-  } | null> {
-    let oldestDate: Date | null = null
-    let newestDate: Date | null = null
-
-    for (const file of this.getLogFileNames()) {
-      const filePath = path.join(this.logDir, file)
-      try {
-        const content = await fs.promises.readFile(filePath, 'utf-8')
-        const lines = content.split('\n').filter((line) => line.trim())
-
-        for (const line of lines) {
-          const timestamp = this.extractTimestamp(line)
-          if (timestamp) {
-            if (!oldestDate || timestamp < oldestDate) {
-              oldestDate = timestamp
-            }
-            if (!newestDate || timestamp > newestDate) {
-              newestDate = timestamp
-            }
-          }
-        }
-      } catch {
-        // File doesn't exist, skip
-      }
-    }
-
-    if (!oldestDate || !newestDate) {
-      return null
-    }
-
-    const daysDiff = Math.ceil(
-      (newestDate.getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24),
-    )
-    return {
-      oldestDate: oldestDate.toISOString().split('T')[0],
-      newestDate: newestDate.toISOString().split('T')[0],
-      availableDays: Math.max(1, daysDiff + 1),
-    }
-  }
-
-  /**
-   * Export logs filtered by number of days
-   * @param targetPath - Where to save the exported logs
-   * @param days - Number of days to include (from today going back)
-   */
-  async exportLogsForDays(targetPath: string, days: number): Promise<void> {
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - days)
-    cutoffDate.setHours(0, 0, 0, 0)
-
-    let combined = ''
-
-    // Read in order (oldest first)
-    for (const file of this.getLogFileNames()) {
-      const filePath = path.join(this.logDir, file)
-      try {
-        const content = await fs.promises.readFile(filePath, 'utf-8')
-        const lines = content.split('\n')
-
-        for (const line of lines) {
-          if (!line.trim()) continue
-          const timestamp = this.extractTimestamp(line)
-          if (timestamp && timestamp >= cutoffDate) {
-            combined += line + '\n'
-          }
-        }
-      } catch {
-        // File doesn't exist, skip
-      }
-    }
-
-    await fs.promises.writeFile(targetPath, combined, 'utf-8')
-  }
-
   private extractTimestamp(line: string): Date | null {
     // Log format: 2024-01-15T10:30:45.123Z | level | source | message
     const match = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/)
@@ -434,7 +355,7 @@ export class AppLogFileService extends EventEmitter {
   private getLogFileNames(): string[] {
     const files: string[] = []
     // Add rotated files from oldest to newest
-    for (let i = this.maxFiles; i >= 1; i--) {
+    for (let i = AppLogFileService.MAX_ROTATED_FILES; i >= 1; i--) {
       files.push(`app.${i}.log`)
     }
     // Add current log file last (newest)
@@ -445,6 +366,9 @@ export class AppLogFileService extends EventEmitter {
   /**
    * Clean up log files older than the retention period.
    * This removes entire log files that are completely outside the retention window.
+   *
+   * Note: Uses console.* instead of logger to avoid circular dependency
+   * (logger hooks into this service).
    */
   async cleanupOldLogs(): Promise<void> {
     const cutoffDate = this.settingsService.getLogRetentionCutoffDate()

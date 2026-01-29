@@ -38,6 +38,16 @@ const ChannelDescription: React.FC<{ children?: React.ReactNode }> = ({ children
   </p>
 )
 
+// Datetime input styling with webkit pseudo-element overrides.
+// Without these, Electron/Chromium renders date/time field segments with inconsistent
+// colors in dark mode, making some fields appear disabled or hard to read.
+const DATETIME_INPUT_CLASS =
+  'w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground ' +
+  '[&::-webkit-datetime-edit-fields-wrapper]:text-foreground [&::-webkit-datetime-edit]:text-foreground ' +
+  '[&::-webkit-datetime-edit-month-field]:text-foreground [&::-webkit-datetime-edit-day-field]:text-foreground ' +
+  '[&::-webkit-datetime-edit-year-field]:text-foreground [&::-webkit-datetime-edit-hour-field]:text-foreground ' +
+  '[&::-webkit-datetime-edit-minute-field]:text-foreground'
+
 const Settings: React.FC = () => {
   const { apiKey } = useAuth()
   const {
@@ -1967,7 +1977,7 @@ const Settings: React.FC = () => {
                       onChange={(e) => setAppLogExportStartTime(e.target.value)}
                       min={`${appLogOldestDate}T00:00`}
                       max={new Date().toISOString().slice(0, 16)}
-                      className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground [&::-webkit-datetime-edit-fields-wrapper]:text-foreground [&::-webkit-datetime-edit]:text-foreground [&::-webkit-datetime-edit-month-field]:text-foreground [&::-webkit-datetime-edit-day-field]:text-foreground [&::-webkit-datetime-edit-year-field]:text-foreground [&::-webkit-datetime-edit-hour-field]:text-foreground [&::-webkit-datetime-edit-minute-field]:text-foreground"
+                      className={DATETIME_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -1997,7 +2007,7 @@ const Settings: React.FC = () => {
                         onChange={(e) => setAppLogExportEndTime(e.target.value)}
                         min={appLogExportStartTime}
                         max={new Date().toISOString().slice(0, 16)}
-                        className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground [&::-webkit-datetime-edit-fields-wrapper]:text-foreground [&::-webkit-datetime-edit]:text-foreground [&::-webkit-datetime-edit-month-field]:text-foreground [&::-webkit-datetime-edit-day-field]:text-foreground [&::-webkit-datetime-edit-year-field]:text-foreground [&::-webkit-datetime-edit-hour-field]:text-foreground [&::-webkit-datetime-edit-minute-field]:text-foreground"
+                        className={DATETIME_INPUT_CLASS}
                       />
                     )}
                   </div>
