@@ -2,6 +2,15 @@ import Store from 'electron-store'
 import { logger } from '@/main/utils/logger'
 import type { UpdateBehavior } from '@/types/global'
 
+import { DEFAULT_LOG_RETENTION } from '@/common/config/constants'
+
+export type LogRetentionUnit = 'days' | 'months' | 'years' | 'indefinite'
+
+export interface LogRetention {
+  value: number
+  unit: LogRetentionUnit
+}
+
 interface SettingsSchema {
   showSystemMonitor: boolean
   engineChannel: 'stable' | 'nightly'
@@ -16,6 +25,7 @@ interface SettingsSchema {
   engineLogFileEnabled: boolean
   lastSeenVersion: string | null
   showReleaseNotes: boolean
+  logRetention: LogRetention
 }
 
 export class SettingsService {
@@ -191,5 +201,46 @@ export class SettingsService {
   setShowReleaseNotes(show: boolean): void {
     this.store.set('showReleaseNotes', show)
     logger.info('SettingsService: showReleaseNotes set to', show)
+  }
+
+  /**
+   * Get log retention settings.
+   */
+  getLogRetention(): LogRetention {
+    return this.store.get('logRetention', DEFAULT_LOG_RETENTION)
+  }
+
+  /**
+   * Set log retention settings.
+   */
+  setLogRetention(retention: LogRetention): void {
+    this.store.set('logRetention', retention)
+    logger.info('SettingsService: logRetention set to', retention)
+  }
+
+  /**
+   * Get the cutoff date for log retention.
+   * Returns null if retention is set to indefinite.
+   */
+  getLogRetentionCutoffDate(): Date | null {
+    const retention = this.getLogRetention()
+    if (retention.unit === 'indefinite') {
+      return null
+    }
+
+    const cutoff = new Date()
+    switch (retention.unit) {
+      case 'days':
+        cutoff.setDate(cutoff.getDate() - retention.value)
+        break
+      case 'months':
+        cutoff.setMonth(cutoff.getMonth() - retention.value)
+        break
+      case 'years':
+        cutoff.setFullYear(cutoff.getFullYear() - retention.value)
+        break
+    }
+    cutoff.setHours(0, 0, 0, 0)
+    return cutoff
   }
 }

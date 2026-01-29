@@ -88,8 +88,13 @@ contextBridge.exposeInMainWorld('engineAPI', {
   restart: () => ipcRenderer.invoke('engine:restart'),
   reinstall: () => ipcRenderer.invoke('engine:reinstall'),
   runCommand: (command: string) => ipcRenderer.invoke('engine:run-command', command),
-  exportLogs: (options?: { type: 'session' | 'days'; days?: number }) =>
-    ipcRenderer.invoke('engine:export-logs', options),
+  exportLogs: (options?: {
+    type: 'session' | 'days' | 'range' | 'since'
+    days?: number
+    startTime?: string
+    endTime?: string
+    sinceTime?: string
+  }) => ipcRenderer.invoke('engine:export-logs', options),
   getLogDateRange: () =>
     ipcRenderer.invoke('engine:get-log-date-range') as Promise<{
       oldestDate: string
@@ -305,6 +310,15 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   getEngineLogFileEnabled: () => ipcRenderer.invoke('settings:get-engine-log-file-enabled'),
   setEngineLogFileEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-engine-log-file-enabled', enabled),
+  getLogRetention: () =>
+    ipcRenderer.invoke('settings:get-log-retention') as Promise<{
+      value: number
+      unit: 'days' | 'months' | 'years' | 'indefinite'
+    }>,
+  setLogRetention: (retention: {
+    value: number
+    unit: 'days' | 'months' | 'years' | 'indefinite'
+  }) => ipcRenderer.invoke('settings:set-log-retention', retention),
 })
 
 contextBridge.exposeInMainWorld('engineUpdateAPI', {

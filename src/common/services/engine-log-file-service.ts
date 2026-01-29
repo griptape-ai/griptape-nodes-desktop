@@ -30,6 +30,8 @@ export class EngineLogFileService extends EventEmitter {
     if (this.isEnabled) {
       await this.openLogFile()
     }
+    // Clean up old logs based on retention setting
+    await this.cleanupOldLogs()
     logger.info('EngineLogFileService: Started, enabled:', this.isEnabled)
   }
 
@@ -331,6 +333,77 @@ export class EngineLogFileService extends EventEmitter {
     }
   }
 
+  /**
+   * Export logs between two timestamps
+   * @param targetPath - Where to save the exported logs
+   * @param startTime - Start of the range (ISO string)
+   * @param endTime - End of the range (ISO string)
+   */
+  async exportLogsForRange(targetPath: string, startTime: string, endTime: string): Promise<void> {
+    const startDate = new Date(startTime)
+    const endDate = new Date(endTime)
+
+    let combined = ''
+
+    // Read in order (oldest first)
+    for (const file of this.getLogFileNames()) {
+      const filePath = path.join(this.logDir, file)
+      try {
+        const content = await fs.promises.readFile(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          const timestamp = this.extractTimestamp(line)
+          if (timestamp && timestamp >= startDate && timestamp <= endDate) {
+            combined += line + '\n'
+          }
+        }
+      } catch {
+        // File doesn't exist, skip
+      }
+    }
+
+    await fs.promises.writeFile(targetPath, combined, 'utf-8')
+    logger.info(
+      `EngineLogFileService: Exported logs from ${startTime} to ${endTime} to:`,
+      targetPath,
+    )
+  }
+
+  /**
+   * Export logs from a timestamp to now
+   * @param targetPath - Where to save the exported logs
+   * @param sinceTime - Start timestamp (ISO string)
+   */
+  async exportLogsSince(targetPath: string, sinceTime: string): Promise<void> {
+    const sinceDate = new Date(sinceTime)
+
+    let combined = ''
+
+    // Read in order (oldest first)
+    for (const file of this.getLogFileNames()) {
+      const filePath = path.join(this.logDir, file)
+      try {
+        const content = await fs.promises.readFile(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          const timestamp = this.extractTimestamp(line)
+          if (timestamp && timestamp >= sinceDate) {
+            combined += line + '\n'
+          }
+        }
+      } catch {
+        // File doesn't exist, skip
+      }
+    }
+
+    await fs.promises.writeFile(targetPath, combined, 'utf-8')
+    logger.info(`EngineLogFileService: Exported logs since ${sinceTime} to:`, targetPath)
+  }
+
   private extractTimestamp(line: string): Date | null {
     // Log format: 2024-01-15T10:30:45.123Z | stdout | message
     const match = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/)
@@ -375,5 +448,57 @@ export class EngineLogFileService extends EventEmitter {
 
   async destroy(): Promise<void> {
     await this.closeLogFile()
+  }
+
+  /**
+   * Clean up log files older than the retention period.
+   * This removes entire log files that are completely outside the retention window.
+   */
+  async cleanupOldLogs(): Promise<void> {
+    const cutoffDate = this.settingsService.getLogRetentionCutoffDate()
+    if (!cutoffDate) {
+      // Indefinite retention, no cleanup needed
+      return
+    }
+
+    try {
+      const files = await fs.promises.readdir(this.logDir)
+      const logFiles = files.filter(
+        (f) => f.startsWith('engine.') && f.endsWith('.log') && f !== 'session.log',
+      )
+
+      for (const file of logFiles) {
+        const filePath = path.join(this.logDir, file)
+        try {
+          const stats = await fs.promises.stat(filePath)
+          // If file was last modified before cutoff, check if all entries are old
+          if (stats.mtime < cutoffDate) {
+            // Read file and check newest entry
+            const content = await fs.promises.readFile(filePath, 'utf-8')
+            const lines = content.split('\n').filter((line) => line.trim())
+            if (lines.length === 0) {
+              // Empty file, delete it
+              await fs.promises.unlink(filePath)
+              logger.info(`EngineLogFileService: Deleted empty log file: ${file}`)
+              continue
+            }
+
+            // Check the newest entry (last line)
+            const lastLine = lines[lines.length - 1]
+            const newestTimestamp = this.extractTimestamp(lastLine)
+            if (newestTimestamp && newestTimestamp < cutoffDate) {
+              // All entries in this file are older than cutoff
+              await fs.promises.unlink(filePath)
+              logger.info(`EngineLogFileService: Deleted old log file: ${file}`)
+            }
+          }
+        } catch (err) {
+          // Skip files that can't be read
+          logger.warn(`EngineLogFileService: Could not process log file ${file}:`, err)
+        }
+      }
+    } catch (err) {
+      logger.error('EngineLogFileService: Failed to cleanup old logs:', err)
+    }
   }
 }

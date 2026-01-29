@@ -2175,6 +2175,23 @@ const setupIPC = () => {
     return { success: true }
   })
 
+  ipcMain.handle('settings:get-log-retention', () => {
+    return settingsService.getLogRetention()
+  })
+
+  ipcMain.handle(
+    'settings:set-log-retention',
+    async (
+      _event,
+      retention: { value: number; unit: 'days' | 'months' | 'years' | 'indefinite' },
+    ) => {
+      settingsService.setLogRetention(retention)
+      // Run cleanup with new retention settings
+      await engineLogFileService.cleanupOldLogs()
+      return { success: true }
+    },
+  )
+
   // Update service handlers
   ipcMain.handle('update:check', async () => {
     const focusedWindow = BrowserWindow.getFocusedWindow()
@@ -2537,7 +2554,16 @@ const setupIPC = () => {
 
   ipcMain.handle(
     'engine:export-logs',
-    async (_, options?: { type: 'session' | 'days'; days?: number }) => {
+    async (
+      _,
+      options?: {
+        type: 'session' | 'days' | 'range' | 'since'
+        days?: number
+        startTime?: string
+        endTime?: string
+        sinceTime?: string
+      },
+    ) => {
       const mainWindow = BrowserWindow.getAllWindows()[0]
       if (!mainWindow) {
         return { success: false, error: 'No window available' }
@@ -2547,10 +2573,23 @@ const setupIPC = () => {
       const exportType = options?.type || 'session'
       const days = options?.days || 1
 
-      const defaultFilename =
-        exportType === 'session'
-          ? `engine-logs-session-${timestamp}.txt`
-          : `engine-logs-${days}days-${timestamp}.txt`
+      let defaultFilename: string
+      switch (exportType) {
+        case 'session':
+          defaultFilename = `engine-logs-session-${timestamp}.txt`
+          break
+        case 'days':
+          defaultFilename = `engine-logs-${days}days-${timestamp}.txt`
+          break
+        case 'range':
+          defaultFilename = `engine-logs-range-${timestamp}.txt`
+          break
+        case 'since':
+          defaultFilename = `engine-logs-since-${timestamp}.txt`
+          break
+        default:
+          defaultFilename = `engine-logs-${timestamp}.txt`
+      }
 
       const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
         defaultPath: defaultFilename,
@@ -2565,12 +2604,29 @@ const setupIPC = () => {
       }
 
       try {
-        if (exportType === 'session') {
-          // Export current session from session log file
-          await engineLogFileService.exportSessionLogs(filePath)
-        } else {
-          // Export logs from files filtered by days
-          await engineLogFileService.exportLogsForDays(filePath, days)
+        switch (exportType) {
+          case 'session':
+            await engineLogFileService.exportSessionLogs(filePath)
+            break
+          case 'days':
+            await engineLogFileService.exportLogsForDays(filePath, days)
+            break
+          case 'range':
+            if (!options?.startTime || !options?.endTime) {
+              return { success: false, error: 'Start and end time are required for range export' }
+            }
+            await engineLogFileService.exportLogsForRange(
+              filePath,
+              options.startTime,
+              options.endTime,
+            )
+            break
+          case 'since':
+            if (!options?.sinceTime) {
+              return { success: false, error: 'Since time is required for since export' }
+            }
+            await engineLogFileService.exportLogsSince(filePath, options.sinceTime)
+            break
         }
         return { success: true, path: filePath }
       } catch (error) {

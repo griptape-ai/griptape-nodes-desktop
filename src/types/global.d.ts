@@ -316,7 +316,13 @@ declare global {
       restart: () => Promise<{ success: boolean; error?: string }>
       reinstall: () => Promise<{ success: boolean; error?: string }>
       runCommand: (command: string) => Promise<{ success: boolean; error?: string }>
-      exportLogs: (options?: { type: 'session' | 'days'; days?: number }) => Promise<{
+      exportLogs: (options?: {
+        type: 'session' | 'days' | 'range' | 'since'
+        days?: number
+        startTime?: string
+        endTime?: string
+        sinceTime?: string
+      }) => Promise<{
         success: boolean
         path?: string
         canceled?: boolean
@@ -477,6 +483,14 @@ declare global {
       setShowReleaseNotes: (show: boolean) => Promise<{ success: boolean }>
       getEngineLogFileEnabled: () => Promise<boolean>
       setEngineLogFileEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
+      getLogRetention: () => Promise<{
+        value: number
+        unit: 'days' | 'months' | 'years' | 'indefinite'
+      }>
+      setLogRetention: (retention: {
+        value: number
+        unit: 'days' | 'months' | 'years' | 'indefinite'
+      }) => Promise<{ success: boolean }>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{
