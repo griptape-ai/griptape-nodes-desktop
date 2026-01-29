@@ -981,6 +981,48 @@ docs: update README with troubleshooting section
 chore: update dependencies to latest versions
 ```
 
+### Release Notes and Conventional Commits
+
+Release notes are automatically generated from commit messages and filtered based on conventional commit prefixes. Only **user-facing changes** are included in the release notes shown to end users.
+
+**User-facing prefixes (included in release notes):**
+
+| Prefix | Description |
+|--------|-------------|
+| `feat:` | New features visible to users |
+| `fix:` | Bug fixes that affect user experience |
+| `perf:` | Performance improvements users will notice |
+
+**Internal prefixes (filtered from release notes):**
+
+| Prefix | Description |
+|--------|-------------|
+| `chore:` | Maintenance tasks (dependency updates, etc.) |
+| `ci:` | CI/CD pipeline changes |
+| `test:` | Test additions or modifications |
+| `build:` | Build system changes |
+| `docs:` | Documentation updates |
+| `refactor:` | Code refactoring without behavior changes |
+| `style:` | Code style/formatting changes |
+| `revert:` | Reverted commits |
+
+**Examples:**
+
+```bash
+# Will appear in release notes (user-facing):
+feat: add dark mode support
+fix: resolve crash when opening large workflows
+perf: improve editor load time by 50%
+
+# Will NOT appear in release notes (internal):
+chore: update electron to v37
+ci: add automated testing workflow
+test: add unit tests for auth service
+refactor: simplify engine startup logic
+```
+
+Commits without a conventional commit prefix will be included in release notes, so always use appropriate prefixes to ensure proper filtering.
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.

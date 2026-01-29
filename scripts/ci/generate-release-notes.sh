@@ -47,18 +47,21 @@ echo "=== Raw release notes ==="
 cat RELEASE_NOTES_RAW.md
 
 # Preprocess release notes for user-friendly display in the app:
+# - Filter out non-user-facing changes (chore, ci, test, build, docs, refactor, style, revert)
+# - Keep only user-facing changes (fix, feat, perf, or no conventional commit prefix)
 # - Strip GitHub attribution from list items (e.g., "by @user in https://...")
-# - Strip conventional commit prefixes (e.g., "fix:", "feat(scope):")
+# - Strip conventional commit prefixes from remaining items
 # - Remove "Full Changelog" lines
 # - Remove HTML comments
 awk '
   /^\*\*Full Changelog\*\*:/ { next }
   /^<!--.*-->$/ { next }
+  /^\* (chore|ci|test|build|docs|refactor|style|revert)(\([^)]*\))?:/ { next }
   /^\* / {
     gsub(/ by @[a-zA-Z0-9_-]+ in https:\/\/[^ ]+$/, "")
     gsub(/ by @[a-zA-Z0-9_-]+ in #[0-9]+$/, "")
-    # Strip conventional commit prefixes (fix:, feat:, chore:, etc.) with optional scope
-    gsub(/^\* (fix|feat|chore|docs|style|refactor|perf|test|build|ci|revert)(\([^)]*\))?: /, "* ")
+    # Strip conventional commit prefixes (fix:, feat:, perf:) with optional scope
+    gsub(/^\* (fix|feat|perf)(\([^)]*\))?: /, "* ")
   }
   { print }
 ' RELEASE_NOTES_RAW.md > RELEASE_NOTES.md
