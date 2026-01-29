@@ -1,13 +1,10 @@
 #!/bin/bash
-# Generates and preprocesses release notes for the app
-# Usage: generate-release-notes.sh <repository> <commit_sha>
-# Requires: GITHUB_TOKEN environment variable
-# Outputs: RELEASE_NOTES_RAW.md (raw from GitHub), RELEASE_NOTES.md (cleaned for app)
+# Generates release notes for the app using git commit history
+# Usage: generate-release-notes.sh
+# Outputs: RELEASE_NOTES.md (user-friendly notes with commit bodies)
 
 set -e
 
-REPOSITORY="$1"
-COMMIT_SHA="$2"
 VERSION=$(jq -r .version package.json)
 
 # Determine the previous tag for generating notes
@@ -16,64 +13,66 @@ PREV_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/n
 echo "Current version: v${VERSION}"
 echo "Previous tag: ${PREV_TAG:-none}"
 
-# Use GitHub API to generate release notes content
+# Build git log range
 if [ -n "$PREV_TAG" ]; then
-  NOTES=$(gh api "repos/${REPOSITORY}/releases/generate-notes" \
-    -f tag_name="v${VERSION}" \
-    -f target_commitish="${COMMIT_SHA}" \
-    -f previous_tag_name="$PREV_TAG" \
-    --jq '.body' 2>/dev/null || echo "")
+  GIT_RANGE="${PREV_TAG}..HEAD"
 else
-  NOTES=$(gh api "repos/${REPOSITORY}/releases/generate-notes" \
-    -f tag_name="v${VERSION}" \
-    -f target_commitish="${COMMIT_SHA}" \
-    --jq '.body' 2>/dev/null || echo "")
+  GIT_RANGE="HEAD"
 fi
 
-# Write raw notes to file, with fallback if API fails
-if [ -n "$NOTES" ]; then
-  echo "$NOTES" > RELEASE_NOTES_RAW.md
-  echo "Generated release notes from GitHub API"
-else
-  cat << 'EOF' > RELEASE_NOTES_RAW.md
+echo "Git range: $GIT_RANGE"
+
+# Generate user-friendly release notes from git log
+# - Only includes user-facing commits (feat, fix, perf)
+# - Includes commit body (extended description) indented under title
+# - Strips conventional commit prefixes
+git log $GIT_RANGE --pretty=format:"COMMIT_START%n%s%n%b%nCOMMIT_END" | awk '
+  /^COMMIT_START$/ { in_commit=1; title=""; body=""; next }
+  /^COMMIT_END$/ {
+    # Only include user-facing commits (feat, fix, perf)
+    if (title ~ /^(feat|fix|perf)(\([^)]*\))?:/) {
+      # Strip conventional commit prefix (feat:, fix:, perf:) with optional scope
+      gsub(/^(feat|fix|perf)(\([^)]*\))?: /, "", title)
+      print "* " title
+      # Print body if non-empty, with each line indented
+      if (body != "") {
+        n = split(body, lines, "\n")
+        has_content = 0
+        for (i = 1; i <= n; i++) {
+          # Skip empty lines and lines that are just whitespace
+          if (lines[i] !~ /^[[:space:]]*$/) {
+            print "  " lines[i]
+            has_content = 1
+          }
+        }
+        # Add blank line after body for readability
+        if (has_content) print ""
+      }
+    }
+    in_commit = 0
+    next
+  }
+  in_commit && title == "" { title = $0; next }
+  in_commit { body = (body == "" ? $0 : body "\n" $0) }
+' > RELEASE_NOTES_BODY.md
+
+# Build final release notes with header
+cat << 'EOF' > RELEASE_NOTES.md
 ## What's Changed
 
-This release includes bug fixes and improvements.
 EOF
-  echo "Using fallback release notes (API returned empty)"
-fi
+cat RELEASE_NOTES_BODY.md >> RELEASE_NOTES.md
+rm -f RELEASE_NOTES_BODY.md
 
-echo "=== Raw release notes ==="
-cat RELEASE_NOTES_RAW.md
-
-# Preprocess release notes for user-friendly display in the app:
-# - Filter out non-user-facing changes (chore, ci, test, build, docs, refactor, style, revert)
-# - Keep only user-facing changes (fix, feat, perf, or no conventional commit prefix)
-# - Strip GitHub attribution from list items (e.g., "by @user in https://...")
-# - Strip conventional commit prefixes from remaining items
-# - Remove "Full Changelog" lines
-# - Remove HTML comments
-awk '
-  /^\*\*Full Changelog\*\*:/ { next }
-  /^<!--.*-->$/ { next }
-  /^\* (chore|ci|test|build|docs|refactor|style|revert)(\([^)]*\))?:/ { next }
-  /^\* / {
-    gsub(/ by @[a-zA-Z0-9_-]+ in https:\/\/[^ ]+$/, "")
-    gsub(/ by @[a-zA-Z0-9_-]+ in #[0-9]+$/, "")
-    # Strip conventional commit prefixes (fix:, feat:, perf:) with optional scope
-    gsub(/^\* (fix|feat|perf)(\([^)]*\))?: /, "* ")
-  }
-  { print }
-' RELEASE_NOTES_RAW.md > RELEASE_NOTES.md
-
-# If empty result, use fallback
-if [ ! -s RELEASE_NOTES.md ]; then
+# Check if we have any user-facing changes
+if ! grep -q '^\* ' RELEASE_NOTES.md; then
   cat << 'EOF' > RELEASE_NOTES.md
 ## What's Changed
 
 This release includes bug fixes and improvements.
 EOF
+  echo "No user-facing commits found, using fallback"
 fi
 
-echo "=== Cleaned release notes (for app) ==="
+echo "=== Release notes (for app) ==="
 cat RELEASE_NOTES.md
