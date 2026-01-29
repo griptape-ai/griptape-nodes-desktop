@@ -8,6 +8,7 @@ import {
   X,
   FileUp,
   Check,
+  Download,
 } from 'lucide-react'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -86,6 +87,17 @@ const Settings: React.FC = () => {
   const [localEnginePath, setLocalEnginePath] = useState<string | null>(null)
   const [loadingLocalEnginePath, setLoadingLocalEnginePath] = useState(true)
 
+  // App log export state
+  const [showAppLogExportModal, setShowAppLogExportModal] = useState(false)
+  const [appLogExportType, setAppLogExportType] = useState<'session' | 'days'>('session')
+  const [appLogExportDays, setAppLogExportDays] = useState(7)
+  const [appLogDateRange, setAppLogDateRange] = useState<{
+    oldestDate: string
+    newestDate: string
+    availableDays: number
+  } | null>(null)
+  const [isExportingAppLogs, setIsExportingAppLogs] = useState(false)
+
   // Library settings state
   const [advancedLibrary, setAdvancedLibrary] = useState<boolean>(false)
   const [cloudLibrary, setCloudLibrary] = useState<boolean>(false)
@@ -113,6 +125,19 @@ const Settings: React.FC = () => {
       return () => clearTimeout(timer)
     }
   }, [notification])
+
+  // Close app log export modal on Escape key
+  useEffect(() => {
+    if (!showAppLogExportModal) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAppLogExportModal(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showAppLogExportModal])
 
   const handleRefreshEnvironmentInfo = useCallback(async () => {
     setRefreshing(true)
@@ -415,6 +440,46 @@ const Settings: React.FC = () => {
       setEngineLogFileEnabled(!checked)
     }
   }
+
+  const loadAppLogDateRange = useCallback(async () => {
+    try {
+      const range = await window.settingsAPI.getAppLogDateRange()
+      setAppLogDateRange(range)
+      if (range) {
+        setAppLogExportDays(Math.min(7, range.availableDays))
+      }
+    } catch (err) {
+      console.error('Failed to load app log date range:', err)
+    }
+  }, [])
+
+  const handleOpenAppLogExportModal = useCallback(async () => {
+    await loadAppLogDateRange()
+    setShowAppLogExportModal(true)
+  }, [loadAppLogDateRange])
+
+  const handleExportAppLogs = useCallback(async () => {
+    setIsExportingAppLogs(true)
+    setShowAppLogExportModal(false)
+    try {
+      const options =
+        appLogExportType === 'session'
+          ? { type: 'session' as const }
+          : { type: 'days' as const, days: appLogExportDays }
+      const result = await window.settingsAPI.exportAppLogs(options)
+      if (!result.success && result.error) {
+        console.error('Failed to export app logs:', result.error)
+        setNotification({ type: 'error', text: 'Failed to export logs' })
+      } else if (result.success) {
+        setNotification({ type: 'success', text: 'Logs exported successfully' })
+      }
+    } catch (error) {
+      console.error('Failed to export app logs:', error)
+      setNotification({ type: 'error', text: 'Failed to export logs' })
+    } finally {
+      setIsExportingAppLogs(false)
+    }
+  }, [appLogExportType, appLogExportDays])
 
   const loadUpdateBehaviorSetting = async () => {
     try {
@@ -1024,6 +1089,32 @@ const Settings: React.FC = () => {
                   />
                   <span className="text-sm text-muted-foreground">Don&apos;t delete log files</span>
                 </label>
+              </div>
+            </div>
+
+            {/* App Logs Export */}
+            <div className="pt-4 border-t border-border">
+              <div className="mb-3">
+                <span className="text-sm font-medium">Export Application Logs</span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Export application logs for troubleshooting. Includes main process and editor
+                  webview logs.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleOpenAppLogExportModal}
+                  disabled={isExportingAppLogs}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md',
+                    'bg-secondary text-secondary-foreground',
+                    'hover:bg-secondary/80 transition-colors',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
+                  )}
+                >
+                  <Download className="w-4 h-4" />
+                  {isExportingAppLogs ? 'Exporting...' : 'Export Logs'}
+                </button>
               </div>
             </div>
           </div>
@@ -1751,6 +1842,108 @@ const Settings: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* App Log Export Modal */}
+      {showAppLogExportModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowAppLogExportModal(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-4">Export Application Logs</h3>
+
+            <div className="space-y-4">
+              {/* Export Type Selection */}
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="appLogExportType"
+                    value="session"
+                    checked={appLogExportType === 'session'}
+                    onChange={() => setAppLogExportType('session')}
+                    className="mt-1 w-4 h-4 text-primary focus:ring-primary"
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium">Current Session</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Export logs from the current application session (since startup)
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="appLogExportType"
+                    value="days"
+                    checked={appLogExportType === 'days'}
+                    onChange={() => setAppLogExportType('days')}
+                    disabled={!appLogDateRange}
+                    className="mt-1 w-4 h-4 text-primary focus:ring-primary disabled:opacity-50"
+                  />
+                  <div className="flex-1">
+                    <span
+                      className={`text-sm font-medium ${!appLogDateRange ? 'text-muted-foreground' : ''}`}
+                    >
+                      From Log Files
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {appLogDateRange
+                        ? `Export logs from the past ${appLogExportDays} day${appLogExportDays > 1 ? 's' : ''}`
+                        : 'No saved log files available'}
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Days Slider - only shown when "days" is selected and logs are available */}
+              {appLogExportType === 'days' &&
+                appLogDateRange &&
+                appLogDateRange.availableDays > 1 && (
+                  <div className="pl-7 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Days to export:</span>
+                      <span className="font-medium">{appLogExportDays}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={appLogDateRange.availableDays}
+                      value={appLogExportDays}
+                      onChange={(e) => setAppLogExportDays(parseInt(e.target.value))}
+                      className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>1 day</span>
+                      <span>{appLogDateRange.availableDays} days</span>
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setShowAppLogExportModal(false)}
+                className="px-4 py-2 text-sm bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExportAppLogs}
+                disabled={appLogExportType === 'days' && !appLogDateRange}
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reinstall Confirmation Dialog */}
       {showReinstallDialog && (

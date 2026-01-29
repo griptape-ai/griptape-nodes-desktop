@@ -485,6 +485,17 @@ declare global {
         value: number
         unit: 'days' | 'months' | 'years' | 'indefinite'
       }) => Promise<{ success: boolean }>
+      exportAppLogs: (options?: { type: 'session' | 'days'; days?: number }) => Promise<{
+        success: boolean
+        path?: string
+        canceled?: boolean
+        error?: string
+      }>
+      getAppLogDateRange: () => Promise<{
+        oldestDate: string
+        newestDate: string
+        availableDays: number
+      } | null>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{

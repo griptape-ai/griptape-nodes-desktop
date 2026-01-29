@@ -310,6 +310,14 @@ contextBridge.exposeInMainWorld('settingsAPI', {
     value: number
     unit: 'days' | 'months' | 'years' | 'indefinite'
   }) => ipcRenderer.invoke('settings:set-log-retention', retention),
+  exportAppLogs: (options?: { type: 'session' | 'days'; days?: number }) =>
+    ipcRenderer.invoke('app:export-logs', options),
+  getAppLogDateRange: () =>
+    ipcRenderer.invoke('app:get-log-date-range') as Promise<{
+      oldestDate: string
+      newestDate: string
+      availableDays: number
+    } | null>,
 })
 
 contextBridge.exposeInMainWorld('engineUpdateAPI', {

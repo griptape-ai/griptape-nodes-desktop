@@ -2648,6 +2648,62 @@ const setupIPC = () => {
     return engineLogFileService.getLogDir()
   })
 
+  // App log export handlers
+  ipcMain.handle(
+    'app:export-logs',
+    async (_, options?: { type: 'session' | 'days'; days?: number }) => {
+      const mainWindow = BrowserWindow.getAllWindows()[0]
+      if (!mainWindow) {
+        return { success: false, error: 'No window available' }
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const exportType = options?.type || 'session'
+      const days = options?.days || 7
+
+      const defaultFilename =
+        exportType === 'session'
+          ? `app-logs-session-${timestamp}.log`
+          : `app-logs-${days}days-${timestamp}.log`
+
+      const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: defaultFilename,
+        filters: [
+          { name: 'Log Files', extensions: ['log', 'txt'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      })
+
+      if (canceled || !filePath) {
+        return { success: false, canceled: true }
+      }
+
+      try {
+        if (exportType === 'session') {
+          await appLogFileService.exportSessionLogs(filePath)
+        } else {
+          await appLogFileService.exportLogsForDays(filePath, days)
+        }
+        return { success: true, path: filePath }
+      } catch (error) {
+        logger.error('Failed to export app logs:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
+      }
+    },
+  )
+
+  ipcMain.handle('app:get-log-date-range', async () => {
+    try {
+      return await appLogFileService.getLogDateRange()
+    } catch (error) {
+      logger.error('Failed to get app log date range:', error)
+      return null
+    }
+  })
+
   // System monitor handlers
   ipcMain.handle('system-monitor:get-metrics', async () => {
     try {

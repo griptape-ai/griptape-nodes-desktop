@@ -212,6 +212,101 @@ export class AppLogFileService extends EventEmitter {
     await fs.promises.writeFile(targetPath, combined, 'utf-8')
   }
 
+  /**
+   * Get the date range of available logs
+   * Returns { oldestDate, newestDate, availableDays } or null if no logs
+   */
+  async getLogDateRange(): Promise<{
+    oldestDate: string
+    newestDate: string
+    availableDays: number
+  } | null> {
+    let oldestDate: Date | null = null
+    let newestDate: Date | null = null
+
+    for (const file of this.getLogFileNames()) {
+      const filePath = path.join(this.logDir, file)
+      try {
+        const content = await fs.promises.readFile(filePath, 'utf-8')
+        const lines = content.split('\n').filter((line) => line.trim())
+
+        for (const line of lines) {
+          const timestamp = this.extractTimestamp(line)
+          if (timestamp) {
+            if (!oldestDate || timestamp < oldestDate) {
+              oldestDate = timestamp
+            }
+            if (!newestDate || timestamp > newestDate) {
+              newestDate = timestamp
+            }
+          }
+        }
+      } catch {
+        // File doesn't exist, skip
+      }
+    }
+
+    if (!oldestDate || !newestDate) {
+      return null
+    }
+
+    const daysDiff = Math.ceil(
+      (newestDate.getTime() - oldestDate.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    return {
+      oldestDate: oldestDate.toISOString().split('T')[0],
+      newestDate: newestDate.toISOString().split('T')[0],
+      availableDays: Math.max(1, daysDiff + 1),
+    }
+  }
+
+  /**
+   * Export logs filtered by number of days
+   * @param targetPath - Where to save the exported logs
+   * @param days - Number of days to include (from today going back)
+   */
+  async exportLogsForDays(targetPath: string, days: number): Promise<void> {
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - days)
+    cutoffDate.setHours(0, 0, 0, 0)
+
+    let combined = ''
+
+    // Read in order (oldest first)
+    for (const file of this.getLogFileNames()) {
+      const filePath = path.join(this.logDir, file)
+      try {
+        const content = await fs.promises.readFile(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          const timestamp = this.extractTimestamp(line)
+          if (timestamp && timestamp >= cutoffDate) {
+            combined += line + '\n'
+          }
+        }
+      } catch {
+        // File doesn't exist, skip
+      }
+    }
+
+    await fs.promises.writeFile(targetPath, combined, 'utf-8')
+  }
+
+  private extractTimestamp(line: string): Date | null {
+    // Log format: 2024-01-15T10:30:45.123Z | level | source | message
+    const match = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/)
+    if (match) {
+      try {
+        return new Date(match[1])
+      } catch {
+        return null
+      }
+    }
+    return null
+  }
+
   getLogFilePath(): string {
     return this.currentLogPath
   }
