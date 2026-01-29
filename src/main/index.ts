@@ -123,7 +123,7 @@ const gtnService = new GtnService(
 )
 const engineService = new EngineService(userDataPath, gtnService, settingsService)
 const engineLogFileService = new EngineLogFileService(app.getPath('logs'), settingsService)
-const appLogFileService = new AppLogFileService(app.getPath('logs'))
+const appLogFileService = new AppLogFileService(app.getPath('logs'), settingsService)
 const updateService = new UpdateService(isPackaged())
 const migrationService = new MigrationService(userDataPath)
 
@@ -2648,10 +2648,32 @@ const setupIPC = () => {
     return engineLogFileService.getLogDir()
   })
 
+  // App log file setting handlers
+  ipcMain.handle('settings:get-app-log-file-enabled', () => {
+    return appLogFileService.isLoggingEnabled()
+  })
+
+  ipcMain.handle('settings:set-app-log-file-enabled', async (_, enabled: boolean) => {
+    try {
+      if (enabled) {
+        await appLogFileService.enable()
+      } else {
+        await appLogFileService.disable()
+      }
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to set app log file enabled:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
+  })
+
   // App log export handlers
   ipcMain.handle(
     'app:export-logs',
-    async (_, options?: { type: 'session' | 'days'; days?: number }) => {
+    async (_, options?: { type: 'session' | 'range'; startTime?: string; endTime?: string }) => {
       const mainWindow = BrowserWindow.getAllWindows()[0]
       if (!mainWindow) {
         return { success: false, error: 'No window available' }
@@ -2659,12 +2681,11 @@ const setupIPC = () => {
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const exportType = options?.type || 'session'
-      const days = options?.days || 7
 
       const defaultFilename =
         exportType === 'session'
           ? `app-logs-session-${timestamp}.log`
-          : `app-logs-${days}days-${timestamp}.log`
+          : `app-logs-range-${timestamp}.log`
 
       const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
         defaultPath: defaultFilename,
@@ -2681,8 +2702,10 @@ const setupIPC = () => {
       try {
         if (exportType === 'session') {
           await appLogFileService.exportSessionLogs(filePath)
+        } else if (options?.startTime && options?.endTime) {
+          await appLogFileService.exportLogsForRange(filePath, options.startTime, options.endTime)
         } else {
-          await appLogFileService.exportLogsForDays(filePath, days)
+          return { success: false, error: 'Missing time range parameters' }
         }
         return { success: true, path: filePath }
       } catch (error) {
@@ -2695,13 +2718,17 @@ const setupIPC = () => {
     },
   )
 
-  ipcMain.handle('app:get-log-date-range', async () => {
+  ipcMain.handle('app:get-oldest-log-date', async () => {
     try {
-      return await appLogFileService.getLogDateRange()
+      return await appLogFileService.getOldestLogDate()
     } catch (error) {
-      logger.error('Failed to get app log date range:', error)
+      logger.error('Failed to get oldest app log date:', error)
       return null
     }
+  })
+
+  ipcMain.handle('app:get-log-file-path', () => {
+    return appLogFileService.getLogDir()
   })
 
   // System monitor handlers

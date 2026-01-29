@@ -11,7 +11,7 @@ allowed-tools:
 
 # Review Changes Since Main
 
-Review all code changes since the main branch for quality issues.
+Review all code changes since the main branch for quality issues. Include uncommited changes as well.
 
 ## Step 1: Run Automated Checks
 

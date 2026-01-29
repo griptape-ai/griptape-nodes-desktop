@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { EventEmitter } from 'events'
+import { SettingsService } from './settings-service'
 
 export type AppLogLevel = 'debug' | 'info' | 'warn' | 'error'
 export type AppLogSource = 'main' | 'webview'
@@ -13,6 +14,7 @@ export interface AppLog {
 }
 
 export class AppLogFileService extends EventEmitter {
+  private isEnabled: boolean = false
   private writeStream: fs.WriteStream | null = null
   private sessionWriteStream: fs.WriteStream | null = null
   private logDir: string
@@ -22,7 +24,10 @@ export class AppLogFileService extends EventEmitter {
   private maxFiles: number = 4
   private isStarted: boolean = false
 
-  constructor(logsBasePath: string) {
+  constructor(
+    logsBasePath: string,
+    private settingsService: SettingsService,
+  ) {
     super()
     this.logDir = path.join(logsBasePath, 'app')
     this.currentLogPath = path.join(this.logDir, 'app.log')
@@ -31,19 +36,56 @@ export class AppLogFileService extends EventEmitter {
 
   async start(): Promise<void> {
     if (this.isStarted) return
-    await this.openLogFile()
+    this.isEnabled = this.settingsService.getAppLogFileEnabled()
+    if (this.isEnabled) {
+      await this.openLogFile()
+    }
+    // Clean up old logs based on retention setting
+    await this.cleanupOldLogs()
     this.isStarted = true
     // Log startup - but avoid circular dependency by writing directly
     this.writeLog({
       timestamp: new Date(),
       level: 'info',
       source: 'main',
-      message: 'AppLogFileService: Started',
+      message: `AppLogFileService: Started, enabled: ${this.isEnabled}`,
     })
   }
 
+  async enable(): Promise<void> {
+    if (this.isEnabled) return
+    this.isEnabled = true
+    this.settingsService.setAppLogFileEnabled(true)
+    if (this.isStarted) {
+      await this.openLogFile()
+    }
+    this.writeLog({
+      timestamp: new Date(),
+      level: 'info',
+      source: 'main',
+      message: 'AppLogFileService: Enabled',
+    })
+  }
+
+  async disable(): Promise<void> {
+    if (!this.isEnabled) return
+    this.writeLog({
+      timestamp: new Date(),
+      level: 'info',
+      source: 'main',
+      message: 'AppLogFileService: Disabling',
+    })
+    this.isEnabled = false
+    this.settingsService.setAppLogFileEnabled(false)
+    await this.closeLogFile()
+  }
+
+  isLoggingEnabled(): boolean {
+    return this.isEnabled
+  }
+
   async writeLog(log: AppLog): Promise<void> {
-    if (!this.isStarted) return
+    if (!this.isEnabled && this.isStarted) return
 
     await this.rotateIfNeeded()
 
@@ -178,6 +220,39 @@ export class AppLogFileService extends EventEmitter {
   }
 
   /**
+   * Get the oldest log date available
+   * Returns date string (YYYY-MM-DD) or null if no logs
+   */
+  async getOldestLogDate(): Promise<string | null> {
+    let oldestDate: Date | null = null
+
+    for (const file of this.getLogFileNames()) {
+      const filePath = path.join(this.logDir, file)
+      try {
+        const content = await fs.promises.readFile(filePath, 'utf-8')
+        const lines = content.split('\n').filter((line) => line.trim())
+
+        for (const line of lines) {
+          const timestamp = this.extractTimestamp(line)
+          if (timestamp) {
+            if (!oldestDate || timestamp < oldestDate) {
+              oldestDate = timestamp
+            }
+          }
+        }
+      } catch {
+        // File doesn't exist, skip
+      }
+    }
+
+    if (!oldestDate) {
+      return null
+    }
+
+    return oldestDate.toISOString().split('T')[0]
+  }
+
+  /**
    * Export logs from the current session
    * @param targetPath - Where to save the exported logs
    */
@@ -189,6 +264,40 @@ export class AppLogFileService extends EventEmitter {
       // If session log doesn't exist, write empty file
       await fs.promises.writeFile(targetPath, '', 'utf-8')
     }
+  }
+
+  /**
+   * Export logs between two timestamps
+   * @param targetPath - Where to save the exported logs
+   * @param startTime - Start of the range (ISO string)
+   * @param endTime - End of the range (ISO string)
+   */
+  async exportLogsForRange(targetPath: string, startTime: string, endTime: string): Promise<void> {
+    const startDate = new Date(startTime)
+    const endDate = new Date(endTime)
+
+    let combined = ''
+
+    // Read in order (oldest first)
+    for (const file of this.getLogFileNames()) {
+      const filePath = path.join(this.logDir, file)
+      try {
+        const content = await fs.promises.readFile(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          const timestamp = this.extractTimestamp(line)
+          if (timestamp && timestamp >= startDate && timestamp <= endDate) {
+            combined += line + '\n'
+          }
+        }
+      } catch {
+        // File doesn't exist, skip
+      }
+    }
+
+    await fs.promises.writeFile(targetPath, combined, 'utf-8')
   }
 
   /**
@@ -331,6 +440,58 @@ export class AppLogFileService extends EventEmitter {
     // Add current log file last (newest)
     files.push('app.log')
     return files
+  }
+
+  /**
+   * Clean up log files older than the retention period.
+   * This removes entire log files that are completely outside the retention window.
+   */
+  async cleanupOldLogs(): Promise<void> {
+    const cutoffDate = this.settingsService.getLogRetentionCutoffDate()
+    if (!cutoffDate) {
+      // Indefinite retention, no cleanup needed
+      return
+    }
+
+    try {
+      const files = await fs.promises.readdir(this.logDir)
+      const logFiles = files.filter(
+        (f) => f.startsWith('app.') && f.endsWith('.log') && f !== 'session.log',
+      )
+
+      for (const file of logFiles) {
+        const filePath = path.join(this.logDir, file)
+        try {
+          const stats = await fs.promises.stat(filePath)
+          // If file was last modified before cutoff, check if all entries are old
+          if (stats.mtime < cutoffDate) {
+            // Read file and check newest entry
+            const content = await fs.promises.readFile(filePath, 'utf-8')
+            const lines = content.split('\n').filter((line) => line.trim())
+            if (lines.length === 0) {
+              // Empty file, delete it
+              await fs.promises.unlink(filePath)
+              console.log(`AppLogFileService: Deleted empty log file: ${file}`)
+              continue
+            }
+
+            // Check the newest entry (last line)
+            const lastLine = lines[lines.length - 1]
+            const newestTimestamp = this.extractTimestamp(lastLine)
+            if (newestTimestamp && newestTimestamp < cutoffDate) {
+              // All entries in this file are older than cutoff
+              await fs.promises.unlink(filePath)
+              console.log(`AppLogFileService: Deleted old log file: ${file}`)
+            }
+          }
+        } catch (err) {
+          // Skip files that can't be read
+          console.warn(`AppLogFileService: Could not process log file ${file}:`, err)
+        }
+      }
+    } catch (err) {
+      console.error('AppLogFileService: Failed to cleanup old logs:', err)
+    }
   }
 
   async destroy(): Promise<void> {

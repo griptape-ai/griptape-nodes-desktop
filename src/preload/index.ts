@@ -301,6 +301,9 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   getEngineLogFileEnabled: () => ipcRenderer.invoke('settings:get-engine-log-file-enabled'),
   setEngineLogFileEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-engine-log-file-enabled', enabled),
+  getAppLogFileEnabled: () => ipcRenderer.invoke('settings:get-app-log-file-enabled'),
+  setAppLogFileEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('settings:set-app-log-file-enabled', enabled),
   getLogRetention: () =>
     ipcRenderer.invoke('settings:get-log-retention') as Promise<{
       value: number
@@ -310,14 +313,11 @@ contextBridge.exposeInMainWorld('settingsAPI', {
     value: number
     unit: 'days' | 'months' | 'years' | 'indefinite'
   }) => ipcRenderer.invoke('settings:set-log-retention', retention),
-  exportAppLogs: (options?: { type: 'session' | 'days'; days?: number }) =>
+  exportAppLogs: (options?: { type: 'session' | 'range'; startTime?: string; endTime?: string }) =>
     ipcRenderer.invoke('app:export-logs', options),
-  getAppLogDateRange: () =>
-    ipcRenderer.invoke('app:get-log-date-range') as Promise<{
-      oldestDate: string
-      newestDate: string
-      availableDays: number
-    } | null>,
+  getAppOldestLogDate: () =>
+    ipcRenderer.invoke('app:get-oldest-log-date') as Promise<string | null>,
+  getAppLogFilePath: () => ipcRenderer.invoke('app:get-log-file-path'),
 })
 
 contextBridge.exposeInMainWorld('engineUpdateAPI', {

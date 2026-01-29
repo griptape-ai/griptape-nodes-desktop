@@ -72,6 +72,7 @@ const Settings: React.FC = () => {
   const [confirmOnClose, setConfirmOnClose] = useState(true)
   const [showReleaseNotes, setShowReleaseNotes] = useState(true)
   const [engineLogFileEnabled, setEngineLogFileEnabled] = useState(false)
+  const [appLogFileEnabled, setAppLogFileEnabled] = useState(false)
   const [logRetentionValue, setLogRetentionValue] = useState(DEFAULT_LOG_RETENTION.value)
   const [logRetentionUnit, setLogRetentionUnit] = useState<
     'days' | 'months' | 'years' | 'indefinite'
@@ -89,13 +90,11 @@ const Settings: React.FC = () => {
 
   // App log export state
   const [showAppLogExportModal, setShowAppLogExportModal] = useState(false)
-  const [appLogExportType, setAppLogExportType] = useState<'session' | 'days'>('session')
-  const [appLogExportDays, setAppLogExportDays] = useState(7)
-  const [appLogDateRange, setAppLogDateRange] = useState<{
-    oldestDate: string
-    newestDate: string
-    availableDays: number
-  } | null>(null)
+  const [appLogExportType, setAppLogExportType] = useState<'session' | 'range'>('session')
+  const [appLogOldestDate, setAppLogOldestDate] = useState<string | null>(null)
+  const [appLogExportStartTime, setAppLogExportStartTime] = useState('')
+  const [appLogExportEndTime, setAppLogExportEndTime] = useState('')
+  const [appLogExportToNow, setAppLogExportToNow] = useState(true)
   const [isExportingAppLogs, setIsExportingAppLogs] = useState(false)
 
   // Library settings state
@@ -188,6 +187,7 @@ const Settings: React.FC = () => {
     loadConfirmOnCloseSetting()
     loadShowReleaseNotesSetting()
     loadEngineLogFileSetting()
+    loadAppLogFileSetting()
     loadLogRetentionSetting()
     loadEngineChannel()
     loadEditorChannel()
@@ -407,6 +407,15 @@ const Settings: React.FC = () => {
     }
   }
 
+  const loadAppLogFileSetting = async () => {
+    try {
+      const enabled = await window.settingsAPI.getAppLogFileEnabled()
+      setAppLogFileEnabled(enabled)
+    } catch (err) {
+      console.error('Failed to load app log file setting:', err)
+    }
+  }
+
   const loadLogRetentionSetting = async () => {
     try {
       const retention = await window.settingsAPI.getLogRetention()
@@ -441,37 +450,72 @@ const Settings: React.FC = () => {
     }
   }
 
-  const loadAppLogDateRange = useCallback(async () => {
+  const handleToggleAppLogFile = async (checked: boolean) => {
+    setAppLogFileEnabled(checked)
     try {
-      const range = await window.settingsAPI.getAppLogDateRange()
-      setAppLogDateRange(range)
-      if (range) {
-        setAppLogExportDays(Math.min(7, range.availableDays))
-      }
+      await window.settingsAPI.setAppLogFileEnabled(checked)
     } catch (err) {
-      console.error('Failed to load app log date range:', err)
+      console.error('Failed to save app log file setting:', err)
+      // Revert on error
+      setAppLogFileEnabled(!checked)
     }
-  }, [])
+  }
 
   const handleOpenAppLogExportModal = useCallback(async () => {
-    await loadAppLogDateRange()
+    // Fetch oldest log date when opening modal (for time range min date)
+    try {
+      const oldest = await window.settingsAPI.getAppOldestLogDate()
+      setAppLogOldestDate(oldest)
+    } catch (error) {
+      console.error('Failed to get oldest app log date:', error)
+    }
+    // Initialize timestamp fields with sensible defaults
+    const now = new Date()
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
+    // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+    const formatForInput = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${minutes}`
+    }
+    setAppLogExportStartTime(formatForInput(oneHourAgo))
+    setAppLogExportEndTime(formatForInput(now))
+    setAppLogExportToNow(true)
     setShowAppLogExportModal(true)
-  }, [loadAppLogDateRange])
+  }, [])
 
   const handleExportAppLogs = useCallback(async () => {
     setIsExportingAppLogs(true)
     setShowAppLogExportModal(false)
     try {
-      const options =
-        appLogExportType === 'session'
-          ? { type: 'session' as const }
-          : { type: 'days' as const, days: appLogExportDays }
+      let options: {
+        type: 'session' | 'range'
+        startTime?: string
+        endTime?: string
+      }
+      switch (appLogExportType) {
+        case 'session':
+          options = { type: 'session' }
+          break
+        case 'range':
+          options = {
+            type: 'range',
+            startTime: new Date(appLogExportStartTime).toISOString(),
+            endTime: appLogExportToNow
+              ? new Date().toISOString()
+              : new Date(appLogExportEndTime).toISOString(),
+          }
+          break
+      }
       const result = await window.settingsAPI.exportAppLogs(options)
       if (!result.success && result.error) {
         console.error('Failed to export app logs:', result.error)
         setNotification({ type: 'error', text: 'Failed to export logs' })
       } else if (result.success) {
-        setNotification({ type: 'success', text: 'Logs exported successfully' })
+        setNotification({ type: 'success', text: 'App logs exported successfully' })
       }
     } catch (error) {
       console.error('Failed to export app logs:', error)
@@ -479,7 +523,7 @@ const Settings: React.FC = () => {
     } finally {
       setIsExportingAppLogs(false)
     }
-  }, [appLogExportType, appLogExportDays])
+  }, [appLogExportType, appLogExportStartTime, appLogExportEndTime, appLogExportToNow])
 
   const loadUpdateBehaviorSetting = async () => {
     try {
@@ -1004,6 +1048,7 @@ const Settings: React.FC = () => {
         >
           <h2 className="text-lg font-semibold mb-4">Logging and Diagnostics</h2>
           <div className="space-y-4">
+            {/* Engine Logs */}
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
                 type="checkbox"
@@ -1023,14 +1068,53 @@ const Settings: React.FC = () => {
               </div>
             </label>
 
+            {/* App Logs */}
+            <div className="pt-4 border-t border-border">
+              <div className="flex items-start gap-3">
+                <label className="flex items-start gap-3 cursor-pointer group flex-1">
+                  <input
+                    type="checkbox"
+                    checked={appLogFileEnabled}
+                    onChange={(e) => handleToggleAppLogFile(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background"
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium group-hover:text-foreground transition-colors">
+                      Write application logs to file
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Save application and editor logs to a file for troubleshooting. Logs are
+                      automatically rotated when they reach 10MB.
+                    </p>
+                  </div>
+                </label>
+                {appLogFileEnabled && (
+                  <button
+                    onClick={handleOpenAppLogExportModal}
+                    disabled={isExportingAppLogs}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md',
+                      'bg-secondary text-secondary-foreground',
+                      'hover:bg-secondary/80 transition-colors',
+                      'disabled:opacity-50 disabled:cursor-not-allowed',
+                    )}
+                  >
+                    <Download className="w-4 h-4" />
+                    {isExportingAppLogs ? 'Exporting...' : 'Export'}
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Log Retention Setting */}
             <div
-              className={`pt-4 border-t border-border ${!engineLogFileEnabled ? 'opacity-50' : ''}`}
+              className={`pt-4 border-t border-border ${!(engineLogFileEnabled || appLogFileEnabled) ? 'opacity-50' : ''}`}
             >
               <div className="mb-3">
                 <span className="text-sm font-medium">Log Retention</span>
                 <p className="text-xs text-muted-foreground mt-1">
-                  How long to keep log files before automatically deleting them.
+                  How long to keep engine and application log files before automatically deleting
+                  them.
                 </p>
               </div>
               <div className="space-y-3">
@@ -1047,7 +1131,7 @@ const Settings: React.FC = () => {
                         const val = parseInt(e.target.value) || 1
                         handleLogRetentionChange(val, logRetentionUnit)
                       }}
-                      disabled={!engineLogFileEnabled}
+                      disabled={!(engineLogFileEnabled || appLogFileEnabled)}
                       className="w-20 px-3 py-1.5 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed"
                     />
                     <select
@@ -1059,7 +1143,7 @@ const Settings: React.FC = () => {
                           unit,
                         )
                       }}
-                      disabled={!engineLogFileEnabled}
+                      disabled={!(engineLogFileEnabled || appLogFileEnabled)}
                       className="px-3 py-1.5 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed"
                     >
                       <option value="days">Days</option>
@@ -1069,7 +1153,7 @@ const Settings: React.FC = () => {
                   </div>
                 )}
                 <label
-                  className={`flex items-center gap-2 ${engineLogFileEnabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                  className={`flex items-center gap-2 ${engineLogFileEnabled || appLogFileEnabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 >
                   <input
                     type="checkbox"
@@ -1084,37 +1168,11 @@ const Settings: React.FC = () => {
                         )
                       }
                     }}
-                    disabled={!engineLogFileEnabled}
+                    disabled={!(engineLogFileEnabled || appLogFileEnabled)}
                     className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary disabled:cursor-not-allowed"
                   />
                   <span className="text-sm text-muted-foreground">Don&apos;t delete log files</span>
                 </label>
-              </div>
-            </div>
-
-            {/* App Logs Export */}
-            <div className="pt-4 border-t border-border">
-              <div className="mb-3">
-                <span className="text-sm font-medium">Export Application Logs</span>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Export application logs for troubleshooting. Includes main process and editor
-                  webview logs.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleOpenAppLogExportModal}
-                  disabled={isExportingAppLogs}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md',
-                    'bg-secondary text-secondary-foreground',
-                    'hover:bg-secondary/80 transition-colors',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                  )}
-                >
-                  <Download className="w-4 h-4" />
-                  {isExportingAppLogs ? 'Exporting...' : 'Export Logs'}
-                </button>
               </div>
             </div>
           </div>
@@ -1868,9 +1926,9 @@ const Settings: React.FC = () => {
                     className="mt-1 w-4 h-4 text-primary focus:ring-primary"
                   />
                   <div className="flex-1">
-                    <span className="text-sm font-medium">Current Session</span>
+                    <span className="text-sm font-medium">Current App Session</span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Export logs from the current application session (since startup)
+                      Export logs since the application was started
                     </p>
                   </div>
                 </label>
@@ -1879,50 +1937,72 @@ const Settings: React.FC = () => {
                   <input
                     type="radio"
                     name="appLogExportType"
-                    value="days"
-                    checked={appLogExportType === 'days'}
-                    onChange={() => setAppLogExportType('days')}
-                    disabled={!appLogDateRange}
+                    value="range"
+                    checked={appLogExportType === 'range'}
+                    onChange={() => setAppLogExportType('range')}
+                    disabled={!appLogOldestDate}
                     className="mt-1 w-4 h-4 text-primary focus:ring-primary disabled:opacity-50"
                   />
                   <div className="flex-1">
                     <span
-                      className={`text-sm font-medium ${!appLogDateRange ? 'text-muted-foreground' : ''}`}
+                      className={`text-sm font-medium ${!appLogOldestDate ? 'text-muted-foreground' : ''}`}
                     >
-                      From Log Files
+                      Time Range
                     </span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {appLogDateRange
-                        ? `Export logs from the past ${appLogExportDays} day${appLogExportDays > 1 ? 's' : ''}`
-                        : 'No saved log files available'}
+                      Export logs between specific timestamps
                     </p>
                   </div>
                 </label>
               </div>
 
-              {/* Days Slider - only shown when "days" is selected and logs are available */}
-              {appLogExportType === 'days' &&
-                appLogDateRange &&
-                appLogDateRange.availableDays > 1 && (
-                  <div className="pl-7 space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Days to export:</span>
-                      <span className="font-medium">{appLogExportDays}</span>
-                    </div>
+              {/* Time Range - only shown when "range" is selected */}
+              {appLogExportType === 'range' && appLogOldestDate && (
+                <div className="pl-7 space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm text-muted-foreground">From</label>
                     <input
-                      type="range"
-                      min={1}
-                      max={appLogDateRange.availableDays}
-                      value={appLogExportDays}
-                      onChange={(e) => setAppLogExportDays(parseInt(e.target.value))}
-                      className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                      type="datetime-local"
+                      value={appLogExportStartTime}
+                      onChange={(e) => setAppLogExportStartTime(e.target.value)}
+                      min={`${appLogOldestDate}T00:00`}
+                      max={new Date().toISOString().slice(0, 16)}
+                      className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground [&::-webkit-datetime-edit-fields-wrapper]:text-foreground [&::-webkit-datetime-edit]:text-foreground [&::-webkit-datetime-edit-month-field]:text-foreground [&::-webkit-datetime-edit-day-field]:text-foreground [&::-webkit-datetime-edit-year-field]:text-foreground [&::-webkit-datetime-edit-hour-field]:text-foreground [&::-webkit-datetime-edit-minute-field]:text-foreground"
                     />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>1 day</span>
-                      <span>{appLogDateRange.availableDays} days</span>
-                    </div>
                   </div>
-                )}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm text-muted-foreground">To</label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={appLogExportToNow}
+                          onChange={(e) => setAppLogExportToNow(e.target.checked)}
+                          className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary"
+                        />
+                        <span className="text-xs text-muted-foreground">Now</span>
+                      </label>
+                    </div>
+                    {appLogExportToNow ? (
+                      <div
+                        className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => setAppLogExportToNow(false)}
+                      >
+                        Current time
+                      </div>
+                    ) : (
+                      <input
+                        type="datetime-local"
+                        value={appLogExportEndTime}
+                        onChange={(e) => setAppLogExportEndTime(e.target.value)}
+                        min={appLogExportStartTime}
+                        max={new Date().toISOString().slice(0, 16)}
+                        className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground [&::-webkit-datetime-edit-fields-wrapper]:text-foreground [&::-webkit-datetime-edit]:text-foreground [&::-webkit-datetime-edit-month-field]:text-foreground [&::-webkit-datetime-edit-day-field]:text-foreground [&::-webkit-datetime-edit-year-field]:text-foreground [&::-webkit-datetime-edit-hour-field]:text-foreground [&::-webkit-datetime-edit-minute-field]:text-foreground"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -1935,7 +2015,12 @@ const Settings: React.FC = () => {
               </button>
               <button
                 onClick={handleExportAppLogs}
-                disabled={appLogExportType === 'days' && !appLogDateRange}
+                disabled={
+                  appLogExportType === 'range' &&
+                  (!appLogOldestDate ||
+                    !appLogExportStartTime ||
+                    (!appLogExportToNow && !appLogExportEndTime))
+                }
                 className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Export
