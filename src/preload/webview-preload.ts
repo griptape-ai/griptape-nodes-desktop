@@ -6,6 +6,21 @@ import { ipcRenderer } from 'electron'
 console.log('[WebviewPreload] Webview preload script loaded')
 console.debug('[WebviewPreload] Location:', window.location.href)
 
+// Listen for token updates from the main process and notify the editor
+ipcRenderer.on('auth:tokens-updated', (_event, data) => {
+  console.log('[WebviewPreload] Received token update from main process')
+  // Notify the editor that tokens have been refreshed
+  // The editor should listen for this event to update its auth state
+  window.postMessage(
+    {
+      type: 'AUTH_TOKENS_UPDATED',
+      token: data.tokens?.access_token || null,
+      expiresAt: data.expiresAt || null,
+    },
+    window.location.origin,
+  )
+})
+
 // Handle postMessage authentication protocol from embedded editor
 window.addEventListener('message', async (event) => {
   // Verify origin is from Griptape editor (production/nightly) or localhost (development)

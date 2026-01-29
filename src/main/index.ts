@@ -379,7 +379,7 @@ app.on('ready', async () => {
             requestingOrigin.includes('app.nodes.griptape.ai')
 
           if (isGriptapeOrigin) {
-            logger.info(`Permission check passed for ${permission} from ${requestingOrigin}`)
+            logger.debug(`Permission check passed for ${permission} from ${requestingOrigin}`)
             return true
           } else {
             logger.warn(`Permission check denied for ${permission} from ${requestingOrigin}`)
@@ -1536,6 +1536,9 @@ const setupIPC = () => {
   })
 
   // Handle postMessage authentication protocol from embedded editor webview
+  // Note: This is a sync handler, but we need to handle async token refresh.
+  // We use a hybrid approach: return current token if valid, or trigger async refresh
+  // and return a "refreshing" status so the webview can retry.
   ipcMain.on('webview:auth-token-request', (event) => {
     logger.info('[Webview Auth] Editor requesting access token')
     try {
@@ -1547,14 +1550,48 @@ const setupIPC = () => {
         return
       }
 
-      // Check if token is expired
+      // Check if token is expired or about to expire (within 5 minutes)
       const currentTime = Math.floor(Date.now() / 1000)
+      const fiveMinutes = 5 * 60
       const isExpired = !credentials.expiresAt || currentTime >= credentials.expiresAt
+      const isAboutToExpire =
+        credentials.expiresAt && credentials.expiresAt - currentTime < fiveMinutes
 
-      if (isExpired) {
-        logger.warn('[Webview Auth] Token is expired')
-        event.returnValue = { token: null, error: 'Token expired' }
-        return
+      if (isExpired || isAboutToExpire) {
+        logger.info(
+          `[Webview Auth] Token ${isExpired ? 'expired' : 'about to expire'}, attempting refresh...`,
+        )
+
+        // Trigger async refresh - the webview will be notified via auth:tokens-updated
+        authService
+          .attemptTokenRefresh()
+          .then((result) => {
+            if (result.success) {
+              logger.info('[Webview Auth] Token refresh successful, broadcasting update')
+              // Broadcast the updated tokens to all webviews
+              const updatedCredentials = authService.getStoredCredentials()
+              if (updatedCredentials?.tokens) {
+                webContents.getAllWebContents().forEach((contents) => {
+                  contents.send('auth:tokens-updated', {
+                    tokens: updatedCredentials.tokens,
+                    expiresAt: updatedCredentials.expiresAt,
+                  })
+                })
+              }
+            } else {
+              logger.warn('[Webview Auth] Token refresh failed:', result.error)
+            }
+          })
+          .catch((err) => {
+            logger.error('[Webview Auth] Token refresh error:', err)
+          })
+
+        // If completely expired, tell webview to wait for refresh
+        if (isExpired) {
+          event.returnValue = { token: null, error: 'Token expired, refreshing...' }
+          return
+        }
+        // If just about to expire, return current token while refresh happens in background
       }
 
       logger.info('[Webview Auth] Returning access token to editor')
