@@ -44,6 +44,46 @@ npm install
 npm start
 ```
 
+## Releases and Release Notes
+
+### How Release Notes Work
+
+Release notes are automatically generated from commit messages and displayed to users in-app when they update to a new version.
+
+**For contributors:** When creating a PR with user-facing changes (`feat:`, `fix:`, `perf:`):
+
+1. **PR Title** becomes the heading for your change in release notes (conventional commit prefix is stripped)
+2. **Release Notes section** in the PR template becomes the description shown to users
+
+Example PR:
+
+```
+Title: feat: Add dark mode support
+
+## Release Notes
+The application now supports dark mode. You can switch between
+light, dark, and system themes in Settings > Appearance.
+```
+
+Becomes:
+
+```
+## ✨ Features
+
+#### Add dark mode support
+* The application now supports dark mode. You can switch between
+  light, dark, and system themes in Settings > Appearance.
+```
+
+### Release Process
+
+1. **CI generates release notes** from git commits using `scripts/ci/generate-release-notes.sh`
+2. **Commits are grouped** by type: Features (`feat:`), Bug Fixes (`fix:`), Performance (`perf:`)
+3. **Release notes are bundled** into the app at build time
+4. **Users see a modal** on first launch after updating with the changes
+
+Non-user-facing commits (`chore:`, `ci:`, `docs:`, etc.) are excluded from release notes.
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.

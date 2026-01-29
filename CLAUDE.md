@@ -154,6 +154,38 @@ Requires VC++ 2015-2022 Runtime. Velopack includes vcredist143 framework automat
 - Single-purpose components
 - Extract reusable logic to custom hooks
 
+### Comments and Documentation
+
+Comments should describe the code as it exists, not changes being made:
+
+- **BAD:** `// Added validation for empty strings`
+- **GOOD:** `// Empty strings are invalid workspace paths`
+
+Only add comments when the code's purpose isn't self-evident:
+
+- Skip comments for straightforward operations
+- Add comments for non-obvious business logic, workarounds, or edge cases
+- Prefer clear variable/function names over explanatory comments
+
+Docstrings for functions:
+
+- Required for exported functions with non-obvious behavior
+- Required for functions with complex parameters or return types
+- Skip for simple getters/setters or self-documenting function names
+
+```typescript
+// Skip docstring - function name is self-explanatory
+function getWorkspaceDirectory(): string { ... }
+
+// Add docstring - behavior has important nuances
+/**
+ * Cleans up log files older than the retention period.
+ * Only deletes files where ALL entries are outside the retention window.
+ * Session logs are never deleted by this function.
+ */
+async cleanupOldLogs(): Promise<void> { ... }
+```
+
 ## Common Patterns
 
 ```typescript

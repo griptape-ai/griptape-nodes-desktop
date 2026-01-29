@@ -23,6 +23,7 @@ interface SettingsSchema {
   dismissedEngineUpdateVersion: string | null
   confirmOnClose: boolean
   engineLogFileEnabled: boolean
+  appLogFileEnabled: boolean
   lastSeenVersion: string | null
   showReleaseNotes: boolean
   logRetention: LogRetention
@@ -169,6 +170,21 @@ export class SettingsService {
   setEngineLogFileEnabled(enabled: boolean): void {
     this.store.set('engineLogFileEnabled', enabled)
     logger.info('SettingsService: engineLogFileEnabled set to', enabled)
+  }
+
+  /**
+   * Get whether app log file writing is enabled.
+   */
+  getAppLogFileEnabled(): boolean {
+    return this.store.get('appLogFileEnabled', true)
+  }
+
+  /**
+   * Set whether app log file writing is enabled.
+   */
+  setAppLogFileEnabled(enabled: boolean): void {
+    this.store.set('appLogFileEnabled', enabled)
+    logger.info('SettingsService: appLogFileEnabled set to', enabled)
   }
 
   /**

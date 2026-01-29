@@ -477,6 +477,8 @@ declare global {
       setShowReleaseNotes: (show: boolean) => Promise<{ success: boolean }>
       getEngineLogFileEnabled: () => Promise<boolean>
       setEngineLogFileEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
+      getAppLogFileEnabled: () => Promise<boolean>
+      setAppLogFileEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
       getLogRetention: () => Promise<{
         value: number
         unit: 'days' | 'months' | 'years' | 'indefinite'
@@ -485,6 +487,18 @@ declare global {
         value: number
         unit: 'days' | 'months' | 'years' | 'indefinite'
       }) => Promise<{ success: boolean }>
+      exportAppLogs: (options?: {
+        type: 'session' | 'range'
+        startTime?: string
+        endTime?: string
+      }) => Promise<{
+        success: boolean
+        path?: string
+        canceled?: boolean
+        error?: string
+      }>
+      getAppOldestLogDate: () => Promise<string | null>
+      getAppLogFilePath: () => Promise<string>
     }
     engineUpdateAPI: {
       checkForUpdate: () => Promise<{

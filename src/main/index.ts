@@ -27,7 +27,7 @@ import { EngineService } from '../common/services/gtn/engine-service'
 import { EnvironmentInfoService } from '../common/services/environment-info'
 import { GtnService } from '../common/services/gtn/gtn-service'
 import { UvService } from '../common/services/uv/uv-service'
-import { logger } from '@/main/utils/logger'
+import { logger, setAppLogFileService } from '@/main/utils/logger'
 import { isPackaged } from '@/main/utils/is-packaged'
 import { PythonService } from '../common/services/python/python-service'
 import { UpdateService } from '../common/services/update/update-service'
@@ -38,6 +38,7 @@ import { DeviceIdService } from '../common/services/device-id-service'
 import { SystemMonitorService } from '../common/services/system-monitor-service'
 import { SettingsService } from '../common/services/settings-service'
 import { EngineLogFileService } from '../common/services/engine-log-file-service'
+import { AppLogFileService } from '../common/services/app-log-file-service'
 import { MigrationService } from '../common/services/migration/migration-service'
 import type { UpdateBehavior } from '@/types/global'
 
@@ -122,6 +123,7 @@ const gtnService = new GtnService(
 )
 const engineService = new EngineService(userDataPath, gtnService, settingsService)
 const engineLogFileService = new EngineLogFileService(app.getPath('logs'), settingsService)
+const appLogFileService = new AppLogFileService(app.getPath('logs'), settingsService)
 const updateService = new UpdateService(isPackaged())
 const migrationService = new MigrationService(userDataPath)
 
@@ -300,6 +302,8 @@ app.on('ready', async () => {
   gtnService.start()
   engineService.start()
   engineLogFileService.start()
+  appLogFileService.start()
+  setAppLogFileService(appLogFileService)
 
   engineService.on('engine:status-changed', (status) => {
     BrowserWindow.getAllWindows().forEach((window) => {
@@ -330,6 +334,14 @@ app.on('ready', async () => {
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() === 'webview') {
       logger.info('[Webview] New webview created, setting up handlers')
+
+      // Capture webview console messages and write to app log file
+      contents.on('console-message', (_event, level, message) => {
+        // Map Electron's numeric levels to our log levels
+        // 0 = debug/log, 1 = warn, 2 = error
+        const logLevel = level === 2 ? 'error' : level === 1 ? 'warn' : 'info'
+        appLogFileService.logWebview(logLevel, message)
+      })
 
       // Configure window.open to open in system browser
       contents.setWindowOpenHandler(({ url }) => {
@@ -2634,6 +2646,89 @@ const setupIPC = () => {
 
   ipcMain.handle('engine:get-log-file-path', () => {
     return engineLogFileService.getLogDir()
+  })
+
+  // App log file setting handlers
+  ipcMain.handle('settings:get-app-log-file-enabled', () => {
+    return appLogFileService.isLoggingEnabled()
+  })
+
+  ipcMain.handle('settings:set-app-log-file-enabled', async (_, enabled: boolean) => {
+    try {
+      if (enabled) {
+        await appLogFileService.enable()
+      } else {
+        await appLogFileService.disable()
+      }
+      return { success: true }
+    } catch (error) {
+      logger.error('Failed to set app log file enabled:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
+  })
+
+  // App log export handlers
+  ipcMain.handle(
+    'app:export-logs',
+    async (_, options?: { type: 'session' | 'range'; startTime?: string; endTime?: string }) => {
+      const mainWindow = BrowserWindow.getAllWindows()[0]
+      if (!mainWindow) {
+        return { success: false, error: 'No window available' }
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const exportType = options?.type || 'session'
+
+      const defaultFilename =
+        exportType === 'session'
+          ? `app-logs-session-${timestamp}.log`
+          : `app-logs-range-${timestamp}.log`
+
+      const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: defaultFilename,
+        filters: [
+          { name: 'Log Files', extensions: ['log', 'txt'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      })
+
+      if (canceled || !filePath) {
+        return { success: false, canceled: true }
+      }
+
+      try {
+        if (exportType === 'session') {
+          await appLogFileService.exportSessionLogs(filePath)
+        } else if (options?.startTime && options?.endTime) {
+          await appLogFileService.exportLogsForRange(filePath, options.startTime, options.endTime)
+        } else {
+          return { success: false, error: 'Missing time range parameters' }
+        }
+        return { success: true, path: filePath }
+      } catch (error) {
+        logger.error('Failed to export app logs:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
+      }
+    },
+  )
+
+  ipcMain.handle('app:get-oldest-log-date', async () => {
+    try {
+      return await appLogFileService.getOldestLogDate()
+    } catch (error) {
+      logger.error('Failed to get oldest app log date:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle('app:get-log-file-path', () => {
+    return appLogFileService.getLogDir()
   })
 
   // System monitor handlers
