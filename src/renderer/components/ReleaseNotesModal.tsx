@@ -16,7 +16,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-card border border-border rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+      <div className="bg-card border border-border rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -64,16 +64,19 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
                 <h1 className="text-xl font-bold mb-3 text-foreground">{children}</h1>
               ),
               h2: ({ children }) => (
-                <h2 className="text-lg font-semibold mb-2 mt-4 text-foreground">{children}</h2>
+                <h2 className="text-lg font-semibold mb-2 mt-6 pt-4 first:mt-0 first:pt-0 first:border-0 border-t border-border text-foreground">
+                  {children}
+                </h2>
               ),
               h3: ({ children }) => (
                 <h3 className="text-base font-semibold mb-2 mt-3 text-foreground">{children}</h3>
               ),
-              // Styled lists
-              ul: ({ children }) => (
-                <ul className="list-disc list-inside space-y-1 mb-3">{children}</ul>
+              h4: ({ children }) => (
+                <h4 className="text-base font-medium mb-1 mt-3 pl-3 text-foreground">{children}</h4>
               ),
-              li: ({ children }) => <li className="text-muted-foreground">{children}</li>,
+              // Styled lists
+              ul: ({ children }) => <ul className="list-none space-y-1 mb-3 pl-6">{children}</ul>,
+              li: ({ children }) => <li className="text-sm text-muted-foreground">{children}</li>,
               // Styled paragraphs
               p: ({ children }) => <p className="text-muted-foreground mb-2">{children}</p>,
               // Styled bold

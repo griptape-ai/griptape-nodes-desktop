@@ -5,7 +5,18 @@
 #
 # Extracts the "## Release Notes" section from commit bodies (if present).
 # This section is populated from the PR template and contains user-facing content.
-# Content between "## Release Notes" and "<!-- Write detailed release notes above." is extracted.
+# Content between "## Release Notes" and "<!-- Write user-facing description above." is extracted.
+#
+# Output format:
+# ## ✨ Features
+# #### Commit title
+# * Description from Release Notes section
+#
+# ## 🐛 Bug Fixes
+# ...
+#
+# ## ⚡ Performance
+# ...
 
 set -e
 
@@ -26,17 +37,24 @@ fi
 
 echo "Git range: $GIT_RANGE"
 
-# Generate user-friendly release notes from git log
-# - Only includes user-facing commits (feat, fix, perf)
-# - Extracts only the "## Release Notes" section from commit body
-# - Strips markdown comments and conventional commit prefixes
+# Generate release notes from git log, grouped by type
+# Outputs three files: features.md, fixes.md, perf.md
 git log $GIT_RANGE --pretty=format:"COMMIT_START%n%s%n%b%nCOMMIT_END" | awk '
-  /^COMMIT_START$/ { in_commit=1; title=""; body=""; next }
+  /^COMMIT_START$/ { in_commit=1; title=""; body=""; commit_type=""; next }
   /^COMMIT_END$/ {
-    # Only include user-facing commits (feat, fix, perf)
-    if (title ~ /^(feat|fix|perf)(\([^)]*\))?:/) {
-      # Strip conventional commit prefix (feat:, fix:, perf:) with optional scope
+    if (title ~ /^feat(\([^)]*\))?:/) {
+      commit_type = "feat"
+    } else if (title ~ /^fix(\([^)]*\))?:/) {
+      commit_type = "fix"
+    } else if (title ~ /^perf(\([^)]*\))?:/) {
+      commit_type = "perf"
+    }
+
+    if (commit_type != "") {
+      # Strip conventional commit prefix
       gsub(/^(feat|fix|perf)(\([^)]*\))?: /, "", title)
+      # Strip PR number suffix like (#123)
+      gsub(/ \(#[0-9]+\)$/, "", title)
 
       # Extract only the "## Release Notes" section from the body
       release_notes = ""
@@ -45,71 +63,77 @@ git log $GIT_RANGE --pretty=format:"COMMIT_START%n%s%n%b%nCOMMIT_END" | awk '
       n = split(body, lines, "\n")
       for (i = 1; i <= n; i++) {
         line = lines[i]
-
-        # Start capturing at "## Release Notes"
-        if (line ~ /^## Release Notes/) {
-          in_release_section = 1
-          continue
-        }
-
-        # Stop at end delimiter or next section
+        if (line ~ /^## Release Notes/) { in_release_section = 1; continue }
         if (in_release_section) {
-          if (line ~ /<!-- Write detailed release notes above\./ || line ~ /^## / || line ~ /^---/) {
+          if (line ~ /<!-- Write user-facing description above\./ || line ~ /^## / || line ~ /^---/) {
             in_release_section = 0
             continue
           }
         }
-
-        # Handle markdown comments (can be multi-line)
         if (in_release_section) {
-          # Skip lines that are entirely a comment
           if (line ~ /^<!--.*-->$/) continue
-
-          # Track multi-line comment state
           if (line ~ /<!--/) in_comment = 1
           if (line ~ /-->/) { in_comment = 0; continue }
           if (in_comment) continue
-
           release_notes = (release_notes == "" ? line : release_notes "\n" line)
         }
       }
 
-      print "* " title
+      # Output to appropriate file
+      if (commit_type == "feat") {
+        outfile = "features.md"
+      } else if (commit_type == "fix") {
+        outfile = "fixes.md"
+      } else {
+        outfile = "perf.md"
+      }
 
-      # Print release notes section if non-empty
+      print "#### " title >> outfile
       if (release_notes != "") {
         n = split(release_notes, rn_lines, "\n")
-        has_content = 0
         for (i = 1; i <= n; i++) {
-          # Skip empty lines and lines that are just whitespace
           if (rn_lines[i] !~ /^[[:space:]]*$/) {
-            print "  " rn_lines[i]
-            has_content = 1
+            print "* " rn_lines[i] >> outfile
           }
         }
-        # Add blank line after body for readability
-        if (has_content) print ""
       }
+      print "" >> outfile
     }
     in_commit = 0
     next
   }
   in_commit && title == "" { title = $0; next }
   in_commit { body = (body == "" ? $0 : body "\n" $0) }
-' > RELEASE_NOTES_BODY.md
+'
 
-# Build final release notes with header
-cat << 'EOF' > RELEASE_NOTES.md
-## What's Changed
+# Build final release notes, only including sections that have content
+> RELEASE_NOTES.md
 
-EOF
-cat RELEASE_NOTES_BODY.md >> RELEASE_NOTES.md
-rm -f RELEASE_NOTES_BODY.md
+if [ -s features.md ]; then
+  echo "## ✨ Features" >> RELEASE_NOTES.md
+  echo "" >> RELEASE_NOTES.md
+  cat features.md >> RELEASE_NOTES.md
+fi
 
-# Check if we have any user-facing changes
-if ! grep -q '^\* ' RELEASE_NOTES.md; then
+if [ -s fixes.md ]; then
+  echo "## 🐛 Bug Fixes" >> RELEASE_NOTES.md
+  echo "" >> RELEASE_NOTES.md
+  cat fixes.md >> RELEASE_NOTES.md
+fi
+
+if [ -s perf.md ]; then
+  echo "## ⚡ Performance" >> RELEASE_NOTES.md
+  echo "" >> RELEASE_NOTES.md
+  cat perf.md >> RELEASE_NOTES.md
+fi
+
+# Cleanup temp files
+rm -f features.md fixes.md perf.md
+
+# If empty result, use fallback
+if [ ! -s RELEASE_NOTES.md ]; then
   cat << 'EOF' > RELEASE_NOTES.md
-## What's Changed
+## ✨ Features
 
 This release includes bug fixes and improvements.
 EOF

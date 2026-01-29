@@ -4,9 +4,9 @@
 
 ## Release Notes
 
-<!-- Write user-facing description here. (Don't remove this comment) -->
+<!-- Write user-facing description below. (Don't remove this comment) -->
 
-<!-- Write detailed release notes above. (Don't remove this comment) -->
+<!-- Write user-facing description above. (Don't remove this comment) -->
 
 ---
 
