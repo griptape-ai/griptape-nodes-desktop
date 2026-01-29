@@ -988,7 +988,10 @@ const Settings: React.FC = () => {
                       value={logRetentionUnit}
                       onChange={(e) => {
                         const unit = e.target.value as 'days' | 'months' | 'years'
-                        handleLogRetentionChange(logRetentionValue || DEFAULT_LOG_RETENTION.value, unit)
+                        handleLogRetentionChange(
+                          logRetentionValue || DEFAULT_LOG_RETENTION.value,
+                          unit,
+                        )
                       }}
                       disabled={!engineLogFileEnabled}
                       className="px-3 py-1.5 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed"
@@ -1009,7 +1012,10 @@ const Settings: React.FC = () => {
                       if (e.target.checked) {
                         handleLogRetentionChange(0, 'indefinite')
                       } else {
-                        handleLogRetentionChange(DEFAULT_LOG_RETENTION.value, DEFAULT_LOG_RETENTION.unit)
+                        handleLogRetentionChange(
+                          DEFAULT_LOG_RETENTION.value,
+                          DEFAULT_LOG_RETENTION.unit,
+                        )
                       }
                     }}
                     disabled={!engineLogFileEnabled}

@@ -317,8 +317,7 @@ declare global {
       reinstall: () => Promise<{ success: boolean; error?: string }>
       runCommand: (command: string) => Promise<{ success: boolean; error?: string }>
       exportLogs: (options?: {
-        type: 'session' | 'days' | 'range' | 'since'
-        days?: number
+        type: 'session' | 'range' | 'since'
         startTime?: string
         endTime?: string
         sinceTime?: string
@@ -331,7 +330,6 @@ declare global {
       getLogDateRange: () => Promise<{
         oldestDate: string
         newestDate: string
-        availableDays: number
       } | null>
       getLogFilePath: () => Promise<string>
       onStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void

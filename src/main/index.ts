@@ -2571,15 +2571,11 @@ const setupIPC = () => {
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const exportType = options?.type || 'session'
-      const days = options?.days || 1
 
       let defaultFilename: string
       switch (exportType) {
         case 'session':
           defaultFilename = `engine-logs-session-${timestamp}.txt`
-          break
-        case 'days':
-          defaultFilename = `engine-logs-${days}days-${timestamp}.txt`
           break
         case 'range':
           defaultFilename = `engine-logs-range-${timestamp}.txt`
@@ -2607,9 +2603,6 @@ const setupIPC = () => {
         switch (exportType) {
           case 'session':
             await engineLogFileService.exportSessionLogs(filePath)
-            break
-          case 'days':
-            await engineLogFileService.exportLogsForDays(filePath, days)
             break
           case 'range':
             if (!options?.startTime || !options?.endTime) {

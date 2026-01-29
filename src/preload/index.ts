@@ -89,8 +89,7 @@ contextBridge.exposeInMainWorld('engineAPI', {
   reinstall: () => ipcRenderer.invoke('engine:reinstall'),
   runCommand: (command: string) => ipcRenderer.invoke('engine:run-command', command),
   exportLogs: (options?: {
-    type: 'session' | 'days' | 'range' | 'since'
-    days?: number
+    type: 'session' | 'range' | 'since'
     startTime?: string
     endTime?: string
     sinceTime?: string
@@ -99,7 +98,6 @@ contextBridge.exposeInMainWorld('engineAPI', {
     ipcRenderer.invoke('engine:get-log-date-range') as Promise<{
       oldestDate: string
       newestDate: string
-      availableDays: number
     } | null>,
   getLogFilePath: () => ipcRenderer.invoke('engine:get-log-file-path'),
   onStatusChanged: (callback: (event: IpcRendererEvent, status: EngineStatus) => void) => {

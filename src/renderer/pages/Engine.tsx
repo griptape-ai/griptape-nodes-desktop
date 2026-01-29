@@ -14,7 +14,6 @@ import {
 import { useEngine } from '../contexts/EngineContext'
 import { getStatusIcon, getStatusColor } from '../utils/engineStatusIcons'
 import { cleanAnsiForDisplay, stripAnsiCodes } from '../utils/ansi'
-import { DEFAULT_LOG_RETENTION } from '@/common/config/constants'
 
 const ansiConverter = new Convert({
   fg: '#e5e7eb',
@@ -159,12 +158,10 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   const [isExecuting, setIsExecuting] = useState(false)
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false)
-  const [exportType, setExportType] = useState<'session' | 'days' | 'range'>('session')
-  const [exportDays, setExportDays] = useState(1)
+  const [exportType, setExportType] = useState<'session' | 'range'>('session')
   const [logDateRange, setLogDateRange] = useState<{
     oldestDate: string
     newestDate: string
-    availableDays: number
   } | null>(null)
   // Timestamp export state
   const [exportStartTime, setExportStartTime] = useState('')
@@ -285,13 +282,10 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   }, [logs])
 
   const handleOpenExportModal = useCallback(async () => {
-    // Fetch log date range when opening modal
+    // Fetch log date range when opening modal (for time range min date)
     try {
       const dateRange = await window.engineAPI.getLogDateRange()
       setLogDateRange(dateRange)
-      if (dateRange) {
-        setExportDays(Math.min(dateRange.availableDays, DEFAULT_LOG_RETENTION.value))
-      }
     } catch (error) {
       console.error('Failed to get log date range:', error)
     }
@@ -318,8 +312,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     setShowExportModal(false)
     try {
       let options: {
-        type: 'session' | 'days' | 'range' | 'since'
-        days?: number
+        type: 'session' | 'range' | 'since'
         startTime?: string
         endTime?: string
         sinceTime?: string
@@ -327,9 +320,6 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
       switch (exportType) {
         case 'session':
           options = { type: 'session' }
-          break
-        case 'days':
-          options = { type: 'days', days: exportDays }
           break
         case 'range':
           if (exportToNow) {
@@ -356,7 +346,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     } finally {
       setIsExporting(false)
     }
-  }, [exportType, exportDays, exportStartTime, exportEndTime, exportToNow])
+  }, [exportType, exportStartTime, exportEndTime, exportToNow])
 
   const handleExecuteCommand = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -658,30 +648,6 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                   <input
                     type="radio"
                     name="exportType"
-                    value="days"
-                    checked={exportType === 'days'}
-                    onChange={() => setExportType('days')}
-                    disabled={!logDateRange}
-                    className="mt-1 w-4 h-4 text-primary focus:ring-primary disabled:opacity-50"
-                  />
-                  <div className="flex-1">
-                    <span
-                      className={`text-sm font-medium ${!logDateRange ? 'text-muted-foreground' : ''}`}
-                    >
-                      Last N Days
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {logDateRange
-                        ? `Export logs from the past ${exportDays} day${exportDays > 1 ? 's' : ''}`
-                        : 'No saved log files available'}
-                    </p>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="exportType"
                     value="range"
                     checked={exportType === 'range'}
                     onChange={() => setExportType('range')}
@@ -700,28 +666,6 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                   </div>
                 </label>
               </div>
-
-              {/* Days Slider - only shown when "days" is selected and logs are available */}
-              {exportType === 'days' && logDateRange && logDateRange.availableDays > 1 && (
-                <div className="pl-7 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Days to export:</span>
-                    <span className="font-medium">{exportDays}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={1}
-                    max={logDateRange.availableDays}
-                    value={exportDays}
-                    onChange={(e) => setExportDays(parseInt(e.target.value))}
-                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>1 day</span>
-                    <span>{logDateRange.availableDays} days</span>
-                  </div>
-                </div>
-              )}
 
               {/* Time Range - only shown when "range" is selected */}
               {exportType === 'range' && logDateRange && (
@@ -783,9 +727,8 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
               <button
                 onClick={handleExportLogs}
                 disabled={
-                  (exportType === 'days' && !logDateRange) ||
-                  (exportType === 'range' &&
-                    (!logDateRange || !exportStartTime || (!exportToNow && !exportEndTime)))
+                  exportType === 'range' &&
+                  (!logDateRange || !exportStartTime || (!exportToNow && !exportEndTime))
                 }
                 className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
