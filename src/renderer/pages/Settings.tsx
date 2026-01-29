@@ -216,7 +216,8 @@ const Settings: React.FC = () => {
       window.removeEventListener('scroll-to-logging', handleScrollToLogging)
       window.removeEventListener('scroll-to-workspace', handleScrollToWorkspace)
     }
-  }, [loadEnvironmentInfo])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Mount-only effect to load initial settings
+  }, [])
 
   // Auto-refresh environment info when engine starts after upgrade/channel switch
   useEffect(() => {

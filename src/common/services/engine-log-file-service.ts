@@ -216,24 +216,6 @@ export class EngineLogFileService extends EventEmitter {
     }
   }
 
-  async exportLogs(targetPath: string): Promise<void> {
-    let combined = ''
-
-    // Read in order (oldest first)
-    for (const file of this.getLogFileNames()) {
-      const filePath = path.join(this.logDir, file)
-      try {
-        const content = await fs.promises.readFile(filePath, 'utf-8')
-        combined += content
-      } catch {
-        // File doesn't exist, skip
-      }
-    }
-
-    await fs.promises.writeFile(targetPath, combined, 'utf-8')
-    logger.info('EngineLogFileService: Exported logs to:', targetPath)
-  }
-
   /**
    * Get the oldest log date available
    * Returns date string (YYYY-MM-DD) or null if no logs
