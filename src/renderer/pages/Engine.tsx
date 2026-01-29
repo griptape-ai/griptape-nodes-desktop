@@ -159,10 +159,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false)
   const [exportType, setExportType] = useState<'session' | 'range'>('session')
-  const [logDateRange, setLogDateRange] = useState<{
-    oldestDate: string
-    newestDate: string
-  } | null>(null)
+  const [oldestLogDate, setOldestLogDate] = useState<string | null>(null)
   // Timestamp export state
   const [exportStartTime, setExportStartTime] = useState('')
   const [exportEndTime, setExportEndTime] = useState('')
@@ -282,12 +279,12 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   }, [logs])
 
   const handleOpenExportModal = useCallback(async () => {
-    // Fetch log date range when opening modal (for time range min date)
+    // Fetch oldest log date when opening modal (for time range min date)
     try {
-      const dateRange = await window.engineAPI.getLogDateRange()
-      setLogDateRange(dateRange)
+      const oldest = await window.engineAPI.getOldestLogDate()
+      setOldestLogDate(oldest)
     } catch (error) {
-      console.error('Failed to get log date range:', error)
+      console.error('Failed to get oldest log date:', error)
     }
     // Initialize timestamp fields with sensible defaults
     const now = new Date()
@@ -312,28 +309,19 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
     setShowExportModal(false)
     try {
       let options: {
-        type: 'session' | 'range' | 'since'
+        type: 'session' | 'range'
         startTime?: string
         endTime?: string
-        sinceTime?: string
       }
       switch (exportType) {
         case 'session':
           options = { type: 'session' }
           break
         case 'range':
-          if (exportToNow) {
-            // Use 'since' type when exporting to now
-            options = {
-              type: 'since',
-              sinceTime: new Date(exportStartTime).toISOString(),
-            }
-          } else {
-            options = {
-              type: 'range',
-              startTime: new Date(exportStartTime).toISOString(),
-              endTime: new Date(exportEndTime).toISOString(),
-            }
+          options = {
+            type: 'range',
+            startTime: new Date(exportStartTime).toISOString(),
+            endTime: exportToNow ? new Date().toISOString() : new Date(exportEndTime).toISOString(),
           }
           break
       }
@@ -651,12 +639,12 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                     value="range"
                     checked={exportType === 'range'}
                     onChange={() => setExportType('range')}
-                    disabled={!logDateRange}
+                    disabled={!oldestLogDate}
                     className="mt-1 w-4 h-4 text-primary focus:ring-primary disabled:opacity-50"
                   />
                   <div className="flex-1">
                     <span
-                      className={`text-sm font-medium ${!logDateRange ? 'text-muted-foreground' : ''}`}
+                      className={`text-sm font-medium ${!oldestLogDate ? 'text-muted-foreground' : ''}`}
                     >
                       Time Range
                     </span>
@@ -668,7 +656,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
               </div>
 
               {/* Time Range - only shown when "range" is selected */}
-              {exportType === 'range' && logDateRange && (
+              {exportType === 'range' && oldestLogDate && (
                 <div className="pl-7 space-y-3">
                   <div className="space-y-1.5">
                     <label className="block text-sm text-muted-foreground">From</label>
@@ -676,7 +664,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                       type="datetime-local"
                       value={exportStartTime}
                       onChange={(e) => setExportStartTime(e.target.value)}
-                      min={`${logDateRange.oldestDate}T00:00`}
+                      min={`${oldestLogDate}T00:00`}
                       max={new Date().toISOString().slice(0, 16)}
                       className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground [&::-webkit-datetime-edit-fields-wrapper]:text-foreground [&::-webkit-datetime-edit]:text-foreground [&::-webkit-datetime-edit-month-field]:text-foreground [&::-webkit-datetime-edit-day-field]:text-foreground [&::-webkit-datetime-edit-year-field]:text-foreground [&::-webkit-datetime-edit-hour-field]:text-foreground [&::-webkit-datetime-edit-minute-field]:text-foreground"
                     />
@@ -728,7 +716,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
                 onClick={handleExportLogs}
                 disabled={
                   exportType === 'range' &&
-                  (!logDateRange || !exportStartTime || (!exportToNow && !exportEndTime))
+                  (!oldestLogDate || !exportStartTime || (!exportToNow && !exportEndTime))
                 }
                 className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >

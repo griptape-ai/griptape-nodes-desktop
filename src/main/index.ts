@@ -2580,9 +2580,6 @@ const setupIPC = () => {
         case 'range':
           defaultFilename = `engine-logs-range-${timestamp}.txt`
           break
-        case 'since':
-          defaultFilename = `engine-logs-since-${timestamp}.txt`
-          break
         default:
           defaultFilename = `engine-logs-${timestamp}.txt`
       }
@@ -2614,12 +2611,6 @@ const setupIPC = () => {
               options.endTime,
             )
             break
-          case 'since':
-            if (!options?.sinceTime) {
-              return { success: false, error: 'Since time is required for since export' }
-            }
-            await engineLogFileService.exportLogsSince(filePath, options.sinceTime)
-            break
         }
         return { success: true, path: filePath }
       } catch (error) {
@@ -2632,11 +2623,11 @@ const setupIPC = () => {
     },
   )
 
-  ipcMain.handle('engine:get-log-date-range', async () => {
+  ipcMain.handle('engine:get-oldest-log-date', async () => {
     try {
-      return await engineLogFileService.getLogDateRange()
+      return await engineLogFileService.getOldestLogDate()
     } catch (error) {
-      logger.error('Failed to get log date range:', error)
+      logger.error('Failed to get oldest log date:', error)
       return null
     }
   })

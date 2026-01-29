@@ -88,17 +88,10 @@ contextBridge.exposeInMainWorld('engineAPI', {
   restart: () => ipcRenderer.invoke('engine:restart'),
   reinstall: () => ipcRenderer.invoke('engine:reinstall'),
   runCommand: (command: string) => ipcRenderer.invoke('engine:run-command', command),
-  exportLogs: (options?: {
-    type: 'session' | 'range' | 'since'
-    startTime?: string
-    endTime?: string
-    sinceTime?: string
-  }) => ipcRenderer.invoke('engine:export-logs', options),
-  getLogDateRange: () =>
-    ipcRenderer.invoke('engine:get-log-date-range') as Promise<{
-      oldestDate: string
-      newestDate: string
-    } | null>,
+  exportLogs: (options?: { type: 'session' | 'range'; startTime?: string; endTime?: string }) =>
+    ipcRenderer.invoke('engine:export-logs', options),
+  getOldestLogDate: () =>
+    ipcRenderer.invoke('engine:get-oldest-log-date') as Promise<string | null>,
   getLogFilePath: () => ipcRenderer.invoke('engine:get-log-file-path'),
   onStatusChanged: (callback: (event: IpcRendererEvent, status: EngineStatus) => void) => {
     ipcRenderer.on('engine:status-changed', callback)

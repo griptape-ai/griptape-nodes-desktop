@@ -235,15 +235,11 @@ export class EngineLogFileService extends EventEmitter {
   }
 
   /**
-   * Get the date range of available logs
-   * Returns { oldestDate, newestDate } or null if no logs
+   * Get the oldest log date available
+   * Returns date string (YYYY-MM-DD) or null if no logs
    */
-  async getLogDateRange(): Promise<{
-    oldestDate: string
-    newestDate: string
-  } | null> {
+  async getOldestLogDate(): Promise<string | null> {
     let oldestDate: Date | null = null
-    let newestDate: Date | null = null
 
     for (const file of this.getLogFileNames()) {
       const filePath = path.join(this.logDir, file)
@@ -257,9 +253,6 @@ export class EngineLogFileService extends EventEmitter {
             if (!oldestDate || timestamp < oldestDate) {
               oldestDate = timestamp
             }
-            if (!newestDate || timestamp > newestDate) {
-              newestDate = timestamp
-            }
           }
         }
       } catch {
@@ -267,14 +260,11 @@ export class EngineLogFileService extends EventEmitter {
       }
     }
 
-    if (!oldestDate || !newestDate) {
+    if (!oldestDate) {
       return null
     }
 
-    return {
-      oldestDate: oldestDate.toISOString().split('T')[0],
-      newestDate: newestDate.toISOString().split('T')[0],
-    }
+    return oldestDate.toISOString().split('T')[0]
   }
 
   /**
@@ -329,39 +319,6 @@ export class EngineLogFileService extends EventEmitter {
       `EngineLogFileService: Exported logs from ${startTime} to ${endTime} to:`,
       targetPath,
     )
-  }
-
-  /**
-   * Export logs from a timestamp to now
-   * @param targetPath - Where to save the exported logs
-   * @param sinceTime - Start timestamp (ISO string)
-   */
-  async exportLogsSince(targetPath: string, sinceTime: string): Promise<void> {
-    const sinceDate = new Date(sinceTime)
-
-    let combined = ''
-
-    // Read in order (oldest first)
-    for (const file of this.getLogFileNames()) {
-      const filePath = path.join(this.logDir, file)
-      try {
-        const content = await fs.promises.readFile(filePath, 'utf-8')
-        const lines = content.split('\n')
-
-        for (const line of lines) {
-          if (!line.trim()) continue
-          const timestamp = this.extractTimestamp(line)
-          if (timestamp && timestamp >= sinceDate) {
-            combined += line + '\n'
-          }
-        }
-      } catch {
-        // File doesn't exist, skip
-      }
-    }
-
-    await fs.promises.writeFile(targetPath, combined, 'utf-8')
-    logger.info(`EngineLogFileService: Exported logs since ${sinceTime} to:`, targetPath)
   }
 
   private extractTimestamp(line: string): Date | null {

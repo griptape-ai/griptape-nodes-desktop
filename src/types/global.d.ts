@@ -317,20 +317,16 @@ declare global {
       reinstall: () => Promise<{ success: boolean; error?: string }>
       runCommand: (command: string) => Promise<{ success: boolean; error?: string }>
       exportLogs: (options?: {
-        type: 'session' | 'range' | 'since'
+        type: 'session' | 'range'
         startTime?: string
         endTime?: string
-        sinceTime?: string
       }) => Promise<{
         success: boolean
         path?: string
         canceled?: boolean
         error?: string
       }>
-      getLogDateRange: () => Promise<{
-        oldestDate: string
-        newestDate: string
-      } | null>
+      getOldestLogDate: () => Promise<string | null>
       getLogFilePath: () => Promise<string>
       onStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void
       removeStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void
