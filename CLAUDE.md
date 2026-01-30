@@ -66,7 +66,7 @@ All services follow this pattern:
 7. UvService - UV package manager
 8. PythonService - Python via UV
 9. GtnService - GTN installation, workspace config, `runGtn()` method
-10. EngineService - Spawns GTN engine, auto-restarts (3 attempts, 5s delay)
+10. EngineService - Spawns GTN engine, auto-restarts on crash (5s delay)
 11. EngineLogFileService - Log file writing
 12. UpdateService - Velopack updates (stable/preview/nightly)
 13. MigrationService - Version migrations

@@ -27,8 +27,6 @@ export class EngineService extends EventEmitter<EngineEvents> {
   private status: EngineStatus = 'not-ready'
   private logs: EngineLog[] = []
   private maxLogSize = 1000 // Keep last 1000 log entries
-  private restartAttempts = 0
-  private maxRestartAttempts = 3
   private restartDelay = 5000 // 5 seconds
   private stdoutBuffer = '' // Buffer for incomplete stdout lines
   private stderrBuffer = '' // Buffer for incomplete stderr lines
@@ -279,27 +277,29 @@ export class EngineService extends EventEmitter<EngineEvents> {
         this.engineProcess?.stdin?.destroy()
         this.engineProcess = null
 
-        // Auto-restart if it crashed unexpectedly
-        if (this.status == 'ready') {
-          // This means someone "stopped" the engine.
-          this.restartAttempts = 0
+        // Handle process exit based on current status
+        if (this.status === 'ready') {
+          // Intentional stop via stopEngine()
           this.addLog('stdout', 'Engine stopped.')
-        } else if (
-          this.status == 'running' &&
-          code !== 0 &&
-          this.restartAttempts < this.maxRestartAttempts
-        ) {
-          this.restartAttempts++
-          this.addLog('stdout', `Engine process exited unexpected with exit code: ${code}`)
-          this.addLog(
-            'stdout',
-            `Attempting to restart engine (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`,
-          )
-          setTimeout(() => this.startEngine(), this.restartDelay)
-          this.setEngineStatus('ready')
-        } else {
-          this.addLog('stderr', 'Maximum restart attempts reached. Engine will not auto-restart.')
+        } else if (this.status === 'running') {
+          if (code === 0) {
+            // Engine exited gracefully on its own
+            this.addLog('stdout', 'Engine exited gracefully.')
+            this.setEngineStatus('ready')
+          } else {
+            // Engine crashed - auto-restart
+            this.addLog('stdout', `Engine process exited unexpectedly with exit code: ${code}`)
+            this.addLog('stdout', 'Attempting to restart engine...')
+            this.setEngineStatus('ready')
+            setTimeout(() => this.startEngine(), this.restartDelay)
+          }
+        } else if (this.status === 'initializing') {
+          // Engine exited during initialization
+          this.addLog('stderr', `Engine exited during initialization with exit code: ${code}`)
           this.setEngineStatus('error')
+        } else if (this.status === 'error') {
+          // Already in error state, just log
+          this.addLog('stderr', `Engine exited while in error state with exit code: ${code}`)
         }
       })
 
