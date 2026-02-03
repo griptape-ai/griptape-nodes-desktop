@@ -1,7 +1,7 @@
 {
   "name": "griptape-nodes-desktop",
   "productName": "Griptape Nodes",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "description": "Griptape Nodes Desktop Application",
   "main": ".webpack/main",
   "_comments": {
