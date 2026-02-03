@@ -135,9 +135,7 @@ const LogRow = memo(({ log }: LogRowProps) => {
         {formatTimestamp(log.timestamp)}
       </span>
       <span
-        className={`flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-words ${
-          log.type === 'stderr' ? 'text-red-600 dark:text-red-400' : ''
-        }`}
+        className="flex-1 font-mono text-sm leading-tight whitespace-pre-wrap break-words"
         dangerouslySetInnerHTML={processedMessage}
       />
     </div>
