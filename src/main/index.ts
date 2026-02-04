@@ -1753,6 +1753,11 @@ const setupIPC = () => {
     return { success: true }
   })
 
+  ipcMain.handle('engine:resize-terminal', (_event, cols: number, rows: number) => {
+    engineService.resizeTerminal(cols, rows)
+    return { success: true }
+  })
+
   ipcMain.handle('engine:start', async () => {
     try {
       await engineService.startEngine()

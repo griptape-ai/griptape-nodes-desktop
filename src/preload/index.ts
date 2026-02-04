@@ -105,6 +105,8 @@ contextBridge.exposeInMainWorld('engineAPI', {
   removeLog: (callback: (event: IpcRendererEvent, log: EngineLog) => void) => {
     ipcRenderer.removeListener('engine:log', callback)
   },
+  resizeTerminal: (cols: number, rows: number) =>
+    ipcRenderer.invoke('engine:resize-terminal', cols, rows),
 })
 
 contextBridge.exposeInMainWorld('editorAPI', {

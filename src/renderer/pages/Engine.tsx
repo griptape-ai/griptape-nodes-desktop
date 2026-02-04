@@ -169,6 +169,7 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
   const commandInputRef = useRef<HTMLInputElement>(null)
   const wasAtBottomRef = useRef(true)
   const prevLogCountRef = useRef(0)
+  const lastTerminalColsRef = useRef(120)
 
   // Handle clicks on external links in logs
   useEffect(() => {
@@ -196,6 +197,48 @@ const Engine: React.FC<EngineProps> = ({ onNavigateToSettings }) => {
       container.addEventListener('click', handleLinkClick)
       return () => container.removeEventListener('click', handleLinkClick)
     }
+  }, [])
+
+  // Resize PTY terminal when container size changes
+  // This ensures Rich and other terminal-aware programs format output correctly
+  useEffect(() => {
+    const container = listRef.current
+    if (!container) return
+
+    // Monospace font character width at text-sm (14px) is approximately 8.4px
+    const CHAR_WIDTH = 8.4
+    // Account for timestamp column (~85px), padding (~32px), and right margin buffer (~50px)
+    const RESERVED_WIDTH = 170
+
+    const calculateCols = (width: number): number => {
+      const availableWidth = width - RESERVED_WIDTH
+      const cols = Math.floor(availableWidth / CHAR_WIDTH)
+      // Clamp between reasonable bounds
+      return Math.max(40, Math.min(300, cols))
+    }
+
+    const sendResize = (cols: number) => {
+      if (cols !== lastTerminalColsRef.current) {
+        lastTerminalColsRef.current = cols
+        window.engineAPI?.resizeTerminal(cols, 50)
+      }
+    }
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width
+        const cols = calculateCols(width)
+        sendResize(cols)
+      }
+    })
+
+    resizeObserver.observe(container)
+
+    // Send initial size
+    const initialCols = calculateCols(container.clientWidth)
+    sendResize(initialCols)
+
+    return () => resizeObserver.disconnect()
   }, [])
 
   // Auto-scroll to bottom when new logs arrive if user was at bottom

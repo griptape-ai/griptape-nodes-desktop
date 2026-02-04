@@ -332,6 +332,7 @@ declare global {
       removeStatusChanged: (callback: (event: IpcEvent, status: EngineStatus) => void) => void
       onLog: (callback: (event: IpcEvent, log: EngineLog) => void) => void
       removeLog: (callback: (event: IpcEvent, log: EngineLog) => void) => void
+      resizeTerminal: (cols: number, rows: number) => Promise<{ success: boolean }>
     }
     editorAPI: {
       requestReloadWebview: () => void

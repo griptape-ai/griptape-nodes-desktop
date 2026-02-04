@@ -1,6 +1,5 @@
-import { ChildProcess, spawn } from 'child_process'
+import * as pty from 'node-pty'
 import { EventEmitter } from 'events'
-import { attachOutputForwarder } from '../../child-process/output-forwarder'
 import { getEnv } from '../../config/env'
 import { getCwd, getUvExecutablePath } from '../../config/paths'
 import { GtnService } from '../gtn/gtn-service'
@@ -23,14 +22,16 @@ interface EngineEvents {
 }
 
 export class EngineService extends EventEmitter<EngineEvents> {
-  private engineProcess: ChildProcess | null = null
+  private engineProcess: pty.IPty | null = null
   private status: EngineStatus = 'not-ready'
   private logs: EngineLog[] = []
   private maxLogSize = 1000 // Keep last 1000 log entries
   private restartDelay = 5000 // 5 seconds
-  private stdoutBuffer = '' // Buffer for incomplete stdout lines
-  private stderrBuffer = '' // Buffer for incomplete stderr lines
+  private outputBuffer = '' // Buffer for incomplete lines from PTY
   private isReady: boolean = false
+  // Terminal dimensions - used when spawning PTY and updated via resize
+  private terminalCols = 120
+  private terminalRows = 50
 
   constructor(
     private userDataDir: string,
@@ -97,6 +98,19 @@ export class EngineService extends EventEmitter<EngineEvents> {
   }
 
   /**
+   * Resize the PTY terminal. This sends SIGWINCH to the child process,
+   * causing programs like Rich to reflow their output for the new width.
+   * Also stores the size for use when spawning new processes.
+   */
+  resizeTerminal(cols: number, rows: number): void {
+    this.terminalCols = cols
+    this.terminalRows = rows
+    if (this.engineProcess) {
+      this.engineProcess.resize(cols, rows)
+    }
+  }
+
+  /**
    * Add a log entry
    */
   addLog(type: 'stdout' | 'stderr', message: string): void {
@@ -149,7 +163,9 @@ export class EngineService extends EventEmitter<EngineEvents> {
   }
 
   /**
-   * Start the engine
+   * Start the engine using node-pty for proper terminal emulation.
+   * This makes the child process think it's connected to a real terminal,
+   * so programs output ANSI colors without needing environment variable hacks.
    */
   async startEngine(): Promise<void> {
     await this.waitForReady()
@@ -162,6 +178,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
     try {
       // Clear logs from previous session when starting fresh
       this.logs = []
+      this.outputBuffer = ''
 
       let command: string
       let args: string[]
@@ -187,94 +204,57 @@ export class EngineService extends EventEmitter<EngineEvents> {
         logger.info(`[ENGINE] Command: ${gtnPath} --no-update`)
       }
 
-      // Spawn the engine process
-      this.engineProcess = spawn(command, args, {
+      // Spawn the engine process using node-pty for proper TTY emulation
+      logger.info(`[ENGINE] Spawning with terminal size: ${this.terminalCols}x${this.terminalRows}`)
+      this.engineProcess = pty.spawn(command, args, {
+        name: 'xterm-256color',
+        cols: this.terminalCols,
+        rows: this.terminalRows,
         cwd,
-        env: this.getEngineEnv(),
-        stdio: ['pipe', 'pipe', 'pipe'],
-        windowsHide: true,
+        env: this.getEngineEnv() as { [key: string]: string },
       })
 
-      attachOutputForwarder(this.engineProcess, { logPrefix: 'GTN-ENGINE' })
+      logger.info(`[ENGINE] Engine process started with PID: ${this.engineProcess.pid}`)
 
-      // Handle stdout with line buffering and carriage return handling
-      this.engineProcess.stdout?.on('data', (data) => {
-        this.stdoutBuffer += data.toString('utf8')
+      // Handle PTY data (stdout and stderr are combined in a PTY)
+      this.engineProcess.onData((data) => {
+        this.outputBuffer += data
 
         // Handle both Windows CRLF and Unix LF line endings
-        // First normalize Windows line endings
-        this.stdoutBuffer = this.stdoutBuffer.replace(/\r\n/g, '\n')
+        this.outputBuffer = this.outputBuffer.replace(/\r\n/g, '\n')
 
         // Handle carriage returns (\r) which are used for progress indicators
         // Split by \r to handle overwrites, keeping only the last one
-        const carriageReturnParts = this.stdoutBuffer.split('\r')
+        const carriageReturnParts = this.outputBuffer.split('\r')
         if (carriageReturnParts.length > 1) {
           // Keep only the last part after \r (this is what should be displayed)
-          this.stdoutBuffer = carriageReturnParts[carriageReturnParts.length - 1]
+          this.outputBuffer = carriageReturnParts[carriageReturnParts.length - 1]
         }
 
-        const lines = this.stdoutBuffer.split('\n')
+        const lines = this.outputBuffer.split('\n')
 
         // Keep the last incomplete line in the buffer
-        this.stdoutBuffer = lines.pop() || ''
+        this.outputBuffer = lines.pop() || ''
 
         // Process complete lines
         lines.forEach((line) => {
           if (line.trim().length > 0) {
+            // Log to main process logger
+            logger.info(`[GTN-ENGINE] ${line}`)
+            // Add to UI logs (PTY combines stdout/stderr, so we treat all as stdout)
             this.addLog('stdout', line)
           }
         })
       })
 
-      // Handle stderr with line buffering and carriage return handling
-      this.engineProcess.stderr?.on('data', (data) => {
-        this.stderrBuffer += data.toString('utf8')
-
-        // Handle both Windows CRLF and Unix LF line endings
-        // First normalize Windows line endings
-        this.stderrBuffer = this.stderrBuffer.replace(/\r\n/g, '\n')
-
-        // Handle carriage returns (\r) which are used for progress indicators
-        // Split by \r to handle overwrites, keeping only the last one
-        const carriageReturnParts = this.stderrBuffer.split('\r')
-        if (carriageReturnParts.length > 1) {
-          // Keep only the last part after \r (this is what should be displayed)
-          this.stderrBuffer = carriageReturnParts[carriageReturnParts.length - 1]
-        }
-
-        const lines = this.stderrBuffer.split('\n')
-
-        // Keep the last incomplete line in the buffer
-        this.stderrBuffer = lines.pop() || ''
-
-        // Process complete lines
-        lines.forEach((line) => {
-          if (line.trim().length > 0) {
-            this.addLog('stderr', line)
-          }
-        })
-      })
-
       // Handle process exit
-      this.engineProcess.once('exit', (code, _signal) => {
+      this.engineProcess.onExit(({ exitCode }) => {
         // Flush any remaining buffered data
-        if (this.stdoutBuffer.trim().length > 0) {
-          this.addLog('stdout', this.stdoutBuffer)
-          this.stdoutBuffer = ''
-        }
-        if (this.stderrBuffer.trim().length > 0) {
-          this.addLog('stderr', this.stderrBuffer)
-          this.stderrBuffer = ''
+        if (this.outputBuffer.trim().length > 0) {
+          this.addLog('stdout', this.outputBuffer)
+          this.outputBuffer = ''
         }
 
-        // Clean up the process and its listeners
-        this.engineProcess?.removeAllListeners()
-        this.engineProcess?.stdout?.removeAllListeners()
-        this.engineProcess?.stderr?.removeAllListeners()
-        // Explicitly destroy streams to release file handles (important for Windows)
-        this.engineProcess?.stdout?.destroy()
-        this.engineProcess?.stderr?.destroy()
-        this.engineProcess?.stdin?.destroy()
         this.engineProcess = null
 
         // Handle process exit based on current status
@@ -282,31 +262,25 @@ export class EngineService extends EventEmitter<EngineEvents> {
           // Intentional stop via stopEngine()
           this.addLog('stdout', 'Engine stopped.')
         } else if (this.status === 'running') {
-          if (code === 0) {
+          if (exitCode === 0) {
             // Engine exited gracefully on its own
             this.addLog('stdout', 'Engine exited gracefully.')
             this.setEngineStatus('ready')
           } else {
             // Engine crashed - auto-restart
-            this.addLog('stdout', `Engine process exited unexpectedly with exit code: ${code}`)
+            this.addLog('stdout', `Engine process exited unexpectedly with exit code: ${exitCode}`)
             this.addLog('stdout', 'Attempting to restart engine...')
             this.setEngineStatus('ready')
             setTimeout(() => this.startEngine(), this.restartDelay)
           }
         } else if (this.status === 'initializing') {
           // Engine exited during initialization
-          this.addLog('stderr', `Engine exited during initialization with exit code: ${code}`)
+          this.addLog('stderr', `Engine exited during initialization with exit code: ${exitCode}`)
           this.setEngineStatus('error')
         } else if (this.status === 'error') {
           // Already in error state, just log
-          this.addLog('stderr', `Engine exited while in error state with exit code: ${code}`)
+          this.addLog('stderr', `Engine exited while in error state with exit code: ${exitCode}`)
         }
-      })
-
-      // Handle process error
-      this.engineProcess.on('error', (error) => {
-        this.addLog('stderr', `Engine process error: ${error}`)
-        this.setEngineStatus('error')
       })
     } catch (error: any) {
       this.addLog('stderr', `Failed to start engine: ${error.message}`)
@@ -382,22 +356,14 @@ export class EngineService extends EventEmitter<EngineEvents> {
         return
       }
 
-      const onExit = () => {
+      // node-pty uses onExit with a disposable pattern
+      const disposable = this.engineProcess.onExit(() => {
+        disposable.dispose()
         resolve()
-      }
-
-      // Listen for the exit event
-      this.engineProcess.once('exit', onExit)
-
-      // Also handle the case where the process is already dead
-      // but we haven't received the exit event yet
-      if (this.engineProcess.exitCode !== null || this.engineProcess.killed) {
-        this.engineProcess.removeListener('exit', onExit)
-        resolve()
-      }
+      })
     })
 
-    // Try graceful shutdown first with SIGTERM.
+    // Try graceful shutdown first with SIGTERM
     logger.info('[ENGINE] Sending SIGTERM to engine process...')
     this.engineProcess.kill('SIGTERM')
 
@@ -407,7 +373,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
       new Promise<false>((resolve) => setTimeout(() => resolve(false), 3000)),
     ])
 
-    // Force kill with SIGKILL if process still exists after grace period.
+    // Force kill with SIGKILL if process still exists after grace period
     if (!gracefulShutdown && this.engineProcess) {
       logger.info('[ENGINE] Graceful shutdown timed out, sending SIGKILL...')
       this.engineProcess.kill('SIGKILL')

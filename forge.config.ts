@@ -12,7 +12,10 @@ import { rendererConfig } from './webpack.renderer.config.ts'
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    asar: {
+      // Unpack node-pty's prebuilds so spawn-helper executable is accessible
+      unpack: '**/node-pty/prebuilds/**',
+    },
     ...(process.platform === 'darwin' && { icon: 'generated/icons/icon.icns' }),
     ...(process.platform === 'win32' && { icon: 'generated/icons/icon.ico' }),
     ...(process.platform === 'linux' && { icon: 'generated/icons/icon.png' }),
@@ -46,7 +49,11 @@ const config: ForgeConfig = {
       // },
     }),
   },
-  rebuildConfig: {},
+  rebuildConfig: {
+    // Skip rebuilding node-pty - it uses N-API and ships with prebuilt binaries
+    // that work across Node.js and Electron versions
+    onlyModules: [],
+  },
   makers: [new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
   plugins: [
     new AutoUnpackNativesPlugin({}),
