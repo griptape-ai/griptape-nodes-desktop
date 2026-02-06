@@ -357,6 +357,7 @@ app.on('ready', async () => {
           'fullscreen',
           'clipboard-sanitized-write',
           'clipboard-read',
+          'private-network-access',
         ]
 
         if (allowedPermissions.includes(permission)) {
@@ -388,6 +389,7 @@ app.on('ready', async () => {
           'fullscreen',
           'clipboard-sanitized-write',
           'clipboard-read',
+          'private-network-access',
         ]
 
         if (allowedPermissions.includes(permission)) {
