@@ -41,13 +41,13 @@ export class EngineService extends EventEmitter<EngineEvents> {
   }
 
   async start() {
-    logger.info('engine service start')
+    logger.info('EngineService: Starting')
     await this.gtnService.waitForReady()
 
     this.isReady = true
     this.emit('ready')
     this.setEngineStatus('ready')
-    logger.info('engine service ready')
+    logger.info('EngineService: Ready')
   }
 
   async waitForReady(): Promise<void> {
@@ -173,9 +173,9 @@ export class EngineService extends EventEmitter<EngineEvents> {
         command = uvPath
         args = ['run', 'gtn', '--no-update']
         cwd = localEnginePath
-        logger.info('[ENGINE] Starting Griptape Nodes engine in LOCAL DEV mode...')
-        logger.info(`[ENGINE] Local repo path: ${localEnginePath}`)
-        logger.info(`[ENGINE] Command: ${uvPath} run gtn --no-update`)
+        logger.info('EngineService: Starting engine in LOCAL DEV mode')
+        logger.info(`EngineService: Local repo path: ${localEnginePath}`)
+        logger.info(`EngineService: Command: ${uvPath} run gtn --no-update`)
         this.addLog('stdout', `Running from local repository: ${localEnginePath}`)
       } else {
         // Use installed mode: run the installed gtn executable
@@ -183,8 +183,8 @@ export class EngineService extends EventEmitter<EngineEvents> {
         command = gtnPath
         args = ['--no-update']
         cwd = getCwd(this.userDataDir)
-        logger.info('[ENGINE] Starting Griptape Nodes engine...')
-        logger.info(`[ENGINE] Command: ${gtnPath} --no-update`)
+        logger.info('EngineService: Starting engine')
+        logger.info(`EngineService: Command: ${gtnPath} --no-update`)
       }
 
       // Spawn the engine process
@@ -398,7 +398,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
     })
 
     // Try graceful shutdown first with SIGTERM.
-    logger.info('[ENGINE] Sending SIGTERM to engine process...')
+    logger.info('EngineService: Sending SIGTERM to engine process')
     this.engineProcess.kill('SIGTERM')
 
     // Wait up to 3 seconds for graceful shutdown
@@ -409,7 +409,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
 
     // Force kill with SIGKILL if process still exists after grace period.
     if (!gracefulShutdown && this.engineProcess) {
-      logger.info('[ENGINE] Graceful shutdown timed out, sending SIGKILL...')
+      logger.info('EngineService: Graceful shutdown timed out, sending SIGKILL')
       this.engineProcess.kill('SIGKILL')
       // Wait for the process to actually exit after SIGKILL
       await exitPromise
@@ -421,7 +421,7 @@ export class EngineService extends EventEmitter<EngineEvents> {
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
 
-    logger.info('[ENGINE] Engine process stopped')
+    logger.info('EngineService: Engine process stopped')
   }
 
   async restartEngine(): Promise<void> {

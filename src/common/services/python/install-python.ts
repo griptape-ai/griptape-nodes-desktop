@@ -16,7 +16,7 @@ export async function installPython(userDataDir: string, uvExecutablePath: strin
     cwd: getCwd(userDataDir),
   })
   await attachOutputForwarder(child, {
-    logPrefix: 'INSTALL_PYTHON',
+    logPrefix: 'INSTALL-PYTHON',
   })
 }
 
@@ -32,7 +32,7 @@ export async function findPythonExecutablePath(
     cwd: getCwd(userDataDir),
   })
   attachOutputForwarder(child, {
-    logPrefix: 'FIND_PYTHON',
+    logPrefix: 'FIND-PYTHON',
   })
   return collectStdout(child)
 }

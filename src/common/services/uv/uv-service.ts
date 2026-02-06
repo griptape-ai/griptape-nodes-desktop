@@ -24,11 +24,11 @@ export class UvService extends EventEmitter<UvServiceEvents> {
   }
 
   async start(): Promise<void> {
-    logger.info('uv service start')
+    logger.info('UvService: Starting')
     await this.installUv()
     this.isReady = true
     this.emit('ready')
-    logger.info('uv service ready')
+    logger.info('UvService: Ready')
   }
 
   async waitForReady(): Promise<void> {
@@ -39,23 +39,23 @@ export class UvService extends EventEmitter<UvServiceEvents> {
   }
 
   async installUv(): Promise<void> {
-    logger.info('uv service installUv start')
+    logger.info('UvService: Installing UV')
     const uvExecutablePath = getUvExecutablePath(this.userDataDir)
     if (!fs.existsSync(uvExecutablePath)) {
       await installUv(this.userDataDir)
     }
     this.uvExecutablePath = uvExecutablePath
-    logger.info('uv service installUv end')
+    logger.info('UvService: UV installed')
   }
 
   async reinstall(): Promise<void> {
-    logger.info('uv service reinstall start')
+    logger.info('UvService: Reinstalling')
     this.isReady = false
 
     // Remove UV directory
     const uvDir = this.userDataDir + '/uv'
     if (fs.existsSync(uvDir)) {
-      logger.info('Removing UV directory')
+      logger.info('UvService: Removing UV directory')
       fs.rmSync(uvDir, { recursive: true, force: true })
     }
 
@@ -65,7 +65,7 @@ export class UvService extends EventEmitter<UvServiceEvents> {
 
     this.isReady = true
     this.emit('ready')
-    logger.info('uv service reinstall end')
+    logger.info('UvService: Reinstall complete')
   }
 
   async getUvVersion(): Promise<string> {

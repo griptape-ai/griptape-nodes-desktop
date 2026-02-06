@@ -20,7 +20,7 @@ function isGtnEnvironmentCorrupted(userDataDir: string): boolean {
   // Check if the Python executable exists in the expected location
   const pythonPath = path.join(gtnToolPath, 'bin', 'python3')
   if (!fs.existsSync(pythonPath)) {
-    logger.warn(`GTN environment corrupted: missing Python executable at ${pythonPath}`)
+    logger.warn(`GtnService: Environment corrupted, missing Python executable at ${pythonPath}`)
     return true
   }
 
@@ -31,7 +31,7 @@ function isGtnEnvironmentCorrupted(userDataDir: string): boolean {
  * Uninstall griptape-nodes to recover from corrupted environment
  */
 async function uninstallGtn(userDataDir: string, uvExecutablePath: string): Promise<void> {
-  logger.info('Attempting to uninstall corrupted GTN environment')
+  logger.info('GtnService: Attempting to uninstall corrupted environment')
 
   const uninstallProcess = spawn(uvExecutablePath, ['tool', 'uninstall', 'griptape-nodes'], {
     env: getEnv(userDataDir),
@@ -40,13 +40,13 @@ async function uninstallGtn(userDataDir: string, uvExecutablePath: string): Prom
 
   try {
     await attachOutputForwarder(uninstallProcess, {
-      logPrefix: 'UNINSTALL_GTN',
+      logPrefix: 'UNINSTALL-GTN',
     })
-    logger.info('Successfully uninstalled corrupted GTN environment')
+    logger.info('GtnService: Successfully uninstalled corrupted environment')
   } catch (error) {
     // Uninstall might fail if the environment is too corrupted, which is fine
     // The install process should still work
-    logger.warn('Uninstall failed, but continuing with install:', error)
+    logger.warn('GtnService: Uninstall failed, but continuing with install:', error)
   }
 }
 
@@ -62,7 +62,7 @@ export async function installGtn(
 
   // Check for corrupted environment and attempt recovery
   if (isGtnEnvironmentCorrupted(userDataDir)) {
-    logger.info('Detected corrupted GTN environment, attempting recovery')
+    logger.info('GtnService: Detected corrupted environment, attempting recovery')
     await uninstallGtn(userDataDir, uvExecutablePath)
   }
 
@@ -78,10 +78,10 @@ export async function installGtn(
       '--python',
       '3.12',
     ]
-    logger.info('Installing GTN from nightly channel (GitHub latest)')
+    logger.info('GtnService: Installing from nightly channel (GitHub latest)')
   } else {
     installArgs = ['tool', 'install', '--quiet', 'griptape-nodes']
-    logger.info('Installing GTN from stable channel (PyPI)')
+    logger.info('GtnService: Installing from stable channel (PyPI)')
   }
 
   const installProcess = spawn(uvExecutablePath, installArgs, {
@@ -111,6 +111,6 @@ export async function installGtn(
   }
 
   await attachOutputForwarder(installProcess, {
-    logPrefix: 'INSTALL_GTN',
+    logPrefix: 'INSTALL-GTN',
   })
 }

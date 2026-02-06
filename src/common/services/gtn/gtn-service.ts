@@ -115,7 +115,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   async start() {
-    logger.info('gtn service start')
+    logger.info('GtnService: Starting')
     await this.uvService.waitForReady()
     await this.pythonService.waitForReady()
 
@@ -125,7 +125,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
     try {
       await this.installGtn()
     } catch (error) {
-      logger.error('GTN installation failed:', error)
+      logger.error('GtnService: Installation failed:', error)
       if (this.engineService) {
         this.engineService.addLog('stderr', `GTN installation failed: ${getErrorMessage(error)}`)
         this.engineService.setError()
@@ -146,7 +146,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         }
       } catch (error) {
         // Non-fatal: log error but continue startup
-        logger.error('GTN self-update failed, continuing with existing version:', error)
+        logger.error('GtnService: Self-update failed, continuing with existing version:', error)
         if (this.engineService) {
           this.engineService.addLog(
             'stderr',
@@ -185,7 +185,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
           cloudLibrary: this.onboardingService.isCloudLibraryEnabled(),
         })
       } catch (error) {
-        logger.error('GTN initialization failed:', error)
+        logger.error('GtnService: Initialization failed:', error)
         if (this.engineService) {
           this.engineService.addLog(
             'stderr',
@@ -199,7 +199,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     this.isReady = true
     this.emit('ready')
-    logger.info('gtn service ready')
+    logger.info('GtnService: Ready')
   }
 
   async waitForReady(): Promise<void> {
@@ -210,12 +210,12 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   async installGtn() {
-    logger.info('gtn service installGtn start')
+    logger.info('GtnService: Installing GTN')
     const uvExecutablePath = await this.uvService.getUvExecutablePath()
     const channel = this.settingsService.getEngineChannel()
     await installGtn(this.userDataDir, uvExecutablePath, channel, this.engineService)
     this.gtnExecutablePath = getGtnExecutablePath(this.userDataDir)
-    logger.info('gtn service installGtn end')
+    logger.info('GtnService: GTN installed')
   }
 
   async getGtnExecutablePath(): Promise<string> {
@@ -829,7 +829,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   async upgradeGtn(): Promise<void> {
-    logger.info('gtn service upgradeGtn start')
+    logger.info('GtnService: Upgrading GTN')
     await this.waitForReady()
 
     const channel = this.settingsService.getEngineChannel()
@@ -970,7 +970,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
   }
 
   async reinstall(): Promise<void> {
-    logger.info('gtn service reinstall start')
+    logger.info('GtnService: Reinstalling')
     this.isReady = false
 
     // Use forceReinstallGtn to reinstall GTN
@@ -986,7 +986,7 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
         cloudLibrary: this.onboardingService.isCloudLibraryEnabled(),
       })
     } catch (error) {
-      logger.error('GTN initialization failed during reinstall:', error)
+      logger.error('GtnService: Initialization failed during reinstall:', error)
       if (this.engineService) {
         this.engineService.addLog('stderr', `GTN initialization failed: ${getErrorMessage(error)}`)
         this.engineService.setError()
@@ -996,6 +996,6 @@ export class GtnService extends EventEmitter<GtnServiceEvents> {
 
     this.isReady = true
     this.emit('ready')
-    logger.info('gtn service reinstall end')
+    logger.info('GtnService: Reinstall complete')
   }
 }

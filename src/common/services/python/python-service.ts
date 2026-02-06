@@ -25,13 +25,13 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
   }
 
   async start(): Promise<void> {
-    logger.info('python service start')
+    logger.info('PythonService: Starting')
     this.uvService.waitForReady()
 
     await this.installPython()
     this.isReady = true
     this.emit('ready')
-    logger.info('python service ready')
+    logger.info('PythonService: Ready')
   }
 
   async waitForReady(): Promise<void> {
@@ -42,21 +42,21 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
   }
 
   async installPython(): Promise<void> {
-    logger.info('python service installPython start')
+    logger.info('PythonService: Installing Python')
     const uvExecutablePath = await this.uvService.getUvExecutablePath()
     await installPython(this.userDataDir, uvExecutablePath)
     this.pythonExecutablePath = await findPythonExecutablePath(this.userDataDir, uvExecutablePath)
-    logger.info('python service installPython end')
+    logger.info('PythonService: Python installed')
   }
 
   async reinstall(): Promise<void> {
-    logger.info('python service reinstall start')
+    logger.info('PythonService: Reinstalling')
     this.isReady = false
 
     // Remove Python directory
     const pythonDir = this.userDataDir + '/python'
     if (fs.existsSync(pythonDir)) {
-      logger.info('Removing Python directory')
+      logger.info('PythonService: Removing Python directory')
       fs.rmSync(pythonDir, { recursive: true, force: true })
     }
 
@@ -67,7 +67,7 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
 
     this.isReady = true
     this.emit('ready')
-    logger.info('python service reinstall end')
+    logger.info('PythonService: Reinstall complete')
   }
 
   async getPythonExecutablePath(): Promise<string> {
@@ -102,7 +102,7 @@ export class PythonService extends EventEmitter<PythonServiceEvents> {
       const packages = JSON.parse(stdout.trim())
       return packages.map((pkg: { name: string; version: string }) => `${pkg.name}==${pkg.version}`)
     } catch (error) {
-      logger.error('Failed to get installed packages:', error)
+      logger.error('PythonService: Failed to get installed packages:', error)
       return []
     }
   }

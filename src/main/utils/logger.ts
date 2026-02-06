@@ -30,6 +30,9 @@ const levelMap: Record<Logger.LogLevel, AppLogLevel> = {
   silly: 'debug',
 }
 
+// Prefixes to exclude from app log file (engine logs have their own dedicated log file)
+const ENGINE_LOG_PREFIXES = ['EngineService:', '[GTN-ENGINE]']
+
 // Add hook to forward logs to AppLogFileService
 log.hooks.push((message) => {
   if (appLogFileService && message.level) {
@@ -37,7 +40,12 @@ log.hooks.push((message) => {
     const text = message.data
       .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
       .join(' ')
-    appLogFileService.log(level, text)
+
+    // Exclude engine logs from app log file (they go to engine log file instead)
+    const isEngineLog = ENGINE_LOG_PREFIXES.some((prefix) => text.startsWith(prefix))
+    if (!isEngineLog) {
+      appLogFileService.log(level, text)
+    }
   }
   return message
 })
